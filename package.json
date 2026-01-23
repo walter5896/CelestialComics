@@ -1,0 +1,25 @@
+{
+  "name": "clientstart",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/walter5896/CelestialComics.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/walter5896/CelestialComics/issues"
+  },
+  "homepage": "https://github.com/walter5896/CelestialComics#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.91.1",
+    "stripe": "^20.2.0"
+  }
+}
