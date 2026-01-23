@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "echo \"no build needed\""
+    "build": "node build.js"
   },
   "repository": {
     "type": "git",
@@ -21,8 +21,5 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.91.1",
     "stripe": "^20.2.0"
-  },
-  "devDependencies": {
-    "@netlify/plugin-inline-env-vars": "^1.1.0"
   }
 }
