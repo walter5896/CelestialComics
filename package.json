@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "echo \"no build needed\""
   },
   "repository": {
     "type": "git",
@@ -21,5 +21,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.91.1",
     "stripe": "^20.2.0"
+  },
+  "devDependencies": {
+    "@netlify/plugin-inline-env-vars": "^1.1.0"
   }
 }
