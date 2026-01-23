@@ -1,0 +1,23 @@
+/* Stack story cards vertically on mobile */
+.story-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hero buttons stacked */
+.hero-cta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--spacing-md);
+}
+
+/* Footer */
+.site-footer {
+  background-color: var(--color-footer);
+  text-align: center;
+  padding: var(--spacing-md);
+  font-size: 0.9rem;
+}

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Purchase Successful | Project Name</title>
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
+
+      <!-- Hamburger for mobile -->
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+
+      <nav class="main-nav">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <!-- Login/Logout links -->
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- SUCCESS CONTENT -->
+  <main class="container success-container">
+    <div class="success-message">
+      <h1>Thank You for Your Purchase!</h1>
+      <p>Your payment was successful, and your order has been received.</p>
+
+      <p>
+        A confirmation email has been sent to you with your order details.
+      </p>
+
+      <div class="success-actions">
+        <a href="/shop/" class="btn btn-primary">Back to Shop</a>
+        <a href="/" class="btn btn-secondary">Return Home</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- JS files -->
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    // Update login/logout links based on user session
+    updateUI();
+
+    // Logout functionality
+    document.querySelectorAll('.logout-link').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+      });
+    });
+  </script>
+</body>
+</html>

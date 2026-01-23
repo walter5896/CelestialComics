@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Team | Project Name</title>
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
+
+      <!-- Hamburger for mobile -->
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+
+      <nav class="main-nav">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <!-- Profile link (hidden by default, shown if logged in) -->
+          <li class="profile-link" style="display:none;">
+            <a href="/profile/">My Profile</a>
+          </li>
+          <!-- Login/Logout links -->
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- TEAM CONTENT -->
+  <main class="container team-container">
+    <h1>Meet the Team</h1>
+    <p>We’re a small group passionate about storytelling, creativity, and building engaging experiences for our community.</p>
+
+    <div class="team-grid">
+      <article class="team-card">
+        <img src="/assets/images/team1.jpg" alt="Alice Smith" />
+        <h3>Alice Smith</h3>
+        <p>Founder & Project Lead</p>
+        <p>Alice oversees all aspects of the project and ensures everything runs smoothly.</p>
+      </article>
+
+      <article class="team-card">
+        <img src="/assets/images/team2.jpg" alt="Bob Johnson" />
+        <h3>Bob Johnson</h3>
+        <p>Lead Developer</p>
+        <p>Bob builds and maintains the site, database, and all interactive features.</p>
+      </article>
+
+      <article class="team-card">
+        <img src="/assets/images/team3.jpg" alt="Charlie Lee" />
+        <h3>Charlie Lee</h3>
+        <p>Design & UX</p>
+        <p>Charlie ensures the site is intuitive, beautiful, and consistent across pages.</p>
+      </article>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- JS files -->
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Update login/logout/profile links
+      updateUI();
+
+      // Logout button functionality
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vote | Project Name</title>
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+      <nav class="main-nav">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <!-- Profile link (hidden by default, shown if logged in) -->
+          <li class="profile-link" style="display:none;">
+            <a href="/profile/">My Profile</a>
+          </li>
+          <!-- Login/Logout links -->
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- VOTING STATES -->
+  <main class="container">
+    
+    <!-- Voting Closed -->
+    <div id="voting-closed" class="voting-state">
+      <h2>Voting is Closed</h2>
+      <p>Voting is currently closed. Thank you for participating!</p>
+      <a href="/winner/" class="btn btn-primary">View Winner</a>
+    </div>
+
+    <!-- Voting Open -->
+    <div id="voting-open" class="voting-state" style="display:none;">
+      <h2>Voting is Open!</h2>
+      <p>Select your favorite story below and cast your vote:</p>
+      <div class="story-grid">
+        <article class="story-card">
+          <img src="/assets/images/story1.jpg" alt="Story 1" />
+          <h3>Story Title 1</h3>
+          <button class="btn btn-primary vote-btn" data-story="1">Vote</button>
+        </article>
+        <article class="story-card">
+          <img src="/assets/images/story2.jpg" alt="Story 2" />
+          <h3>Story Title 2</h3>
+          <button class="btn btn-primary vote-btn" data-story="2">Vote</button>
+        </article>
+        <article class="story-card">
+          <img src="/assets/images/story3.jpg" alt="Story 3" />
+          <h3>Story Title 3</h3>
+          <button class="btn btn-primary vote-btn" data-story="3">Vote</button>
+        </article>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- JS files -->
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/vote.js"></script>
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Update login/logout and profile links
+      updateUI();
+
+      // Logout button functionality
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
+      });
+
+      // Voting buttons handled in vote.js
+    });
+  </script>
+</body>
+</html>

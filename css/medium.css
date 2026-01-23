@@ -1,0 +1,17 @@
+@media (min-width: 600px) {
+  .story-grid {
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    justify-content: center; /* CENTER the last row if odd */
+  }
+
+  .story-card {
+    flex: 0 0 calc(50% - var(--spacing-md)); /* 2 per row */
+    margin-bottom: var(--spacing-md);
+  }
+
+  .hero-cta {
+    flex-direction: row;
+    gap: var(--spacing-md);
+  }
+}

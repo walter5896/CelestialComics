@@ -1,0 +1,47 @@
+/* Box sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Reset margins and fonts */
+body {
+  margin: 0;
+  font-family: var(--font-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  line-height: 1.6;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  font-family: var(--font-base);
+}
+/* Add this to your base or main CSS file */
+
+html, body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+main, .content-wrapper {
+  flex: 1; /* fills remaining space */
+}
+
+/* Footer stays at bottom naturally */
+.site-footer {
+  margin-top: auto;
+}

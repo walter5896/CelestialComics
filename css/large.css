@@ -1,0 +1,23 @@
+@media (min-width: 1024px) {
+  .story-card {
+    flex: 1 1 calc(33.333% - var(--spacing-md));
+    
+  }
+
+  .hero-title {
+    font-size: 3rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+  }
+}
+/* Show nav on larger screens */
+@media (min-width: 768px) {
+  .main-nav {
+    display: block;
+  }
+  .nav-toggle {
+    display: none;
+  }
+}

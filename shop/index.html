@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shop | Project Name</title>
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
+
+      <!-- Hamburger for mobile -->
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+
+      <nav class="main-nav">
+        <ul class="nav-list">
+              <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <!-- Profile link (hidden by default, shown if logged in) -->
+          <li class="profile-link" style="display:none;">
+            <a href="/profile/">My Profile</a>
+          </li>
+          <!-- Login/Logout links -->
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- SHOP CONTENT -->
+  <main class="container shop-container">
+    <h1>Shop</h1>
+    <p>Discover exclusive items and support the project while enjoying great products.</p>
+
+    <div class="shop-card">
+      <img src="/assets/images/product1.jpg" alt="Product 1" />
+      <h3>Product 1</h3>
+      <p>$19.99</p>
+      <button class="btn btn-primary buy-btn">Buy Now</button>
+      <a href="/shop/cancel.html" class="btn btn-secondary">Cancel Purchase</a>
+    </div>
+
+    <div class="product-grid">
+      <article class="product-card">
+        <img src="/assets/images/product1.jpg" alt="Product 1" />
+        <h3>Product Title 1</h3>
+        <p>Short description of product 1.</p>
+        <button class="btn btn-primary">Buy Now</button>
+      </article>
+
+      <article class="product-card">
+        <img src="/assets/images/product2.jpg" alt="Product 2" />
+        <h3>Product Title 2</h3>
+        <p>Short description of product 2.</p>
+        <button class="btn btn-primary">Buy Now</button>
+      </article>
+
+      <article class="product-card">
+        <img src="/assets/images/product3.jpg" alt="Product 3" />
+        <h3>Product Title 3</h3>
+        <p>Short description of product 3.</p>
+        <button class="btn btn-primary">Buy Now</button>
+      </article>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- JS files -->
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/shop.js"></script>
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    // Update login/logout/profile links based on user session
+    updateUI();
+
+    // Logout functionality
+    document.querySelectorAll('.logout-link').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+      });
+    });
+  </script>
+</body>
+</html>
