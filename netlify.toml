@@ -1,3 +1,4 @@
 [build]
   command = "node build.js"
   publish = "/"
+  secrets_scan_omit_keys = ["SUPABASE_URL", "SUPABASE_KEY"]
