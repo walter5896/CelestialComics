@@ -1,0 +1,7 @@
+[35mbuild.js[m[36m:[m[32m4[m[36m:[m  [1;31mSUPABASE[m_URL: process.env.[1;31mSUPABASE[m_URL,
+[35mbuild.js[m[36m:[m[32m5[m[36m:[m  [1;31mSUPABASE[m_KEY: process.env.[1;31mSUPABASE[m_KEY,
+[35mjs/supabase.js[m[36m:[m[32m4[m[36m:[m  window.__env.[1;31mSUPABASE[m_URL,
+[35mjs/supabase.js[m[36m:[m[32m5[m[36m:[m  window.__env.[1;31mSUPABASE[m_KEY
+[35mnetlify.toml[m[36m:[m[32m4[m[36m:[m  secrets_scan_omit_keys = ["[1;31mSUPABASE[m_URL", "[1;31mSUPABASE[m_KEY"]
+[35mnetlify/functions/create-checkout-session.js[m[36m:[m[32m5[m[36m:[m  process.env.[1;31mSUPABASE[m_URL,
+[35mnetlify/functions/create-checkout-session.js[m[36m:[m[32m6[m[36m:[m  process.env.[1;31mSUPABASE[m_SERVICE_ROLE_KEY
