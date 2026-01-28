@@ -26,11 +26,13 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <!-- Profile link (hidden by default, shown if logged in) -->
+
+          <!-- Profile link -->
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
-          <!-- Login/Logout links -->
+
+          <!-- Login / Logout -->
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -46,7 +48,6 @@
         <p>Browse all the stories submitted by our community. Click any story to view details.</p>
 
         <div class="gallery-grid">
-          <!-- Story cards -->
           <article class="story-card">
             <img src="/assets/images/story1.jpg" alt="Story 1" />
             <h3>Story Title 1</h3>
@@ -92,15 +93,16 @@
     </div>
   </footer>
 
-  <!-- JS files -->
+  <!-- ENV (must load before any Supabase usage) -->
+  <script src="/js/env.js"></script>
+
+  <!-- APP JS -->
   <script type="module" src="/js/utils.js"></script>
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
-    // Update login/logout and profile links immediately
     updateUI();
 
-    // Logout button functionality
     document.querySelectorAll('.logout-link').forEach(el => {
       el.addEventListener('click', async (e) => {
         e.preventDefault();

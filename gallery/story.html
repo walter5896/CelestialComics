@@ -25,11 +25,13 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <!-- Profile link (hidden by default, shown if logged in) -->
+
+          <!-- Profile link -->
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
-          <!-- Login/Logout links -->
+
+          <!-- Login / Logout -->
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -37,15 +39,13 @@
     </div>
   </header>
 
-  <!-- STORY CONTENT WRAPPER -->
+  <!-- STORY CONTENT -->
   <main class="content-wrapper">
 
-    <!-- Back Button -->
     <div class="story-back">
       <a href="/gallery/" class="btn btn-secondary">← Back to Gallery</a>
     </div>
 
-    <!-- STORY HERO -->
     <section class="story-hero">
       <div class="container">
         <h1 class="story-title">Story Title 1</h1>
@@ -54,16 +54,12 @@
       </div>
     </section>
 
-    <!-- STORY BODY -->
     <section class="story-body">
       <div class="container">
-        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus sit amet ligula et nunc imperdiet ultrices. Sed venenatis, sapien a pharetra facilisis, justo mi iaculis libero, at mattis nisl erat vel eros.</p>
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+        <p>Nullam tincidunt orci ut dui pharetra, ut efficitur mi facilisis.</p>
+        <p>Additional paragraphs, images, quotes, or embedded media can be added here.</p>
 
-        <p>Nullam tincidunt orci ut dui pharetra, ut efficitur mi facilisis. Etiam vel lacinia mi, a vulputate justo. Integer eget fermentum magna, eget volutpat mi. Suspendisse potenti.</p>
-
-        <p>Additional paragraphs, images, quotes, or embedded media can be added here to fully describe the story.</p>
-
-        <!-- CTA Buttons -->
         <div class="story-cta">
           <button class="btn btn-primary">Vote for this story</button>
           <button class="btn btn-secondary">Save Story</button>
@@ -71,7 +67,6 @@
       </div>
     </section>
 
-    <!-- RELATED STORIES -->
     <section class="related-stories">
       <div class="container">
         <h2>Other Stories You Might Like</h2>
@@ -79,14 +74,14 @@
           <article class="story-card">
             <img src="/assets/images/story2.jpg" alt="Story 2" />
             <h3>Story Title 2</h3>
-            <p>Short description of story 2. Highlighting another great story.</p>
+            <p>Short description of story 2.</p>
             <a href="/gallery/story.html" class="btn btn-link">Read More</a>
           </article>
 
           <article class="story-card">
             <img src="/assets/images/story3.jpg" alt="Story 3" />
             <h3>Story Title 3</h3>
-            <p>Short description of story 3. Encourage users to click through.</p>
+            <p>Short description of story 3.</p>
             <a href="/gallery/story.html" class="btn btn-link">Read More</a>
           </article>
         </div>
@@ -108,16 +103,17 @@
     </div>
   </footer>
 
-  <!-- JS files -->
+  <!-- ENV (MUST LOAD FIRST) -->
+  <script src="/js/env.js"></script>
+
+  <!-- APP JS -->
   <script type="module" src="/js/utils.js"></script>
   <script type="module" src="/js/gallery.js"></script>
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
-    // Immediately update login/logout and profile links
     updateUI();
 
-    // Logout button functionality
     document.querySelectorAll('.logout-link').forEach(el => {
       el.addEventListener('click', async (e) => {
         e.preventDefault();
