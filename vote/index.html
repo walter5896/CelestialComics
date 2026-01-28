@@ -80,6 +80,9 @@
     </div>
   </footer>
 
+  <!-- IMPORTANT: Load env before auth/supabase -->
+  <script src="/js/env.js"></script>
+
   <!-- JS files -->
   <script type="module" src="/js/utils.js"></script>
   <script type="module" src="/js/vote.js"></script>
@@ -87,7 +90,7 @@
     import { updateUI, logout } from '/js/auth.js';
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Update login/logout and profile links
+      // Update login/logout/profile links
       updateUI();
 
       // Logout button functionality
