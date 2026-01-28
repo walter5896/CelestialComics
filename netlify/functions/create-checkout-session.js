@@ -11,15 +11,24 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const { user_id, cart } = JSON.parse(event.body);
-
   try {
+    const { user_id, cart } = JSON.parse(event.body);
+
+    // Ensure cart is valid
+    if (!cart || !cart.length) {
+      return { statusCode: 400, body: "Cart is empty" };
+    }
+
     // 1) Create Order
-    const { data: order } = await supabase
+    const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert([{ user_id, status: "pending" }])
       .select()
       .single();
+
+    if (orderError) {
+      return { statusCode: 500, body: "Failed to create order" };
+    }
 
     // 2) Create Order Items
     const items = cart.map((c) => ({
@@ -28,7 +37,13 @@ exports.handler = async (event) => {
       quantity: c.quantity,
     }));
 
-    await supabase.from("order_items").insert(items);
+    const { error: itemsError } = await supabase
+      .from("order_items")
+      .insert(items);
+
+    if (itemsError) {
+      return { statusCode: 500, body: "Failed to create order items" };
+    }
 
     // 3) Create Stripe Checkout Session
     const line_items = cart.map((c) => ({
@@ -51,9 +66,10 @@ exports.handler = async (event) => {
       .update({ stripe_session_id: session.id })
       .eq("id", order.id);
 
+    // Return the URL for frontend redirect
     return {
       statusCode: 200,
-      body: JSON.stringify({ sessionId: session.id }),
+      body: JSON.stringify({ url: session.url }),
     };
 
   } catch (error) {

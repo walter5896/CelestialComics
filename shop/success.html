@@ -25,6 +25,12 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
+
+          <!-- Profile link (hidden by default, shown if logged in) -->
+          <li class="profile-link" style="display:none;">
+            <a href="/profile/">My Profile</a>
+          </li>
+
           <!-- Login/Logout links -->
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
@@ -62,6 +68,9 @@
       </nav>
     </div>
   </footer>
+
+  <!-- ENV (must load before Supabase usage) -->
+  <script src="/js/env.js"></script>
 
   <!-- JS files -->
   <script type="module" src="/js/utils.js"></script>
