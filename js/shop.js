@@ -11,14 +11,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   buyBtn.addEventListener("click", async () => {
     try {
-      // Get logged-in user
-      const user = supabase.auth.user();
+      // ✅ Get logged-in user using Supabase v2 syntax
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("Error fetching user:", userError);
+        alert("Failed to get user info. Check console.");
+        return;
+      }
+
       if (!user) {
         alert("Please log in first.");
         return;
       }
 
-      // Example cart; replace with your dynamic cart if needed
+      // Example cart; replace with dynamic cart if needed
       const cart = [
         {
           product_id: 1,
@@ -53,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } catch (err) {
       console.error("Error during checkout:", err);
-      alert(`Checkout failed. See console for details.`);
+      alert("Checkout failed. See console for details.");
     }
   });
 });
