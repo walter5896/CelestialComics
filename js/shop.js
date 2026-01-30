@@ -11,7 +11,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   buyBtn.addEventListener("click", async () => {
     try {
-      // ✅ Get logged-in user using Supabase v2 syntax
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError) {
@@ -25,16 +24,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Example cart; replace with dynamic cart if needed
+      // Updated cart with correct product UUID
       const cart = [
         {
-          product_id: 1,
+          product_id: "36e541a4-5f38-440a-a9aa-32e6cf3cbab3", // UUID from Supabase
           quantity: 1,
           stripe_price_id: "price_1SuiBkRaDrRA5HPraxYGj52H",
         },
       ];
 
-      // Call Netlify function
       const res = await fetch("/.netlify/functions/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -55,7 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Redirect to Stripe Checkout
       window.location.href = data.url;
 
     } catch (err) {
