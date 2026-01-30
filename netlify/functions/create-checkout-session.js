@@ -8,15 +8,14 @@ const supabase = createClient(
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+    return { statusCode: 405, body: JSON.stringify({ error: "Method Not Allowed" }) };
   }
 
   try {
     const { user_id, cart } = JSON.parse(event.body);
 
-    // Ensure cart is valid
     if (!cart || !cart.length) {
-      return { statusCode: 400, body: "Cart is empty" };
+      return { statusCode: 400, body: JSON.stringify({ error: "Cart is empty" }) };
     }
 
     // 1) Create Order
@@ -27,7 +26,8 @@ exports.handler = async (event) => {
       .single();
 
     if (orderError) {
-      return { statusCode: 500, body: "Failed to create order" };
+      console.error("Order creation error:", orderError);
+      return { statusCode: 500, body: JSON.stringify({ error: "Failed to create order" }) };
     }
 
     // 2) Create Order Items
@@ -37,12 +37,10 @@ exports.handler = async (event) => {
       quantity: c.quantity,
     }));
 
-    const { error: itemsError } = await supabase
-      .from("order_items")
-      .insert(items);
-
+    const { error: itemsError } = await supabase.from("order_items").insert(items);
     if (itemsError) {
-      return { statusCode: 500, body: "Failed to create order items" };
+      console.error("Order items error:", itemsError);
+      return { statusCode: 500, body: JSON.stringify({ error: "Failed to create order items" }) };
     }
 
     // 3) Create Stripe Checkout Session
@@ -61,19 +59,13 @@ exports.handler = async (event) => {
     });
 
     // 4) Save session id
-    await supabase
-      .from("orders")
-      .update({ stripe_session_id: session.id })
-      .eq("id", order.id);
+    await supabase.from("orders").update({ stripe_session_id: session.id }).eq("id", order.id);
 
-    // Return the URL for frontend redirect
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ url: session.url }),
-    };
+    // ✅ Return URL for frontend redirect
+    return { statusCode: 200, body: JSON.stringify({ url: session.url }) };
 
   } catch (error) {
-    console.error(error);
-    return { statusCode: 500, body: "Server Error" };
+    console.error("Checkout function error:", error);
+    return { statusCode: 500, body: JSON.stringify({ error: "Server Error", details: error.message }) };
   }
 };
