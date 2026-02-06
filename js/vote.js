@@ -2,48 +2,77 @@
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const votingOpen = document.getElementById('voting-open');
   const votingClosed = document.getElementById('voting-closed');
-  if (!votingOpen || !votingClosed) return;
+  const storyGrid = document.getElementById('story-grid');
+  const loginPrompt = document.getElementById('login-prompt');
 
-  const voteButtons = votingOpen.querySelectorAll('.vote-btn');
+  if (!votingOpen || !votingClosed || !storyGrid) return;
 
-  // ---------- Functions ----------
+  // ---- Load Voting State ----
+  // TODO: Replace with real voting state from Supabase
+  const votingIsOpen = true;
 
-  // Force voting to be open for testing
-  function updateVotingState() {
+  // ---- Update UI Based on Voting State ----
+  if (votingIsOpen) {
     votingOpen.style.display = 'block';
     votingClosed.style.display = 'none';
-    voteButtons.forEach(btn => btn.disabled = !getCurrentUser());
+  } else {
+    votingOpen.style.display = 'none';
+    votingClosed.style.display = 'block';
+    return;
   }
 
-  // Enable/disable buttons and show login prompt if not logged in
+  // ---- Load stories dynamically from Supabase ----
+  const { data: stories, error: storyError } = await supabase
+    .from('stories')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (storyError) {
+    console.error('Error loading stories:', storyError);
+    storyGrid.innerHTML = '<p class="error">Failed to load stories. Try again later.</p>';
+    return;
+  }
+
+  // ---- Render story cards ----
+  storyGrid.innerHTML = '';
+
+  stories.forEach(story => {
+    const card = document.createElement('article');
+    card.className = 'story-card';
+
+    card.innerHTML = `
+      <img src="${story.image_url}" alt="${story.title}" />
+      <h3>${story.title}</h3>
+      <button class="btn btn-primary vote-btn" data-story-id="${story.id}">
+        Vote
+      </button>
+    `;
+
+    storyGrid.appendChild(card);
+  });
+
+  // ---- Update voting UI (login prompt + button state) ----
   function updateVotingUI() {
     const user = getCurrentUser();
 
+    const voteButtons = document.querySelectorAll('.vote-btn');
+
     if (!user) {
       voteButtons.forEach(btn => btn.disabled = true);
-      if (!document.getElementById('login-prompt')) {
-        const loginPrompt = document.createElement('p');
-        loginPrompt.id = 'login-prompt';
-        loginPrompt.textContent = 'Please log in to vote!';
-        loginPrompt.style.color = 'red';
-        votingOpen.prepend(loginPrompt);
-      }
+      if (loginPrompt) loginPrompt.style.display = 'block';
     } else {
       voteButtons.forEach(btn => btn.disabled = false);
-      const prompt = document.getElementById('login-prompt');
-      if (prompt) prompt.remove();
+      if (loginPrompt) loginPrompt.style.display = 'none';
     }
   }
 
-  // ---------- Initial Setup ----------
-  updateVotingState();
   updateVotingUI();
 
-  // ---------- Vote Button Handlers ----------
-  voteButtons.forEach(btn => {
+  // ---- Attach vote handlers ----
+  document.querySelectorAll('.vote-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const user = getCurrentUser();
       if (!user) {
@@ -51,15 +80,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const storyId = btn.dataset.story;
+      const storyId = btn.dataset.storyId;
 
-      const { data, error } = await supabase
+      if (!storyId) {
+        alert('Missing story ID!');
+        return;
+      }
+
+      const { error } = await supabase
         .from('votes')
         .insert([{ story_id: storyId, user_id: user.id }]);
 
       if (error) {
-        if (error.code === '23505') alert('You already voted!');
-        else {
+        if (error.code === '23505') {
+          alert('You already voted for this story!');
+        } else {
           console.error('Vote error:', error);
           alert('Error submitting vote. Try again.');
         }
@@ -70,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ---------- Listen for auth changes ----------
+  // ---- Listen for auth changes ----
   supabase.auth.onAuthStateChange(() => {
     updateVotingUI();
   });

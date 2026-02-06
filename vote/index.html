@@ -21,11 +21,9 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <!-- Profile link (hidden by default, shown if logged in) -->
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
-          <!-- Login/Logout links -->
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -35,7 +33,6 @@
 
   <!-- VOTING STATES -->
   <main class="container">
-    
     <!-- Voting Closed -->
     <div id="voting-closed" class="voting-state">
       <h2>Voting is Closed</h2>
@@ -47,23 +44,16 @@
     <div id="voting-open" class="voting-state" style="display:none;">
       <h2>Voting is Open!</h2>
       <p>Select your favorite story below and cast your vote:</p>
-      <div class="story-grid">
-        <article class="story-card">
-          <img src="/assets/images/story1.jpg" alt="Story 1" />
-          <h3>Story Title 1</h3>
-          <button class="btn btn-primary vote-btn" data-story="1">Vote</button>
-        </article>
-        <article class="story-card">
-          <img src="/assets/images/story2.jpg" alt="Story 2" />
-          <h3>Story Title 2</h3>
-          <button class="btn btn-primary vote-btn" data-story="2">Vote</button>
-        </article>
-        <article class="story-card">
-          <img src="/assets/images/story3.jpg" alt="Story 3" />
-          <h3>Story Title 3</h3>
-          <button class="btn btn-primary vote-btn" data-story="3">Vote</button>
-        </article>
-      </div>
+
+      <!-- Dynamic story grid -->
+      <div id="story-grid" class="story-grid"></div>
+    </div>
+
+    <!-- Not Logged In -->
+    <div id="login-prompt" class="voting-state" style="display:none;">
+      <h2>Please Log In to Vote</h2>
+      <p>You must be logged in to vote. Please log in or sign up to participate.</p>
+      <a href="/login/" class="btn btn-primary">Login</a>
     </div>
   </main>
 
@@ -86,6 +76,7 @@
   <!-- JS files -->
   <script type="module" src="/js/utils.js"></script>
   <script type="module" src="/js/vote.js"></script>
+
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
@@ -100,8 +91,6 @@
           await logout();
         });
       });
-
-      // Voting buttons handled in vote.js
     });
   </script>
 </body>
