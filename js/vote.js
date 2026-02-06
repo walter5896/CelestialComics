@@ -25,6 +25,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  if (!stories || stories.length === 0) {
+    storyGrid.innerHTML = '<p>No stories found.</p>';
+    return;
+  }
+
   // ---- Render stories ----
   storyGrid.innerHTML = '';
   stories.forEach(story => {
