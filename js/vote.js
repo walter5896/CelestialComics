@@ -6,43 +6,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   const votingOpen = document.getElementById('voting-open');
   const votingClosed = document.getElementById('voting-closed');
   const storyGrid = document.getElementById('story-grid');
-  const loginPrompt = document.getElementById('login-prompt');
 
   if (!votingOpen || !votingClosed || !storyGrid) return;
 
-  // ---- Load Voting State ----
-  // TODO: Replace with real voting state from Supabase
-  const votingIsOpen = true;
+  // ---- Force voting open (for now) ----
+  votingOpen.style.display = 'block';
+  votingClosed.style.display = 'none';
 
-  // ---- Update UI Based on Voting State ----
-  if (votingIsOpen) {
-    votingOpen.style.display = 'block';
-    votingClosed.style.display = 'none';
-  } else {
-    votingOpen.style.display = 'none';
-    votingClosed.style.display = 'block';
-    return;
-  }
-
-  // ---- Load stories dynamically from Supabase ----
-  const { data: stories, error: storyError } = await supabase
+  // ---- Load stories from Supabase ----
+  const { data: stories, error } = await supabase
     .from('stories')
     .select('*')
-    .order('created_at', { ascending: true });
+    .order('id', { ascending: true });
 
-  if (storyError) {
-    console.error('Error loading stories:', storyError);
-    storyGrid.innerHTML = '<p class="error">Failed to load stories. Try again later.</p>';
+  if (error) {
+    console.error('Failed to load stories:', error);
+    storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
     return;
   }
 
-  // ---- Render story cards ----
+  // ---- Render stories ----
   storyGrid.innerHTML = '';
-
   stories.forEach(story => {
     const card = document.createElement('article');
     card.className = 'story-card';
-
     card.innerHTML = `
       <img src="${story.image_url}" alt="${story.title}" />
       <h3>${story.title}</h3>
@@ -50,28 +37,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         Vote
       </button>
     `;
-
     storyGrid.appendChild(card);
   });
 
-  // ---- Update voting UI (login prompt + button state) ----
+  // ---- Login prompt UI ----
+  const loginPrompt = document.getElementById('login-prompt');
+
   function updateVotingUI() {
     const user = getCurrentUser();
-
     const voteButtons = document.querySelectorAll('.vote-btn');
 
     if (!user) {
-      voteButtons.forEach(btn => btn.disabled = true);
+      voteButtons.forEach(btn => (btn.disabled = true));
       if (loginPrompt) loginPrompt.style.display = 'block';
     } else {
-      voteButtons.forEach(btn => btn.disabled = false);
+      voteButtons.forEach(btn => (btn.disabled = false));
       if (loginPrompt) loginPrompt.style.display = 'none';
     }
   }
 
   updateVotingUI();
 
-  // ---- Attach vote handlers ----
+  // ---- Vote handler ----
   document.querySelectorAll('.vote-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const user = getCurrentUser();
@@ -82,21 +69,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const storyId = btn.dataset.storyId;
 
-      if (!storyId) {
-        alert('Missing story ID!');
-        return;
-      }
-
       const { error } = await supabase
         .from('votes')
         .insert([{ story_id: storyId, user_id: user.id }]);
 
       if (error) {
         if (error.code === '23505') {
-          alert('You already voted for this story!');
+          alert('You already voted!');
         } else {
           console.error('Vote error:', error);
-          alert('Error submitting vote. Try again.');
+          alert('Error submitting vote.');
         }
       } else {
         alert('Vote submitted! Thank you.');
