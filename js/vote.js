@@ -2,7 +2,130 @@
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
+/**
+ * Fetch stories with vote counts
+ */
+async function fetchStoriesWithVotes() {
+  const { data, error } = await supabase
+    .from('stories')
+    .select(`
+      id,
+      title,
+      image_url,
+      votes: votes!votes_story_id_fkey (id)  -- counts votes
+    `)
+    .order('id', { ascending: true });
+
+  if (error) {
+    console.error('Failed to load stories:', error);
+    return { stories: null, error };
+  }
+
+  // Convert votes relation into counts
+  const stories = data.map(story => ({
+    ...story,
+    vote_count: story.votes ? story.votes.length : 0
+  }));
+
+  return { stories, error: null };
+}
+
+/**
+ * Fetch the current user's votes
+ */
+async function fetchUserVotes() {
+  const user = getCurrentUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('votes')
+    .select('story_id')
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error fetching user votes:', error);
+    return [];
+  }
+
+  return data.map(v => v.story_id);
+}
+
+/**
+ * Disable vote buttons if user already voted
+ */
+function updateVoteButtons(userVotes) {
+  document.querySelectorAll('.vote-btn').forEach(btn => {
+    const storyId = btn.dataset.storyId;
+
+    if (userVotes.includes(storyId)) {
+      btn.disabled = true;
+      btn.textContent = `Voted (${btn.dataset.voteCount || 0})`;
+      btn.classList.add('voted');
+    } else {
+      btn.disabled = false;
+      btn.textContent = `Vote (${btn.dataset.voteCount || 0})`;
+      btn.classList.remove('voted');
+    }
+  });
+}
+
+/**
+ * Render stories to the page
+ */
+function renderStories(stories) {
+  const storyGrid = document.getElementById('story-grid');
+  storyGrid.innerHTML = '';
+
+  stories.forEach(story => {
+    const card = document.createElement('article');
+    card.className = 'story-card';
+    card.innerHTML = `
+      <img src="${story.image_url}" alt="${story.title}" />
+      <h3>${story.title}</h3>
+      <button
+        class="btn btn-primary vote-btn"
+        data-story-id="${story.id}"
+        data-vote-count="${story.vote_count}"
+      >
+        Vote (${story.vote_count})
+      </button>
+    `;
+    storyGrid.appendChild(card);
+  });
+}
+
+/**
+ * Submit a vote
+ */
+async function submitVote(storyId) {
+  const user = getCurrentUser();
+  if (!user) {
+    alert('You must be logged in to vote!');
+    return { success: false };
+  }
+
+  const { error } = await supabase
+    .from('votes')
+    .insert([{ story_id: storyId, user_id: user.id }]);
+
+  if (error) {
+    if (error.code === '23505') {
+      alert('You already voted!');
+      return { success: false };
+    }
+
+    console.error('Vote error:', error);
+    alert('Error submitting vote.');
+    return { success: false };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Initialize page
+ */
+async function initVotingPage() {
   const votingOpen = document.getElementById('voting-open');
   const votingClosed = document.getElementById('voting-closed');
   const storyGrid = document.getElementById('story-grid');
@@ -13,14 +136,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   votingOpen.style.display = 'block';
   votingClosed.style.display = 'none';
 
-  // ---- Load stories from Supabase ----
-  const { data: stories, error } = await supabase
-    .from('stories')
-    .select('*')
-    .order('id', { ascending: true });
-
+  // ---- Load stories with vote counts ----
+  const { stories, error } = await fetchStoriesWithVotes();
   if (error) {
-    console.error('Failed to load stories:', error);
     storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
     return;
   }
@@ -30,74 +148,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // ---- Render stories ----
-  storyGrid.innerHTML = '';
-  stories.forEach(story => {
-    const card = document.createElement('article');
-    card.className = 'story-card';
-    card.innerHTML = `
-      <img src="${story.image_url}" alt="${story.title}" />
-      <h3>${story.title}</h3>
-      <button class="btn btn-primary vote-btn" data-story-id="${story.id}">
-        Vote
-      </button>
-    `;
-    storyGrid.appendChild(card);
-  });
+  renderStories(stories);
 
   // ---- Login prompt UI ----
   const loginPrompt = document.getElementById('login-prompt');
 
-  function updateVotingUI() {
+  async function refreshUI() {
     const user = getCurrentUser();
-    const voteButtons = document.querySelectorAll('.vote-btn');
 
     if (!user) {
-      voteButtons.forEach(btn => (btn.disabled = true));
+      document.querySelectorAll('.vote-btn').forEach(btn => (btn.disabled = true));
       if (loginPrompt) loginPrompt.style.display = 'block';
-    } else {
-      voteButtons.forEach(btn => (btn.disabled = false));
-      if (loginPrompt) loginPrompt.style.display = 'none';
+      return;
     }
+
+    if (loginPrompt) loginPrompt.style.display = 'none';
+
+    const userVotes = await fetchUserVotes();
+    updateVoteButtons(userVotes);
   }
 
-  updateVotingUI();
+  await refreshUI();
 
-  // ---- Vote handler ----
-  document.querySelectorAll('.vote-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const user = getCurrentUser();
-      if (!user) {
-        alert('You must be logged in to vote!');
-        return;
-      }
+  // ---- Vote handler (delegated) ----
+  storyGrid.addEventListener('click', async (e) => {
+    if (!e.target.matches('.vote-btn')) return;
 
-      const storyId = btn.dataset.storyId;
+    const btn = e.target;
+    const storyId = btn.dataset.storyId;
 
-      const { error } = await supabase
-        .from('votes')
-        .insert([{ story_id: storyId, user_id: user.id }]);
+    const result = await submitVote(storyId);
+    if (!result.success) return;
 
-      if (error) {
-        if (error.code === '23505') {
-          alert('You already voted!');
-        } else {
-          console.error('Vote error:', error);
-          alert('Error submitting vote.');
-        }
-      } else {
-        alert('Vote submitted! Thank you.');
-        btn.disabled = true;
-      }
-    });
+    // Refresh UI after successful vote
+    const { stories: refreshedStories } = await fetchStoriesWithVotes();
+    renderStories(refreshedStories);
+
+    const userVotes = await fetchUserVotes();
+    updateVoteButtons(userVotes);
   });
 
   // ---- Listen for auth changes ----
   supabase.auth.onAuthStateChange(() => {
-    updateVotingUI();
+    refreshUI();
   });
-});
-// ---- Recant vote ----
+}
+
+// Run on load
+document.addEventListener('DOMContentLoaded', initVotingPage);
+
+/**
+ * Recant vote
+ */
 export async function recantVote(storyId) {
   const user = getCurrentUser();
   if (!user) return { success: false, error: 'Not logged in' };
