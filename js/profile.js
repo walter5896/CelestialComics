@@ -1,19 +1,11 @@
-// /js/profile.js
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
+import { recantVote } from './vote.js';
 
 const voteList = document.getElementById('vote-list');
 const noVotes = document.getElementById('no-votes');
 
 if (!voteList || !noVotes) throw new Error('Profile page missing required elements');
-
-// Example mapping of story IDs → titles (adjust to match your real stories)
-const storyTitles = {
-  "1": "Story Title 1",
-  "2": "Story Title 2",
-  "3": "Story Title 3",
-  "4": "Story Title 4",
-};
 
 /**
  * Fetch votes for the current user
@@ -28,7 +20,14 @@ async function fetchVotes() {
 
   const { data, error } = await supabase
     .from('votes')
-    .select('story_id, created_at')
+    .select(`
+      story_id,
+      created_at,
+      stories (
+        id,
+        title
+      )
+    `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -50,9 +49,17 @@ async function fetchVotes() {
 
   data.forEach(vote => {
     const li = document.createElement('li');
-    const title = storyTitles[vote.story_id] || `Story #${vote.story_id}`;
+
+    const title = vote.stories?.title || `Story #${vote.story_id}`;
     const date = new Date(vote.created_at).toLocaleString();
-    li.textContent = `${title} (voted on ${date})`;
+
+    li.innerHTML = `
+      <span>${title} (voted on ${date})</span>
+      <button class="recant-btn" data-story-id="${vote.story_id}">
+        Recant Vote
+      </button>
+    `;
+
     voteList.appendChild(li);
   });
 }
@@ -68,6 +75,21 @@ function initProfile() {
     fetchVotes();
   });
 }
+
+// Recant button handler
+document.addEventListener('click', async (e) => {
+  if (!e.target.matches('.recant-btn')) return;
+
+  const storyId = e.target.dataset.storyId;
+  const result = await recantVote(storyId);
+
+  if (result.success) {
+    alert('Vote recanted!');
+    fetchVotes(); // refresh list without full reload
+  } else {
+    alert('Could not recant vote.');
+  }
+});
 
 // Run on load
 document.addEventListener('DOMContentLoaded', initProfile);

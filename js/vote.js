@@ -97,3 +97,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateVotingUI();
   });
 });
+// ---- Recant vote ----
+export async function recantVote(storyId) {
+  const user = getCurrentUser();
+  if (!user) return { success: false, error: 'Not logged in' };
+
+  const { error } = await supabase
+    .from('votes')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('story_id', storyId);
+
+  if (error) return { success: false, error };
+
+  return { success: true };
+}
