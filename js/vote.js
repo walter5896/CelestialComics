@@ -109,10 +109,14 @@ export function renderStories(stories, containerId = 'story-grid') {
  * Update vote button states (keeps compatibility)
  */
 export function updateVoteButtons(userVotes, stories) {
+  if (!stories || !Array.isArray(stories)) return;
+
   document.querySelectorAll('.vote-btn').forEach(btn => {
     const storyId = btn.dataset.storyId;
-    const story = stories.find(s => s.id === storyId);
-    const status = story?.voting_status || 'upcoming';
+    const story = stories.find(s => String(s.id) === String(storyId));
+    if (!story) return;
+
+    const status = story.voting_status || 'upcoming';
 
     if (status === 'open') {
       if (userVotes.includes(storyId)) {
