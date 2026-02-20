@@ -12,11 +12,9 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
-
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
-
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
@@ -24,11 +22,7 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-
-          <li class="profile-link" style="display:none;">
-            <a href="/profile/">My Profile</a>
-          </li>
-
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -56,14 +50,8 @@
           <p>Loading story content...</p>
         </div>
         <div class="story-cta">
-          <!-- Vote button -->
-          <button class="btn btn-primary vote-btn" data-story-id="">
-            Vote for this story
-          </button>
-          <!-- Save button -->
-          <button class="btn btn-secondary save-btn" data-story-id="">
-            Save Story
-          </button>
+          <button class="btn btn-primary vote-btn" data-story-id="">Vote for this story</button>
+          <button class="btn btn-secondary save-btn" data-story-id="">Save Story</button>
         </div>
       </div>
     </section>
@@ -71,8 +59,8 @@
     <section class="related-stories">
       <div class="container">
         <h2>Other Stories You Might Like</h2>
-        <div class="story-grid">
-          <!-- Will be populated dynamically by story.js -->
+        <div id="related-stories-grid" class="story-grid">
+          <!-- Populated dynamically -->
         </div>
       </div>
     </section>
@@ -95,10 +83,11 @@
   <script src="/js/env.js"></script>
 
   <!-- APP JS -->
-  <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/story.js"></script>
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons, renderStories } from '/js/vote.js';
+    import { getQueryParam, saveStory, loadStory } from '/js/story.js';
+
     updateUI();
 
     document.querySelectorAll('.logout-link').forEach(el => {
@@ -106,6 +95,45 @@
         e.preventDefault();
         await logout();
       });
+    });
+
+    // Load the current story
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadStory();
+
+      const storyId = getQueryParam('id');
+      if (!storyId) return;
+
+      // Setup vote button
+      const voteBtn = document.querySelector('.story-cta .vote-btn');
+      voteBtn.dataset.storyId = storyId;
+      voteBtn.addEventListener('click', async () => {
+        const result = await submitVote(storyId);
+        if (result.success) {
+          voteBtn.disabled = true;
+          voteBtn.textContent = 'Voted';
+        }
+      });
+
+      // Setup save button
+      const saveBtn = document.querySelector('.story-cta .save-btn');
+      saveBtn.dataset.storyId = storyId;
+      saveBtn.addEventListener('click', async () => {
+        const success = await saveStory(storyId);
+        if (success) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saved';
+        }
+      });
+
+      // Load related stories
+      const { stories } = await fetchStoriesWithVotes();
+      const relatedStories = stories.filter(s => s.id !== storyId);
+      renderStories(relatedStories, 'related-stories-grid');
+
+      // Update vote buttons for related stories
+      const userVotes = await fetchUserVotes();
+      updateVoteButtons(userVotes);
     });
   </script>
 </body>
