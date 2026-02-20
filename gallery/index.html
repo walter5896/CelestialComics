@@ -27,12 +27,10 @@
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
 
-          <!-- Profile link -->
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
 
-          <!-- Login / Logout -->
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -47,35 +45,8 @@
         <h1>Gallery</h1>
         <p>Browse all the stories submitted by our community. Click any story to view details.</p>
 
-        <div class="gallery-grid">
-          <article class="story-card">
-            <img src="/assets/images/story1.jpg" alt="Story 1" />
-            <h3>Story Title 1</h3>
-            <p>Short description of story 1.</p>
-            <a href="/gallery/story.html" class="btn btn-link">Read More</a>
-          </article>
-
-          <article class="story-card">
-            <img src="/assets/images/story2.jpg" alt="Story 2" />
-            <h3>Story Title 2</h3>
-            <p>Short description of story 2.</p>
-            <a href="/gallery/story.html" class="btn btn-link">Read More</a>
-          </article>
-
-          <article class="story-card">
-            <img src="/assets/images/story3.jpg" alt="Story 3" />
-            <h3>Story Title 3</h3>
-            <p>Short description of story 3.</p>
-            <a href="/gallery/story.html" class="btn btn-link">Read More</a>
-          </article>
-
-          <article class="story-card">
-            <img src="/assets/images/story4.jpg" alt="Story 4" />
-            <h3>Story Title 4</h3>
-            <p>Short description of story 4.</p>
-            <a href="/gallery/story.html" class="btn btn-link">Read More</a>
-          </article>
-        </div>
+        <!-- Gallery grid will be populated dynamically -->
+        <div class="gallery-grid"></div>
       </div>
     </section>
   </main>
@@ -93,14 +64,14 @@
     </div>
   </footer>
 
-  <!-- ENV (must load before any Supabase usage) -->
+  <!-- ENV -->
   <script src="/js/env.js"></script>
 
   <!-- APP JS -->
   <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/gallery.js"></script>
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-
     updateUI();
 
     document.querySelectorAll('.logout-link').forEach(el => {
