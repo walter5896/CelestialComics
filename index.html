@@ -45,17 +45,15 @@
       </div>
     </section>
 
-    <!-- FEATURED STORIES (dynamic) -->
+    <!-- FEATURED STORIES -->
     <section class="featured-stories">
       <div class="container">
         <h2>Featured Stories</h2>
-        <div id="story-grid" class="story-grid">
-          <!-- Stories will be injected here dynamically -->
-        </div>
+        <div id="story-grid" class="story-grid"></div>
       </div>
     </section>
 
-    <!-- CALL TO ACTION / SHOP PREVIEW -->
+    <!-- SHOP PREVIEW -->
     <section class="shop-preview">
       <div class="container">
         <h2>Check Out Our Shop</h2>
@@ -95,41 +93,40 @@
       });
     });
 
-    // Load stories dynamically on homepage
     async function loadHomeStories() {
-      const { stories, error } = await fetchStoriesWithVotes();
       const storyGrid = document.getElementById('story-grid');
 
-      if (error) {
-        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
-        return;
-      }
+      // Fetch stories with votes
+      const stories = await fetchStoriesWithVotes();
 
       if (!stories || stories.length === 0) {
         storyGrid.innerHTML = '<p>No stories found.</p>';
         return;
       }
 
-      renderStories(stories);
+      // Render stories
+      renderStories(stories, 'story-grid');
 
-      // Refresh vote buttons based on current user
-      const user = await fetchUserVotes();
-      updateVoteButtons(user);
+      // Fetch current user's votes
+      const userVotes = await fetchUserVotes();
+      updateVoteButtons(userVotes);
 
-      // Delegate vote clicks
+      // Delegate vote button clicks
       storyGrid.addEventListener('click', async (e) => {
         if (!e.target.matches('.vote-btn')) return;
 
         const btn = e.target;
         const storyId = btn.dataset.storyId;
-        const result = await submitVote(storyId);
-        if (!result.success) return;
 
-        const { stories: refreshedStories } = await fetchStoriesWithVotes();
-        renderStories(refreshedStories);
+        const success = await submitVote(storyId);
+        if (!success) return;
 
-        const userVotes = await fetchUserVotes();
-        updateVoteButtons(userVotes);
+        // Refresh stories and votes
+        const refreshedStories = await fetchStoriesWithVotes();
+        renderStories(refreshedStories, 'story-grid');
+
+        const updatedVotes = await fetchUserVotes();
+        updateVoteButtons(updatedVotes);
       });
     }
 
