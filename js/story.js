@@ -1,16 +1,76 @@
 import { supabase } from './supabase.js';
+import { getCurrentUser } from './auth.js';
 
-/**
- * Get URL query parameter
- */
+/** Get URL query parameter */
 function getQueryParam(param) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(param);
 }
 
-/**
- * Load and render the story
- */
+/** Submit a vote for a story */
+async function submitVote(storyId) {
+  const user = getCurrentUser();
+  if (!user) {
+    alert('You must be logged in to vote!');
+    return false;
+  }
+
+  const { error } = await supabase
+    .from('votes')
+    .insert([{ story_id: storyId, user_id: user.id }]);
+
+  if (error) {
+    if (error.code === '23505') alert('You already voted!');
+    else {
+      console.error('Vote error:', error);
+      alert('Error submitting vote.');
+    }
+    return false;
+  }
+
+  return true;
+}
+
+/** Save story to profile */
+async function saveStory(storyId) {
+  const user = getCurrentUser();
+  if (!user) {
+    alert('You must be logged in to save stories!');
+    return false;
+  }
+
+  const { data: existing, error: checkError } = await supabase
+    .from('saved_stories')
+    .select('id')
+    .eq('story_id', storyId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (checkError && checkError.code !== 'PGRST116') {
+    console.error('Check saved story error:', checkError);
+    return false;
+  }
+
+  if (existing) {
+    alert('Story already saved!');
+    return false;
+  }
+
+  const { error } = await supabase
+    .from('saved_stories')
+    .insert([{ story_id: storyId, user_id: user.id }]);
+
+  if (error) {
+    console.error('Save story error:', error);
+    alert('Failed to save story.');
+    return false;
+  }
+
+  alert('Story saved!');
+  return true;
+}
+
+/** Load and render the story */
 async function loadStory() {
   const storyId = getQueryParam('id');
 
@@ -39,12 +99,32 @@ async function loadStory() {
     heroImg.src = story.image_url;
     heroImg.alt = story.title;
 
-    document.querySelector('.story-body .container').innerHTML = story.content;
+    // Only update story content, keep buttons intact
+    document.querySelector('.story-content').innerHTML = story.content;
+
+    // ---- Vote button ----
+    const voteBtn = document.querySelector('.story-cta .btn-primary');
+    voteBtn.addEventListener('click', async () => {
+      const success = await submitVote(story.id);
+      if (success) {
+        voteBtn.disabled = true;
+        voteBtn.textContent = 'Voted';
+      }
+    });
+
+    // ---- Save Story button ----
+    const saveBtn = document.querySelector('.story-cta .btn-secondary');
+    saveBtn.addEventListener('click', async () => {
+      const success = await saveStory(story.id);
+      if (success) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saved';
+      }
+    });
   } catch (err) {
     console.error('Unexpected error loading story:', err);
     document.querySelector('.story-title').textContent = 'Error loading story';
   }
 }
 
-// Run on page load
 document.addEventListener('DOMContentLoaded', loadStory);

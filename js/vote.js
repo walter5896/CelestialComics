@@ -3,11 +3,11 @@ import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
 /**
- * Fetch stories with vote counts
+ * Fetch stories and vote counts
  */
 async function fetchStoriesWithVotes() {
   try {
-    // Step 1: Get all stories
+    // Get all stories
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
       .select('id, title, image_url');
@@ -17,7 +17,7 @@ async function fetchStoriesWithVotes() {
       return { stories: null, error: storiesError };
     }
 
-    // Step 2: Get votes for all stories
+    // Get all votes for these stories
     const storyIds = stories.map(s => s.id);
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
@@ -29,13 +29,13 @@ async function fetchStoriesWithVotes() {
       return { stories, error: votesError };
     }
 
-    // Step 3: Count votes per story
+    // Count votes per story
     const voteCounts = votesData.reduce((acc, v) => {
       acc[v.story_id] = (acc[v.story_id] || 0) + 1;
       return acc;
     }, {});
 
-    // Step 4: Combine vote counts with stories
+    // Combine vote counts with stories
     const storiesWithVotes = stories.map(story => ({
       ...story,
       vote_count: voteCounts[story.id] || 0
@@ -49,7 +49,7 @@ async function fetchStoriesWithVotes() {
 }
 
 /**
- * Fetch the current user's votes
+ * Fetch current user's votes
  */
 async function fetchUserVotes() {
   const user = getCurrentUser();
@@ -69,12 +69,11 @@ async function fetchUserVotes() {
 }
 
 /**
- * Disable vote buttons if user already voted
+ * Update vote button states
  */
 function updateVoteButtons(userVotes) {
   document.querySelectorAll('.vote-btn').forEach(btn => {
     const storyId = btn.dataset.storyId;
-
     if (userVotes.includes(storyId)) {
       btn.disabled = true;
       btn.textContent = `Voted (${btn.dataset.voteCount || 0})`;
@@ -88,7 +87,7 @@ function updateVoteButtons(userVotes) {
 }
 
 /**
- * Render stories to the page
+ * Render stories
  */
 function renderStories(stories) {
   const storyGrid = document.getElementById('story-grid');
@@ -108,7 +107,7 @@ function renderStories(stories) {
         >
           Vote (${story.vote_count})
         </button>
-        <a href="/gallery/story.html?storyId=${story.id}" class="btn btn-link">
+        <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">
           Read More
         </a>
       </div>
@@ -118,7 +117,7 @@ function renderStories(stories) {
 }
 
 /**
- * Submit a vote
+ * Submit vote
  */
 async function submitVote(storyId) {
   const user = getCurrentUser();
@@ -132,13 +131,11 @@ async function submitVote(storyId) {
     .insert([{ story_id: storyId, user_id: user.id }]);
 
   if (error) {
-    if (error.code === '23505') {
-      alert('You already voted!');
-      return { success: false };
+    if (error.code === '23505') alert('You already voted!');
+    else {
+      console.error('Vote error:', error);
+      alert('Error submitting vote.');
     }
-
-    console.error('Vote error:', error);
-    alert('Error submitting vote.');
     return { success: false };
   }
 
@@ -155,6 +152,7 @@ async function initVotingPage() {
 
   if (!votingOpen || !votingClosed || !storyGrid) return;
 
+  // Force voting open for now
   votingOpen.style.display = 'block';
   votingClosed.style.display = 'none';
 
@@ -190,6 +188,7 @@ async function initVotingPage() {
 
   await refreshUI();
 
+  // Delegate vote clicks
   storyGrid.addEventListener('click', async (e) => {
     if (!e.target.matches('.vote-btn')) return;
 

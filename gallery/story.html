@@ -56,8 +56,14 @@
           <p>Loading story content...</p>
         </div>
         <div class="story-cta">
-          <button class="btn btn-primary vote-btn">Vote for this story</button>
-          <button class="btn btn-secondary save-btn">Save Story</button>
+          <!-- Vote button -->
+          <button class="btn btn-primary vote-btn" data-story-id="">
+            Vote for this story
+          </button>
+          <!-- Save button -->
+          <button class="btn btn-secondary save-btn" data-story-id="">
+            Save Story
+          </button>
         </div>
       </div>
     </section>
@@ -66,7 +72,7 @@
       <div class="container">
         <h2>Other Stories You Might Like</h2>
         <div class="story-grid">
-          <!-- Will be populated dynamically -->
+          <!-- Will be populated dynamically by story.js -->
         </div>
       </div>
     </section>

@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Project Name | Home</title>
-
-  <!-- Main CSS -->
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -13,12 +11,9 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
-
-      <!-- Hamburger for mobile -->
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
-
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
@@ -26,13 +21,7 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-
-          <!-- Profile link (hidden by default, shown if logged in) -->
-          <li class="profile-link" style="display:none;">
-            <a href="/profile/">My Profile</a>
-          </li>
-
-          <!-- Login / Logout -->
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -56,31 +45,12 @@
       </div>
     </section>
 
-    <!-- FEATURED STORIES -->
+    <!-- FEATURED STORIES (dynamic) -->
     <section class="featured-stories">
       <div class="container">
         <h2>Featured Stories</h2>
-        <div class="story-grid">
-          <article class="story-card">
-            <img src="/assets/images/story1.jpg" alt="Story 1" />
-            <h3>Story Title 1</h3>
-            <p>Short description of story 1. Capture attention and intrigue visitors.</p>
-            <a href="/gallery/story.html" class="btn btn-link">Read More</a>
-          </article>
-
-          <article class="story-card">
-            <img src="/assets/images/story2.jpg" alt="Story 2" />
-            <h3>Story Title 2</h3>
-            <p>Short description of story 2. Highlighting another great story.</p>
-            <a href="/gallery/story.html" class="btn btn-link">Read More</a>
-          </article>
-
-          <article class="story-card">
-            <img src="/assets/images/story3.jpg" alt="Story 3" />
-            <h3>Story Title 3</h3>
-            <p>Short description of story 3. Encourage users to click through.</p>
-            <a href="/gallery/story.html" class="btn btn-link">Read More</a>
-          </article>
+        <div id="story-grid" class="story-grid">
+          <!-- Stories will be injected here dynamically -->
         </div>
       </div>
     </section>
@@ -108,15 +78,15 @@
     </div>
   </footer>
 
-  <!-- ENV (must load first) -->
+  <!-- ENV -->
   <script src="/js/env.js"></script>
 
   <!-- APP JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import '/js/utils.js';
+    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons, renderStories } from '/js/vote.js';
 
-    updateUI?.();
+    updateUI();
 
     document.querySelectorAll('.logout-link').forEach(el => {
       el.addEventListener('click', async (e) => {
@@ -124,6 +94,46 @@
         await logout();
       });
     });
+
+    // Load stories dynamically on homepage
+    async function loadHomeStories() {
+      const { stories, error } = await fetchStoriesWithVotes();
+      const storyGrid = document.getElementById('story-grid');
+
+      if (error) {
+        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
+        return;
+      }
+
+      if (!stories || stories.length === 0) {
+        storyGrid.innerHTML = '<p>No stories found.</p>';
+        return;
+      }
+
+      renderStories(stories);
+
+      // Refresh vote buttons based on current user
+      const user = await fetchUserVotes();
+      updateVoteButtons(user);
+
+      // Delegate vote clicks
+      storyGrid.addEventListener('click', async (e) => {
+        if (!e.target.matches('.vote-btn')) return;
+
+        const btn = e.target;
+        const storyId = btn.dataset.storyId;
+        const result = await submitVote(storyId);
+        if (!result.success) return;
+
+        const { stories: refreshedStories } = await fetchStoriesWithVotes();
+        renderStories(refreshedStories);
+
+        const userVotes = await fetchUserVotes();
+        updateVoteButtons(userVotes);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadHomeStories);
   </script>
 </body>
 </html>

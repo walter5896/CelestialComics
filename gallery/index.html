@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Project Name | Gallery</title>
-
-  <!-- Main CSS -->
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -13,12 +11,9 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
-
-      <!-- Hamburger for mobile -->
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
-
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
@@ -26,11 +21,7 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-
-          <li class="profile-link" style="display:none;">
-            <a href="/profile/">My Profile</a>
-          </li>
-
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -44,9 +35,7 @@
       <div class="container">
         <h1>Gallery</h1>
         <p>Browse all the stories submitted by our community. Click any story to view details.</p>
-
-        <!-- Gallery grid will be populated dynamically -->
-        <div class="gallery-grid"></div>
+        <div id="story-grid" class="gallery-grid"></div>
       </div>
     </section>
   </main>
@@ -68,10 +57,10 @@
   <script src="/js/env.js"></script>
 
   <!-- APP JS -->
-  <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/gallery.js"></script>
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons, renderStories } from '/js/vote.js';
+
     updateUI();
 
     document.querySelectorAll('.logout-link').forEach(el => {
@@ -80,6 +69,44 @@
         await logout();
       });
     });
+
+    async function loadGalleryStories() {
+      const storyGrid = document.getElementById('story-grid');
+      const { stories, error } = await fetchStoriesWithVotes();
+
+      if (error) {
+        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
+        return;
+      }
+
+      if (!stories || stories.length === 0) {
+        storyGrid.innerHTML = '<p>No stories found.</p>';
+        return;
+      }
+
+      renderStories(stories);
+
+      const userVotes = await fetchUserVotes();
+      updateVoteButtons(userVotes);
+
+      // Delegate vote clicks
+      storyGrid.addEventListener('click', async (e) => {
+        if (!e.target.matches('.vote-btn')) return;
+
+        const btn = e.target;
+        const storyId = btn.dataset.storyId;
+        const result = await submitVote(storyId);
+        if (!result.success) return;
+
+        const { stories: refreshedStories } = await fetchStoriesWithVotes();
+        renderStories(refreshedStories);
+
+        const updatedVotes = await fetchUserVotes();
+        updateVoteButtons(updatedVotes);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadGalleryStories);
   </script>
 </body>
 </html>
