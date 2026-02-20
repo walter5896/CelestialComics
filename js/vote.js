@@ -3,7 +3,7 @@ import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
 /**
- * Fetch stories with vote counts
+ * Fetch stories with votes and voting status
  */
 export async function fetchStoriesWithVotes() {
   try {
@@ -14,6 +14,8 @@ export async function fetchStoriesWithVotes() {
     if (storiesError) throw storiesError;
 
     const storyIds = stories.map(s => s.id);
+
+    // Fetch vote counts
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
       .select('story_id')
@@ -26,12 +28,27 @@ export async function fetchStoriesWithVotes() {
       return acc;
     }, {});
 
+    // Fetch voting status
+    const { data: votingData, error: votingError } = await supabase
+      .from('voting_status')
+      .select('story_id, status')
+      .in('story_id', storyIds);
+
+    if (votingError) throw votingError;
+
+    const votingMap = {};
+    votingData.forEach(v => {
+      votingMap[v.story_id] = v.status; // 'open', 'upcoming', 'closed'
+    });
+
+    // Merge vote counts and voting status
     return stories.map(story => ({
       ...story,
-      vote_count: voteCounts[story.id] || 0
+      vote_count: voteCounts[story.id] || 0,
+      voting_status: votingMap[story.id] || 'upcoming'
     }));
   } catch (err) {
-    console.error('Error fetching stories:', err);
+    console.error('Error fetching stories with votes:', err);
     return [];
   }
 }
@@ -89,19 +106,30 @@ export function renderStories(stories, containerId = 'story-grid') {
 }
 
 /**
- * Update vote button states
+ * Update vote button states (keeps compatibility)
  */
-export function updateVoteButtons(userVotes) {
+export function updateVoteButtons(userVotes, stories) {
   document.querySelectorAll('.vote-btn').forEach(btn => {
     const storyId = btn.dataset.storyId;
-    if (userVotes.includes(storyId)) {
+    const story = stories.find(s => s.id === storyId);
+    const status = story?.voting_status || 'upcoming';
+
+    if (status === 'open') {
+      if (userVotes.includes(storyId)) {
+        btn.disabled = true;
+        btn.textContent = `Voted (${btn.dataset.voteCount || 0})`;
+        btn.classList.add('voted');
+      } else {
+        btn.disabled = false;
+        btn.textContent = `Vote (${btn.dataset.voteCount || 0})`;
+        btn.classList.remove('voted');
+      }
+    } else if (status === 'upcoming') {
       btn.disabled = true;
-      btn.textContent = `Voted (${btn.dataset.voteCount || 0})`;
-      btn.classList.add('voted');
-    } else {
-      btn.disabled = false;
-      btn.textContent = `Vote (${btn.dataset.voteCount || 0})`;
-      btn.classList.remove('voted');
+      btn.textContent = 'Voting starts soon';
+    } else if (status === 'closed') {
+      btn.disabled = true;
+      btn.textContent = `Voting Closed (${btn.dataset.voteCount || 0})`;
     }
   });
 }
@@ -145,4 +173,23 @@ export async function recantVote(storyId) {
   if (error) return { success: false, error };
 
   return { success: true };
+}
+
+/**
+ * Initialize voting UI: fetch everything and render buttons
+ */
+export async function initVoting(containerId = 'story-grid') {
+  const stories = await fetchStoriesWithVotes();
+  const userVotes = await fetchUserVotes();
+  renderStories(stories, containerId);
+  updateVoteButtons(userVotes, stories);
+
+  // Attach click listeners to vote buttons
+  document.querySelectorAll('.vote-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const storyId = btn.dataset.storyId;
+      const success = await submitVote(storyId);
+      if (success) initVoting(containerId); // refresh after voting
+    });
+  });
 }
