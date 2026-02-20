@@ -1,14 +1,15 @@
+// /js/story.js
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
 /** Get URL query parameter */
-function getQueryParam(param) {
+export function getQueryParam(param) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(param);
 }
 
 /** Submit a vote for a story */
-async function submitVote(storyId) {
+export async function submitVote(storyId) {
   const user = getCurrentUser();
   if (!user) {
     alert('You must be logged in to vote!');
@@ -32,7 +33,7 @@ async function submitVote(storyId) {
 }
 
 /** Save story to profile */
-async function saveStory(storyId) {
+export async function saveStory(storyId) {
   const user = getCurrentUser();
   if (!user) {
     alert('You must be logged in to save stories!');
@@ -70,8 +71,8 @@ async function saveStory(storyId) {
   return true;
 }
 
-/** Load and render the story */
-async function loadStory() {
+/** Load and render a story */
+export async function loadStory() {
   const storyId = getQueryParam('id');
 
   if (!storyId) {
@@ -92,18 +93,17 @@ async function loadStory() {
       return;
     }
 
-    // Inject data into DOM
+    // Inject into DOM
     document.querySelector('.story-title').textContent = story.title;
     document.querySelector('.story-meta').textContent = `By ${story.author} | Published ${story.published_at}`;
     const heroImg = document.querySelector('.story-hero-img');
     heroImg.src = story.image_url;
     heroImg.alt = story.title;
-
-    // Only update story content, keep buttons intact
     document.querySelector('.story-content').innerHTML = story.content;
 
-    // ---- Vote button ----
+    // Setup vote button
     const voteBtn = document.querySelector('.story-cta .btn-primary');
+    voteBtn.dataset.storyId = story.id;
     voteBtn.addEventListener('click', async () => {
       const success = await submitVote(story.id);
       if (success) {
@@ -112,8 +112,9 @@ async function loadStory() {
       }
     });
 
-    // ---- Save Story button ----
+    // Setup save button
     const saveBtn = document.querySelector('.story-cta .btn-secondary');
+    saveBtn.dataset.storyId = story.id;
     saveBtn.addEventListener('click', async () => {
       const success = await saveStory(story.id);
       if (success) {
@@ -121,10 +122,9 @@ async function loadStory() {
         saveBtn.textContent = 'Saved';
       }
     });
+
   } catch (err) {
     console.error('Unexpected error loading story:', err);
     document.querySelector('.story-title').textContent = 'Error loading story';
   }
 }
-
-document.addEventListener('DOMContentLoaded', loadStory);

@@ -50,8 +50,8 @@
           <p>Loading story content...</p>
         </div>
         <div class="story-cta">
-          <button class="btn btn-primary vote-btn" data-story-id="">Vote for this story</button>
-          <button class="btn btn-secondary save-btn" data-story-id="">Save Story</button>
+          <button class="btn btn-primary vote-btn">Vote for this story</button>
+          <button class="btn btn-secondary save-btn">Save Story</button>
         </div>
       </div>
     </section>
@@ -82,14 +82,14 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- APP JS -->
+  <!-- APP LOGIC -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons, renderStories } from '/js/vote.js';
-    import { getQueryParam, saveStory, loadStory } from '/js/story.js';
+    import { getQueryParam, loadStory, saveStory, submitVote } from '/js/story.js';
+    import { fetchStoriesWithVotes, renderStories, fetchUserVotes, updateVoteButtons } from '/js/vote.js';
 
+    // Update header based on auth
     updateUI();
-
     document.querySelectorAll('.logout-link').forEach(el => {
       el.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -97,25 +97,25 @@
       });
     });
 
-    // Load the current story
     document.addEventListener('DOMContentLoaded', async () => {
+      // 1️⃣ Load the main story
       await loadStory();
 
       const storyId = getQueryParam('id');
       if (!storyId) return;
 
-      // Setup vote button
+      // 2️⃣ Setup vote button
       const voteBtn = document.querySelector('.story-cta .vote-btn');
       voteBtn.dataset.storyId = storyId;
       voteBtn.addEventListener('click', async () => {
-        const result = await submitVote(storyId);
-        if (result.success) {
+        const success = await submitVote(storyId);
+        if (success) {
           voteBtn.disabled = true;
           voteBtn.textContent = 'Voted';
         }
       });
 
-      // Setup save button
+      // 3️⃣ Setup save button
       const saveBtn = document.querySelector('.story-cta .save-btn');
       saveBtn.dataset.storyId = storyId;
       saveBtn.addEventListener('click', async () => {
@@ -126,14 +126,14 @@
         }
       });
 
-      // Load related stories
-      const { stories } = await fetchStoriesWithVotes();
+      // 4️⃣ Load related stories
+      const stories = await fetchStoriesWithVotes();
       const relatedStories = stories.filter(s => s.id !== storyId);
       renderStories(relatedStories, 'related-stories-grid');
 
-      // Update vote buttons for related stories
+      // 5️⃣ Update vote buttons for related stories
       const userVotes = await fetchUserVotes();
-      updateVoteButtons(userVotes);
+      updateVoteButtons(userVotes, relatedStories);
     });
   </script>
 </body>
