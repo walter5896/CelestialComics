@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
+
   <!-- HEADER -->
   <header class="site-header">
     <div class="container header-container">
@@ -21,7 +22,9 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="profile-link" style="display:none;">
+            <a href="/profile/">My Profile</a>
+          </li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -35,7 +38,9 @@
       <div class="container">
         <h1>Gallery</h1>
         <p>Browse all the stories submitted by our community. Click any story to view details.</p>
-        <div id="story-grid" class="gallery-grid"></div>
+
+        <!-- IMPORTANT: ID must match renderStories() -->
+        <div id="story-grid" class="story-grid"></div>
       </div>
     </section>
   </main>
@@ -56,57 +61,74 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- APP JS -->
+  <!-- MODULE SCRIPT -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons, renderStories } from '/js/vote.js';
+    import {
+      fetchStoriesWithVotes,
+      submitVote,
+      fetchUserVotes,
+      updateVoteButtons,
+      renderStories
+    } from '/js/vote.js';
 
-    updateUI();
+    document.addEventListener('DOMContentLoaded', async () => {
 
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
+      // Update login/logout/profile UI
+      updateUI();
+
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
       });
-    });
 
-    async function loadGalleryStories() {
       const storyGrid = document.getElementById('story-grid');
-      const { stories, error } = await fetchStoriesWithVotes();
 
-      if (error) {
+      try {
+        // Fetch stories (returns array directly)
+        const stories = await fetchStoriesWithVotes();
+
+        console.log('Gallery stories:', stories);
+
+        if (!stories || stories.length === 0) {
+          storyGrid.innerHTML = '<p>No stories found.</p>';
+          return;
+        }
+
+        // Render stories into grid
+        renderStories(stories, 'story-grid');
+
+        // Update vote button states
+        const userVotes = await fetchUserVotes();
+        updateVoteButtons(userVotes, stories);
+
+        // Delegate vote clicks
+        storyGrid.addEventListener('click', async (e) => {
+          if (!e.target.matches('.vote-btn')) return;
+
+          const btn = e.target;
+          const storyId = btn.dataset.storyId;
+
+          const success = await submitVote(storyId);
+          if (!success) return;
+
+          // Refresh stories and votes
+          const updatedStories = await fetchStoriesWithVotes();
+          renderStories(updatedStories, 'story-grid');
+
+          const updatedVotes = await fetchUserVotes();
+          updateVoteButtons(updatedVotes, updatedStories);
+        });
+
+      } catch (err) {
+        console.error('Gallery load error:', err);
         storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
-        return;
       }
 
-      if (!stories || stories.length === 0) {
-        storyGrid.innerHTML = '<p>No stories found.</p>';
-        return;
-      }
-
-      renderStories(stories);
-
-      const userVotes = await fetchUserVotes();
-      updateVoteButtons(userVotes);
-
-      // Delegate vote clicks
-      storyGrid.addEventListener('click', async (e) => {
-        if (!e.target.matches('.vote-btn')) return;
-
-        const btn = e.target;
-        const storyId = btn.dataset.storyId;
-        const result = await submitVote(storyId);
-        if (!result.success) return;
-
-        const { stories: refreshedStories } = await fetchStoriesWithVotes();
-        renderStories(refreshedStories);
-
-        const updatedVotes = await fetchUserVotes();
-        updateVoteButtons(updatedVotes);
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', loadGalleryStories);
+    });
   </script>
+
 </body>
 </html>
