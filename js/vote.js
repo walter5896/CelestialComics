@@ -1,69 +1,61 @@
 // /js/vote.js
 import { supabase } from './supabase.js';
-import { getCurrentUser } from './auth.js';
+import { getCurrentUserAsync } from './auth.js';
 
 /**
  * Fetch stories with votes and voting status
  */
 export async function fetchStoriesWithVotes() {
   try {
-    // 1️⃣ Fetch stories
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
       .select('id, title, image_url');
 
     if (storiesError) throw storiesError;
-
     console.log('Fetched stories:', stories);
 
     const storyIds = stories.map(s => s.id);
     console.log('Story IDs:', storyIds);
 
-    // 2️⃣ Fetch vote counts
+    // Vote counts
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
       .select('story_id')
       .in('story_id', storyIds);
 
     if (votesError) throw votesError;
-
     console.log('Vote data:', votesData);
 
     const voteCounts = votesData.reduce((acc, v) => {
-      acc[v.story_id] = (acc[v.story_id] || 0) + 1;
+      acc[String(v.story_id)] = (acc[String(v.story_id)] || 0) + 1;
       return acc;
     }, {});
 
-    // 3️⃣ Fetch voting status
+    // Voting status
     const { data: votingDataRaw, error: votingError } = await supabase
       .from('voting_status')
       .select('story_id, status')
       .in('story_id', storyIds);
 
     if (votingError) throw votingError;
-
     console.log('Voting data from view:', votingDataRaw);
 
-    // Normalize story_id to string (UUIDs sometimes mismatch)
     const votingData = votingDataRaw.map(v => ({
       story_id: String(v.story_id),
       status: v.status
     }));
 
     const votingMap = {};
-    votingData.forEach(v => {
-      votingMap[v.story_id] = v.status; // 'open', 'upcoming', 'closed'
-    });
+    votingData.forEach(v => votingMap[v.story_id] = v.status);
 
-    // Merge vote counts and voting status
+    // Merge everything
     const storiesWithVotes = stories.map(story => ({
       ...story,
-      vote_count: voteCounts[story.id] || 0,
+      vote_count: voteCounts[String(story.id)] || 0,
       voting_status: votingMap[String(story.id)] || 'upcoming'
     }));
 
     console.log('Stories with votes and status:', storiesWithVotes);
-
     return storiesWithVotes;
   } catch (err) {
     console.error('Error fetching stories with votes:', err);
@@ -75,7 +67,7 @@ export async function fetchStoriesWithVotes() {
  * Fetch current user's votes
  */
 export async function fetchUserVotes() {
-  const user = getCurrentUser();
+  const user = await getCurrentUserAsync();
   if (!user) return [];
 
   const { data, error } = await supabase
@@ -89,12 +81,11 @@ export async function fetchUserVotes() {
   }
 
   console.log('User votes:', data);
-
   return data.map(v => String(v.story_id));
 }
 
 /**
- * Render stories into a container
+ * Render stories
  */
 export function renderStories(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
@@ -109,11 +100,9 @@ export function renderStories(stories, containerId = 'story-grid') {
       <img src="${story.image_url}" alt="${story.title}" />
       <h3>${story.title}</h3>
       <div class="story-actions">
-        <button
-          class="btn btn-primary vote-btn"
+        <button class="btn btn-primary vote-btn"
           data-story-id="${story.id}"
-          data-vote-count="${story.vote_count}"
-        >
+          data-vote-count="${story.vote_count}">
           Vote (${story.vote_count})
         </button>
         <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">
@@ -128,7 +117,7 @@ export function renderStories(stories, containerId = 'story-grid') {
 }
 
 /**
- * Update vote button states
+ * Update vote buttons
  */
 export function updateVoteButtons(userVotes, stories) {
   if (!stories || !Array.isArray(stories)) return;
@@ -162,10 +151,10 @@ export function updateVoteButtons(userVotes, stories) {
 }
 
 /**
- * Submit a vote
+ * Submit vote
  */
 export async function submitVote(storyId) {
-  const user = getCurrentUser();
+  const user = await getCurrentUserAsync();
   if (!user) {
     alert('You must be logged in to vote!');
     return false;
@@ -185,10 +174,10 @@ export async function submitVote(storyId) {
 }
 
 /**
- * Recant a vote
+ * Recant vote
  */
 export async function recantVote(storyId) {
-  const user = getCurrentUser();
+  const user = await getCurrentUserAsync();
   if (!user) return { success: false, error: 'Not logged in' };
 
   const { error } = await supabase
@@ -198,7 +187,6 @@ export async function recantVote(storyId) {
     .eq('story_id', storyId);
 
   if (error) return { success: false, error };
-
   return { success: true };
 }
 
@@ -208,6 +196,7 @@ export async function recantVote(storyId) {
 export async function initVoting(containerId = 'story-grid') {
   const stories = await fetchStoriesWithVotes();
   const userVotes = await fetchUserVotes();
+
   renderStories(stories, containerId);
   updateVoteButtons(userVotes, stories);
 
@@ -216,7 +205,7 @@ export async function initVoting(containerId = 'story-grid') {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const success = await submitVote(storyId);
-      if (success) initVoting(containerId); // refresh after voting
+      if (success) initVoting(containerId); // refresh
     });
   });
 }

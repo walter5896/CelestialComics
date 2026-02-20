@@ -21,9 +21,7 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <li class="profile-link" style="display:none;">
-            <a href="/profile/">My Profile</a>
-          </li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -33,21 +31,18 @@
 
   <!-- MAIN VOTING AREA -->
   <main class="container">
-    <!-- Voting Closed -->
     <div id="voting-closed" class="voting-state" style="display:none;">
       <h2>Voting is Closed</h2>
       <p>Voting is currently closed. Thank you for participating!</p>
       <a href="/winner/" class="btn btn-primary">View Winner</a>
     </div>
 
-    <!-- Voting Open -->
     <div id="voting-open" class="voting-state" style="display:none;">
       <h2>Voting is Open!</h2>
       <p>Select your favorite story below and cast your vote:</p>
       <div id="story-grid" class="story-grid"></div>
     </div>
 
-    <!-- Not Logged In -->
     <div id="login-prompt" class="voting-state" style="display:none;">
       <h2>Please Log In to Vote</h2>
       <p>You must be logged in to vote. Please log in or sign up to participate.</p>
@@ -75,24 +70,25 @@
   <script type="module" src="/js/utils.js"></script>
   <script type="module" src="/js/vote.js"></script>
 
-  <!-- AUTH/UI + VOTING LOGIC -->
+  <!-- AUTH + VOTING INIT -->
   <script type="module">
-    import { getCurrentUser, updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, fetchUserVotes, renderStories, updateVoteButtons, submitVote } from '/js/vote.js';
+    import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
+    import { initVoting } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // Wait for auth state to be ready
+      const user = await getCurrentUserAsync();
+
       // Update login/logout/profile links
       updateUI();
 
-      // Logout button functionality
+      // Logout button
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
         });
       });
-
-      const user = getCurrentUser();
 
       if (!user) {
         // Not logged in
@@ -102,42 +98,19 @@
         return;
       }
 
-      // Fetch stories and votes
-      const stories = await fetchStoriesWithVotes();
-      const userVotes = await fetchUserVotes();
+      // User is logged in → initialize voting UI
+      await initVoting('story-grid');
 
-      console.log('Stories:', stories);
-      console.log('User votes:', userVotes);
+      // Determine global voting state
+      const stories = await (async () => {
+        // Re-fetch stories to check voting status
+        const { fetchStoriesWithVotes } = await import('/js/vote.js');
+        return await fetchStoriesWithVotes();
+      })();
 
-      // Determine voting state
       const anyOpen = stories.some(s => s.voting_status === 'open');
-
-      if (anyOpen) {
-        document.getElementById('voting-open').style.display = 'block';
-        document.getElementById('voting-closed').style.display = 'none';
-      } else {
-        document.getElementById('voting-open').style.display = 'none';
-        document.getElementById('voting-closed').style.display = 'block';
-      }
-
-      // Render stories
-      renderStories(stories, 'story-grid');
-      updateVoteButtons(userVotes, stories);
-
-      // Attach click listeners to vote buttons
-      document.querySelectorAll('.vote-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const storyId = btn.dataset.storyId;
-          const success = await submitVote(storyId);
-          if (success) {
-            // Refresh stories and buttons after vote
-            const updatedStories = await fetchStoriesWithVotes();
-            const updatedUserVotes = await fetchUserVotes();
-            renderStories(updatedStories, 'story-grid');
-            updateVoteButtons(updatedUserVotes, updatedStories);
-          }
-        });
-      });
+      document.getElementById('voting-open').style.display = anyOpen ? 'block' : 'none';
+      document.getElementById('voting-closed').style.display = anyOpen ? 'none' : 'block';
     });
   </script>
 </body>
