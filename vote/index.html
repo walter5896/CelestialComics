@@ -31,10 +31,10 @@
     </div>
   </header>
 
-  <!-- VOTING STATES -->
+  <!-- MAIN VOTING AREA -->
   <main class="container">
     <!-- Voting Closed -->
-    <div id="voting-closed" class="voting-state">
+    <div id="voting-closed" class="voting-state" style="display:none;">
       <h2>Voting is Closed</h2>
       <p>Voting is currently closed. Thank you for participating!</p>
       <a href="/winner/" class="btn btn-primary">View Winner</a>
@@ -44,8 +44,6 @@
     <div id="voting-open" class="voting-state" style="display:none;">
       <h2>Voting is Open!</h2>
       <p>Select your favorite story below and cast your vote:</p>
-
-      <!-- Dynamic story grid -->
       <div id="story-grid" class="story-grid"></div>
     </div>
 
@@ -70,17 +68,19 @@
     </div>
   </footer>
 
-  <!-- IMPORTANT: Load env before auth/supabase -->
+  <!-- ENV (Supabase keys, etc.) -->
   <script src="/js/env.js"></script>
 
-  <!-- JS files -->
+  <!-- JS MODULES -->
   <script type="module" src="/js/utils.js"></script>
   <script type="module" src="/js/vote.js"></script>
 
+  <!-- AUTH/UI + VOTING LOGIC -->
   <script type="module">
-    import { updateUI, logout } from '/js/auth.js';
+    import { getCurrentUser, updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes, fetchUserVotes, renderStories, updateVoteButtons, submitVote } from '/js/vote.js';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       // Update login/logout/profile links
       updateUI();
 
@@ -89,6 +89,53 @@
         el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
+        });
+      });
+
+      const user = getCurrentUser();
+
+      if (!user) {
+        // Not logged in
+        document.getElementById('login-prompt').style.display = 'block';
+        document.getElementById('voting-open').style.display = 'none';
+        document.getElementById('voting-closed').style.display = 'none';
+        return;
+      }
+
+      // Fetch stories and votes
+      const stories = await fetchStoriesWithVotes();
+      const userVotes = await fetchUserVotes();
+
+      console.log('Stories:', stories);
+      console.log('User votes:', userVotes);
+
+      // Determine voting state
+      const anyOpen = stories.some(s => s.voting_status === 'open');
+
+      if (anyOpen) {
+        document.getElementById('voting-open').style.display = 'block';
+        document.getElementById('voting-closed').style.display = 'none';
+      } else {
+        document.getElementById('voting-open').style.display = 'none';
+        document.getElementById('voting-closed').style.display = 'block';
+      }
+
+      // Render stories
+      renderStories(stories, 'story-grid');
+      updateVoteButtons(userVotes, stories);
+
+      // Attach click listeners to vote buttons
+      document.querySelectorAll('.vote-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const storyId = btn.dataset.storyId;
+          const success = await submitVote(storyId);
+          if (success) {
+            // Refresh stories and buttons after vote
+            const updatedStories = await fetchStoriesWithVotes();
+            const updatedUserVotes = await fetchUserVotes();
+            renderStories(updatedStories, 'story-grid');
+            updateVoteButtons(updatedUserVotes, updatedStories);
+          }
         });
       });
     });
