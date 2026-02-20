@@ -6,28 +6,46 @@ import { getCurrentUser } from './auth.js';
  * Fetch stories with vote counts
  */
 async function fetchStoriesWithVotes() {
-  const { data, error } = await supabase
-    .from('stories')
-    .select(`
-      id,
-      title,
-      image_url,
-      short_description,
-      votes: votes!votes_story_id_fkey (id)
-    `)
-    .order('id', { ascending: true });
+  try {
+    // Step 1: Get all stories
+    const { data: stories, error: storiesError } = await supabase
+      .from('stories')
+      .select('id, title, image_url');
 
-  if (error) {
-    console.error('Failed to load stories:', error);
-    return { stories: null, error };
+    if (storiesError) {
+      console.error('Failed to load stories:', storiesError);
+      return { stories: null, error: storiesError };
+    }
+
+    // Step 2: Get votes for all stories
+    const storyIds = stories.map(s => s.id);
+    const { data: votesData, error: votesError } = await supabase
+      .from('votes')
+      .select('story_id')
+      .in('story_id', storyIds);
+
+    if (votesError) {
+      console.error('Failed to load votes:', votesError);
+      return { stories, error: votesError };
+    }
+
+    // Step 3: Count votes per story
+    const voteCounts = votesData.reduce((acc, v) => {
+      acc[v.story_id] = (acc[v.story_id] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Step 4: Combine vote counts with stories
+    const storiesWithVotes = stories.map(story => ({
+      ...story,
+      vote_count: voteCounts[story.id] || 0
+    }));
+
+    return { stories: storiesWithVotes, error: null };
+  } catch (err) {
+    console.error('Unexpected error fetching stories:', err);
+    return { stories: null, error: err };
   }
-
-  const stories = data.map(story => ({
-    ...story,
-    vote_count: story.votes ? story.votes.length : 0
-  }));
-
-  return { stories, error: null };
 }
 
 /**
@@ -70,7 +88,7 @@ function updateVoteButtons(userVotes) {
 }
 
 /**
- * Render stories to the page with Vote + Read More
+ * Render stories to the page
  */
 function renderStories(stories) {
   const storyGrid = document.getElementById('story-grid');
@@ -82,8 +100,7 @@ function renderStories(stories) {
     card.innerHTML = `
       <img src="${story.image_url}" alt="${story.title}" />
       <h3>${story.title}</h3>
-      <p>${story.short_description || ''}</p>
-      <div class="story-buttons">
+      <div class="story-actions">
         <button
           class="btn btn-primary vote-btn"
           data-story-id="${story.id}"
@@ -91,7 +108,9 @@ function renderStories(stories) {
         >
           Vote (${story.vote_count})
         </button>
-        <a href="/gallery/story.html?id=${story.id}" class="btn btn-secondary">Read More</a>
+        <a href="/gallery/story.html?storyId=${story.id}" class="btn btn-link">
+          Read More
+        </a>
       </div>
     `;
     storyGrid.appendChild(card);
@@ -136,11 +155,9 @@ async function initVotingPage() {
 
   if (!votingOpen || !votingClosed || !storyGrid) return;
 
-  // Force voting open for now
   votingOpen.style.display = 'block';
   votingClosed.style.display = 'none';
 
-  // Load stories with vote counts
   const { stories, error } = await fetchStoriesWithVotes();
   if (error) {
     storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
@@ -154,7 +171,6 @@ async function initVotingPage() {
 
   renderStories(stories);
 
-  // Login prompt UI
   const loginPrompt = document.getElementById('login-prompt');
 
   async function refreshUI() {
@@ -174,7 +190,6 @@ async function initVotingPage() {
 
   await refreshUI();
 
-  // Vote handler (delegated)
   storyGrid.addEventListener('click', async (e) => {
     if (!e.target.matches('.vote-btn')) return;
 
@@ -184,7 +199,6 @@ async function initVotingPage() {
     const result = await submitVote(storyId);
     if (!result.success) return;
 
-    // Refresh UI after successful vote
     const { stories: refreshedStories } = await fetchStoriesWithVotes();
     renderStories(refreshedStories);
 
@@ -192,13 +206,11 @@ async function initVotingPage() {
     updateVoteButtons(userVotes);
   });
 
-  // Listen for auth changes
   supabase.auth.onAuthStateChange(() => {
     refreshUI();
   });
 }
 
-// Run on load
 document.addEventListener('DOMContentLoaded', initVotingPage);
 
 /**
