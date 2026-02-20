@@ -3,11 +3,10 @@ import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
 /**
- * Fetch stories with vote counts and voting state
+ * Fetch stories with vote counts
  */
 export async function fetchStoriesWithVotes() {
   try {
-    // Fetch all stories
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
       .select('id, title, image_url');
@@ -15,8 +14,6 @@ export async function fetchStoriesWithVotes() {
     if (storiesError) throw storiesError;
 
     const storyIds = stories.map(s => s.id);
-
-    // Fetch vote counts
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
       .select('story_id')
@@ -29,27 +26,12 @@ export async function fetchStoriesWithVotes() {
       return acc;
     }, {});
 
-    // Fetch voting state for all stories from the view
-    const { data: votingData, error: votingError } = await supabase
-      .from('voting_status')
-      .select('story_id, status')
-      .in('story_id', storyIds);
-
-    if (votingError) throw votingError;
-
-    const votingMap = {};
-    votingData.forEach(v => {
-      votingMap[v.story_id] = v.status; // 'open', 'upcoming', 'closed'
-    });
-
-    // Merge vote counts and voting state into stories
     return stories.map(story => ({
       ...story,
-      vote_count: voteCounts[story.id] || 0,
-      voting_status: votingMap[story.id] || 'upcoming'
+      vote_count: voteCounts[story.id] || 0
     }));
   } catch (err) {
-    console.error('Error fetching stories with votes:', err);
+    console.error('Error fetching stories:', err);
     return [];
   }
 }
@@ -75,7 +57,7 @@ export async function fetchUserVotes() {
 }
 
 /**
- * Render stories into container
+ * Render stories into a container
  */
 export function renderStories(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
@@ -86,7 +68,6 @@ export function renderStories(stories, containerId = 'story-grid') {
   stories.forEach(story => {
     const card = document.createElement('article');
     card.className = 'story-card';
-
     card.innerHTML = `
       <img src="${story.image_url}" alt="${story.title}" />
       <h3>${story.title}</h3>
@@ -103,36 +84,24 @@ export function renderStories(stories, containerId = 'story-grid') {
         </a>
       </div>
     `;
-
     container.appendChild(card);
   });
 }
 
 /**
- * Update vote buttons based on voting state and user votes
+ * Update vote button states
  */
-export function updateVoteButtons(userVotes, stories) {
+export function updateVoteButtons(userVotes) {
   document.querySelectorAll('.vote-btn').forEach(btn => {
     const storyId = btn.dataset.storyId;
-    const story = stories.find(s => s.id === storyId);
-    const status = story?.voting_status || 'upcoming';
-
-    if (status === 'open') {
-      if (userVotes.includes(storyId)) {
-        btn.disabled = true;
-        btn.textContent = `Voted (${btn.dataset.voteCount || 0})`;
-        btn.classList.add('voted');
-      } else {
-        btn.disabled = false;
-        btn.textContent = `Vote (${btn.dataset.voteCount || 0})`;
-        btn.classList.remove('voted');
-      }
-    } else if (status === 'upcoming') {
+    if (userVotes.includes(storyId)) {
       btn.disabled = true;
-      btn.textContent = 'Voting starts soon';
-    } else if (status === 'closed') {
-      btn.disabled = true;
-      btn.textContent = `Voting Closed (${btn.dataset.voteCount || 0})`;
+      btn.textContent = `Voted (${btn.dataset.voteCount || 0})`;
+      btn.classList.add('voted');
+    } else {
+      btn.disabled = false;
+      btn.textContent = `Vote (${btn.dataset.voteCount || 0})`;
+      btn.classList.remove('voted');
     }
   });
 }
