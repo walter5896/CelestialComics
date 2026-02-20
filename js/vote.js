@@ -12,7 +12,8 @@ async function fetchStoriesWithVotes() {
       id,
       title,
       image_url,
-      votes: votes!votes_story_id_fkey (id)  -- counts votes
+      short_description,
+      votes: votes!votes_story_id_fkey (id)
     `)
     .order('id', { ascending: true });
 
@@ -21,7 +22,6 @@ async function fetchStoriesWithVotes() {
     return { stories: null, error };
   }
 
-  // Convert votes relation into counts
   const stories = data.map(story => ({
     ...story,
     vote_count: story.votes ? story.votes.length : 0
@@ -70,7 +70,7 @@ function updateVoteButtons(userVotes) {
 }
 
 /**
- * Render stories to the page
+ * Render stories to the page with Vote + Read More
  */
 function renderStories(stories) {
   const storyGrid = document.getElementById('story-grid');
@@ -82,13 +82,17 @@ function renderStories(stories) {
     card.innerHTML = `
       <img src="${story.image_url}" alt="${story.title}" />
       <h3>${story.title}</h3>
-      <button
-        class="btn btn-primary vote-btn"
-        data-story-id="${story.id}"
-        data-vote-count="${story.vote_count}"
-      >
-        Vote (${story.vote_count})
-      </button>
+      <p>${story.short_description || ''}</p>
+      <div class="story-buttons">
+        <button
+          class="btn btn-primary vote-btn"
+          data-story-id="${story.id}"
+          data-vote-count="${story.vote_count}"
+        >
+          Vote (${story.vote_count})
+        </button>
+        <a href="/gallery/story.html?id=${story.id}" class="btn btn-secondary">Read More</a>
+      </div>
     `;
     storyGrid.appendChild(card);
   });
@@ -123,7 +127,7 @@ async function submitVote(storyId) {
 }
 
 /**
- * Initialize page
+ * Initialize voting page
  */
 async function initVotingPage() {
   const votingOpen = document.getElementById('voting-open');
@@ -132,11 +136,11 @@ async function initVotingPage() {
 
   if (!votingOpen || !votingClosed || !storyGrid) return;
 
-  // ---- Force voting open (for now) ----
+  // Force voting open for now
   votingOpen.style.display = 'block';
   votingClosed.style.display = 'none';
 
-  // ---- Load stories with vote counts ----
+  // Load stories with vote counts
   const { stories, error } = await fetchStoriesWithVotes();
   if (error) {
     storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
@@ -150,7 +154,7 @@ async function initVotingPage() {
 
   renderStories(stories);
 
-  // ---- Login prompt UI ----
+  // Login prompt UI
   const loginPrompt = document.getElementById('login-prompt');
 
   async function refreshUI() {
@@ -170,7 +174,7 @@ async function initVotingPage() {
 
   await refreshUI();
 
-  // ---- Vote handler (delegated) ----
+  // Vote handler (delegated)
   storyGrid.addEventListener('click', async (e) => {
     if (!e.target.matches('.vote-btn')) return;
 
@@ -188,7 +192,7 @@ async function initVotingPage() {
     updateVoteButtons(userVotes);
   });
 
-  // ---- Listen for auth changes ----
+  // Listen for auth changes
   supabase.auth.onAuthStateChange(() => {
     refreshUI();
   });
