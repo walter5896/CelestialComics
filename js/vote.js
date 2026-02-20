@@ -230,4 +230,4 @@ export async function recantVote(storyId) {
   return { success: true };
 }
 // Export functions for use in gallery or other pages
-export { fetchStoriesWithVotes, submitVote };
+export { fetchStoriesWithVotes, submitVote, fetchUserVotes };
