@@ -3,32 +3,24 @@ import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
 /**
- * Fetch stories with vote counts
+ * Fetch stories with votes and voting status
  */
 export async function fetchStoriesWithVotes() {
   try {
-    const { data: stories, error: storiesError } = await supabase
+    const { data, error } = await supabase
       .from('stories')
-      .select('id, title, image_url');
+      .select(`
+        id, title, image_url,
+        votes: votes(story_id),
+        voting_status: voting_status(status)
+      `);
 
-    if (storiesError) throw storiesError;
+    if (error) throw error;
 
-    const storyIds = stories.map(s => s.id);
-    const { data: votesData, error: votesError } = await supabase
-      .from('votes')
-      .select('story_id')
-      .in('story_id', storyIds);
-
-    if (votesError) throw votesError;
-
-    const voteCounts = votesData.reduce((acc, v) => {
-      acc[v.story_id] = (acc[v.story_id] || 0) + 1;
-      return acc;
-    }, {});
-
-    return stories.map(story => ({
+    return data.map(story => ({
       ...story,
-      vote_count: voteCounts[story.id] || 0
+      vote_count: story.votes.length,
+      voting_status: story.voting_status?.status || 'upcoming'
     }));
   } catch (err) {
     console.error('Error fetching stories:', err);
@@ -57,15 +49,25 @@ export async function fetchUserVotes() {
 }
 
 /**
- * Render stories into a container
+ * Render stories and vote buttons
  */
-export function renderStories(stories, containerId = 'story-grid') {
+export function renderStories(stories, userVotes = [], containerId = 'story-grid') {
   const container = document.getElementById(containerId);
   if (!container) return;
 
   container.innerHTML = '';
 
   stories.forEach(story => {
+    const btnText = story.voting_status === 'open'
+      ? userVotes.includes(story.id)
+        ? `Voted (${story.vote_count})`
+        : `Vote (${story.vote_count})`
+      : story.voting_status === 'upcoming'
+        ? 'Voting starts soon'
+        : `Voting Closed (${story.vote_count})`;
+
+    const btnDisabled = story.voting_status !== 'open' || userVotes.includes(story.id);
+
     const card = document.createElement('article');
     card.className = 'story-card';
     card.innerHTML = `
@@ -73,36 +75,17 @@ export function renderStories(stories, containerId = 'story-grid') {
       <h3>${story.title}</h3>
       <div class="story-actions">
         <button
-          class="btn btn-primary vote-btn"
+          class="btn btn-primary vote-btn ${userVotes.includes(story.id) ? 'voted' : ''}"
           data-story-id="${story.id}"
           data-vote-count="${story.vote_count}"
+          ${btnDisabled ? 'disabled' : ''}
         >
-          Vote (${story.vote_count})
+          ${btnText}
         </button>
-        <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">
-          Read More
-        </a>
+        <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
       </div>
     `;
     container.appendChild(card);
-  });
-}
-
-/**
- * Update vote button states
- */
-export function updateVoteButtons(userVotes) {
-  document.querySelectorAll('.vote-btn').forEach(btn => {
-    const storyId = btn.dataset.storyId;
-    if (userVotes.includes(storyId)) {
-      btn.disabled = true;
-      btn.textContent = `Voted (${btn.dataset.voteCount || 0})`;
-      btn.classList.add('voted');
-    } else {
-      btn.disabled = false;
-      btn.textContent = `Vote (${btn.dataset.voteCount || 0})`;
-      btn.classList.remove('voted');
-    }
   });
 }
 
@@ -145,4 +128,24 @@ export async function recantVote(storyId) {
   if (error) return { success: false, error };
 
   return { success: true };
+}
+
+/**
+ * Initialize voting UI
+ */
+export async function initVoting(containerId = 'story-grid') {
+  const stories = await fetchStoriesWithVotes();
+  const userVotes = await fetchUserVotes();
+  renderStories(stories, userVotes, containerId);
+
+  // Add click listeners for vote buttons
+  document.querySelectorAll('.vote-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const storyId = btn.dataset.storyId;
+      const success = await submitVote(storyId);
+      if (success) {
+        initVoting(containerId); // refresh UI after vote
+      }
+    });
+  });
 }
