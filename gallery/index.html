@@ -39,7 +39,7 @@
         <h1>Gallery</h1>
         <p>Browse all the stories submitted by our community. Click any story to view details.</p>
 
-        <!-- IMPORTANT: ID must match renderStories() -->
+        <!-- IMPORTANT: matches vote.js default -->
         <div id="story-grid" class="story-grid"></div>
       </div>
     </section>
@@ -62,73 +62,6 @@
   <script src="/js/env.js"></script>
 
   <!-- MODULE SCRIPT -->
-  <script type="module">
-    import { updateUI, logout } from '/js/auth.js';
-    import {
-      fetchStoriesWithVotes,
-      submitVote,
-      fetchUserVotes,
-      updateVoteButtons,
-      renderStories
-    } from '/js/vote.js';
-
-    document.addEventListener('DOMContentLoaded', async () => {
-
-      // Update login/logout/profile UI
-      updateUI();
-
-      document.querySelectorAll('.logout-link').forEach(el => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
-          await logout();
-        });
-      });
-
-      const storyGrid = document.getElementById('story-grid');
-
-      try {
-        // Fetch stories (returns array directly)
-        const stories = await fetchStoriesWithVotes();
-
-        console.log('Gallery stories:', stories);
-
-        if (!stories || stories.length === 0) {
-          storyGrid.innerHTML = '<p>No stories found.</p>';
-          return;
-        }
-
-        // Render stories into grid
-        renderStories(stories, 'story-grid');
-
-        // Update vote button states
-        const userVotes = await fetchUserVotes();
-        updateVoteButtons(userVotes, stories);
-
-        // Delegate vote clicks
-        storyGrid.addEventListener('click', async (e) => {
-          if (!e.target.matches('.vote-btn')) return;
-
-          const btn = e.target;
-          const storyId = btn.dataset.storyId;
-
-          const success = await submitVote(storyId);
-          if (!success) return;
-
-          // Refresh stories and votes
-          const updatedStories = await fetchStoriesWithVotes();
-          renderStories(updatedStories, 'story-grid');
-
-          const updatedVotes = await fetchUserVotes();
-          updateVoteButtons(updatedVotes, updatedStories);
-        });
-
-      } catch (err) {
-        console.error('Gallery load error:', err);
-        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
-      }
-
-    });
-  </script>
-
+  <script type="module" src="/js/gallery.js"></script>
 </body>
 </html>

@@ -1,33 +1,55 @@
 // /js/gallery.js
-import { getCurrentUserAsync } from './auth.js';
-import { fetchStoriesWithVotes, renderStories, fetchUserVotes, updateVoteButtons } from './vote.js';
+import { updateUI, logout, getCurrentUserAsync } from './auth.js';
+import { fetchStoriesWithVotes, renderStories, fetchUserVotes, updateVoteButtons, submitVote } from './vote.js';
 
-/**
- * Initialize Gallery Page
- */
 async function initGallery() {
-  try {
-    // Wait for auth state
-    await getCurrentUserAsync();
+  // Update login/logout/profile UI
+  updateUI();
+  document.querySelectorAll('.logout-link').forEach(el => {
+    el.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await logout();
+    });
+  });
 
-    // Fetch stories with vote data
+  const storyGrid = document.getElementById('story-grid');
+
+  try {
+    const user = await getCurrentUserAsync();
     const stories = await fetchStoriesWithVotes();
 
     if (!stories || stories.length === 0) {
-      const grid = document.querySelector('.gallery-grid');
-      if (grid) grid.innerHTML = '<p>No stories found.</p>';
+      storyGrid.innerHTML = '<p>No stories found.</p>';
       return;
     }
 
-    // Render stories
-    renderStories(stories, 'gallery-grid');
+    renderStories(stories, 'story-grid');
 
-    // Update vote buttons
-    const userVotes = await fetchUserVotes();
+    // Update vote button states
+    const userVotes = user ? await fetchUserVotes() : [];
     updateVoteButtons(userVotes, stories);
 
+    // Event delegation for voting
+    storyGrid.addEventListener('click', async (e) => {
+      if (!e.target.matches('.vote-btn')) return;
+
+      const btn = e.target;
+      const storyId = btn.dataset.storyId;
+
+      const success = await submitVote(storyId);
+      if (!success) return;
+
+      // Refresh stories and vote buttons
+      const updatedStories = await fetchStoriesWithVotes();
+      renderStories(updatedStories, 'story-grid');
+
+      const updatedVotes = user ? await fetchUserVotes() : [];
+      updateVoteButtons(updatedVotes, updatedStories);
+    });
+
   } catch (err) {
-    console.error('Error initializing gallery:', err);
+    console.error('Gallery load error:', err);
+    storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
   }
 }
 
