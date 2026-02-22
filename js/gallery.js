@@ -1,55 +1,42 @@
 // /js/gallery.js
-import { updateUI, logout, getCurrentUserAsync } from './auth.js';
+import { getCurrentUserAsync } from './auth.js';
 import { fetchStoriesWithVotes, renderStories, fetchUserVotes, updateVoteButtons, submitVote } from './vote.js';
 
 async function initGallery() {
-  // Update login/logout/profile UI
-  updateUI();
-  document.querySelectorAll('.logout-link').forEach(el => {
-    el.addEventListener('click', async (e) => {
-      e.preventDefault();
-      await logout();
-    });
-  });
-
-  const storyGrid = document.getElementById('story-grid');
-
   try {
-    const user = await getCurrentUserAsync();
+    await getCurrentUserAsync(); // wait for auth
+
     const stories = await fetchStoriesWithVotes();
 
+    const grid = document.getElementById('story-grid');
     if (!stories || stories.length === 0) {
-      storyGrid.innerHTML = '<p>No stories found.</p>';
+      grid.innerHTML = '<p>No stories found.</p>';
       return;
     }
 
     renderStories(stories, 'story-grid');
 
-    // Update vote button states
-    const userVotes = user ? await fetchUserVotes() : [];
+    const userVotes = await fetchUserVotes();
     updateVoteButtons(userVotes, stories);
 
-    // Event delegation for voting
-    storyGrid.addEventListener('click', async (e) => {
+    // Delegate vote button clicks
+    grid.addEventListener('click', async (e) => {
       if (!e.target.matches('.vote-btn')) return;
-
-      const btn = e.target;
-      const storyId = btn.dataset.storyId;
-
+      const storyId = e.target.dataset.storyId;
       const success = await submitVote(storyId);
       if (!success) return;
 
-      // Refresh stories and vote buttons
       const updatedStories = await fetchStoriesWithVotes();
       renderStories(updatedStories, 'story-grid');
 
-      const updatedVotes = user ? await fetchUserVotes() : [];
+      const updatedVotes = await fetchUserVotes();
       updateVoteButtons(updatedVotes, updatedStories);
     });
 
   } catch (err) {
-    console.error('Gallery load error:', err);
-    storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
+    console.error('Gallery init error:', err);
+    const grid = document.getElementById('story-grid');
+    if (grid) grid.innerHTML = '<p class="error">Failed to load stories.</p>';
   }
 }
 
