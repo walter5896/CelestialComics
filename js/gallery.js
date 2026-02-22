@@ -1,6 +1,6 @@
 // /js/gallery.js
 import { getCurrentUserAsync } from './auth.js';
-import { fetchStoriesWithVotes, renderStories, fetchUserVotes, updateVoteButtons, submitVote } from './vote.js';
+import { fetchStoriesWithVotes, renderStoriesForGallery, fetchUserVotes, updateVoteButtons, submitVote } from './vote.js';
 
 async function initGallery() {
   try {
@@ -14,7 +14,8 @@ async function initGallery() {
       return;
     }
 
-    renderStories(stories, 'story-grid');
+    // <-- use the correct renderer
+    renderStoriesForGallery(stories, 'story-grid');
 
     const userVotes = await fetchUserVotes();
     updateVoteButtons(userVotes, stories);
@@ -27,7 +28,7 @@ async function initGallery() {
       if (!success) return;
 
       const updatedStories = await fetchStoriesWithVotes();
-      renderStories(updatedStories, 'story-grid');
+      renderStoriesForGallery(updatedStories, 'story-grid');
 
       const updatedVotes = await fetchUserVotes();
       updateVoteButtons(updatedVotes, updatedStories);
