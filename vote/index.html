@@ -63,7 +63,7 @@
     </div>
   </footer>
 
-  <!-- ENV -->
+  <!-- ENV (Supabase keys, etc.) -->
   <script src="/js/env.js"></script>
 
   <!-- JS MODULES -->
@@ -76,10 +76,13 @@
     import { initVoting } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // Wait for auth state to be ready
       const user = await getCurrentUserAsync();
 
+      // Update login/logout/profile links
       updateUI();
 
+      // Logout button
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
@@ -88,17 +91,19 @@
       });
 
       if (!user) {
+        // Not logged in
         document.getElementById('login-prompt').style.display = 'block';
         document.getElementById('voting-open').style.display = 'none';
         document.getElementById('voting-closed').style.display = 'none';
         return;
       }
 
-      // User is logged in → initialize voting UI (vote only, no save button)
+      // User is logged in → initialize voting UI
       await initVoting('story-grid');
 
-      // Check global voting status
+      // Determine global voting state
       const stories = await (async () => {
+        // Re-fetch stories to check voting status
         const { fetchStoriesWithVotes } = await import('/js/vote.js');
         return await fetchStoriesWithVotes();
       })();
