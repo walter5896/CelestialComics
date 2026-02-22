@@ -12,10 +12,8 @@ export async function fetchStoriesWithVotes() {
       .select('id, title, image_url');
 
     if (storiesError) throw storiesError;
-    console.log('Fetched stories:', stories);
 
     const storyIds = stories.map(s => s.id);
-    console.log('Story IDs:', storyIds);
 
     // Vote counts
     const { data: votesData, error: votesError } = await supabase
@@ -24,7 +22,6 @@ export async function fetchStoriesWithVotes() {
       .in('story_id', storyIds);
 
     if (votesError) throw votesError;
-    console.log('Vote data:', votesData);
 
     const voteCounts = votesData.reduce((acc, v) => {
       acc[String(v.story_id)] = (acc[String(v.story_id)] || 0) + 1;
@@ -38,15 +35,11 @@ export async function fetchStoriesWithVotes() {
       .in('story_id', storyIds);
 
     if (votingError) throw votingError;
-    console.log('Voting data from view:', votingDataRaw);
-
-    const votingData = votingDataRaw.map(v => ({
-      story_id: String(v.story_id),
-      status: v.status
-    }));
 
     const votingMap = {};
-    votingData.forEach(v => votingMap[v.story_id] = v.status);
+    votingDataRaw.forEach(v => {
+      votingMap[String(v.story_id)] = v.status;
+    });
 
     // Merge everything
     const storiesWithVotes = stories.map(story => ({
@@ -55,7 +48,6 @@ export async function fetchStoriesWithVotes() {
       voting_status: votingMap[String(story.id)] || 'upcoming'
     }));
 
-    console.log('Stories with votes and status:', storiesWithVotes);
     return storiesWithVotes;
   } catch (err) {
     console.error('Error fetching stories with votes:', err);
@@ -80,7 +72,6 @@ export async function fetchUserVotes() {
     return [];
   }
 
-  console.log('User votes:', data);
   return data.map(v => String(v.story_id));
 }
 
@@ -102,18 +93,19 @@ export function renderStories(stories, containerId = 'story-grid') {
       <div class="story-actions">
         <button class="btn btn-primary vote-btn"
           data-story-id="${story.id}"
-          data-vote-count="${story.vote_count}">
-          Vote (${story.vote_count})
+          data-vote-count="${story.vote_count || 0}">
+          Vote (${story.vote_count || 0})
         </button>
         <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">
           Read More
         </a>
+        <button class="btn btn-secondary save-btn" data-story-id="${story.id}">
+          Save Story
+        </button>
       </div>
     `;
     container.appendChild(card);
   });
-
-  console.log('Rendered stories:', stories.map(s => ({ id: s.id, voting_status: s.voting_status })));
 }
 
 /**
@@ -128,7 +120,6 @@ export function updateVoteButtons(userVotes, stories) {
     if (!story) return;
 
     const status = story.voting_status || 'upcoming';
-    console.log(`Updating button for story ${storyId}, status: ${status}`);
 
     if (status === 'open') {
       if (userVotes.includes(String(storyId))) {
@@ -191,6 +182,69 @@ export async function recantVote(storyId) {
 }
 
 /**
+ * Save story
+ */
+export async function saveStory(storyId) {
+  const user = await getCurrentUserAsync();
+  if (!user) return { success: false, error: 'Not authenticated' };
+
+  const { error } = await supabase
+    .from('saved_stories')
+    .insert({ user_id: user.id, story_id: storyId });
+
+  if (error) {
+    if (error.code === '23505') return { success: true }; // already saved
+    console.error('Save story error:', error);
+    return { success: false, error };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Unsave story
+ */
+export async function unsaveStory(storyId) {
+  const user = await getCurrentUserAsync();
+  if (!user) return { success: false, error: 'Not authenticated' };
+
+  const { error } = await supabase
+    .from('saved_stories')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('story_id', storyId);
+
+  if (error) {
+    console.error('Unsave story error:', error);
+    return { success: false, error };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Fetch saved stories for profile
+ */
+export async function fetchSavedStories() {
+  const user = await getCurrentUserAsync();
+  if (!user) return { success: false, data: [] };
+
+  const { data, error } = await supabase
+    .from('saved_stories')
+    .select('story_id, stories(*)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Fetch saved stories error:', error);
+    return { success: false, data: [] };
+  }
+
+  const stories = data.map(item => item.stories);
+  return { success: true, data: stories };
+}
+
+/**
  * Initialize voting UI
  */
 export async function initVoting(containerId = 'story-grid') {
@@ -200,12 +254,21 @@ export async function initVoting(containerId = 'story-grid') {
   renderStories(stories, containerId);
   updateVoteButtons(userVotes, stories);
 
-  // Attach click listeners
+  // Attach vote button listeners
   document.querySelectorAll('.vote-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const success = await submitVote(storyId);
       if (success) initVoting(containerId); // refresh
+    });
+  });
+
+  // Attach save button listeners
+  document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const storyId = btn.dataset.storyId;
+      const result = await saveStory(storyId);
+      if (result.success) btn.textContent = 'Saved';
     });
   });
 }
