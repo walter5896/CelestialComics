@@ -80,7 +80,8 @@
   import { loadStory } from '/js/story.js';
   import {
     fetchStoriesWithVotes,
-    renderStoriesForHome,   // 👈 changed here
+    renderStoriesForHome,
+    fetchSavedStories,
     submitVote,
     saveStory
   } from '/js/vote.js';
@@ -102,6 +103,11 @@
 
     const storyId = story.id;
 
+    // Get saved stories to check if this story is already saved
+    const savedResult = await fetchSavedStories();
+    const savedStories = savedResult.success ? savedResult.data : [];
+    const alreadySaved = savedStories.some(s => String(s.id) === String(storyId));
+
     // Vote button
     const voteBtn = document.querySelector('.vote-btn');
     voteBtn.addEventListener('click', async () => {
@@ -114,9 +120,14 @@
 
     // Save button
     const saveBtn = document.querySelector('.save-btn');
+
+    if (alreadySaved) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Already Saved';
+    }
+
     saveBtn.addEventListener('click', async () => {
       const result = await saveStory(storyId);
-
       if (result.success) {
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saved';
@@ -128,11 +139,9 @@
       }
     });
 
-    // Related stories (READ-ONLY)
+    // Related stories (read-only)
     const stories = await fetchStoriesWithVotes();
     const relatedStories = stories.filter(s => s.id !== storyId);
-
-    // 👇 This now renders read-only cards (no Save button)
     renderStoriesForHome(relatedStories, 'related-stories-grid');
 
   });
