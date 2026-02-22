@@ -32,6 +32,7 @@
 
   <!-- STORY CONTENT -->
   <main class="content-wrapper">
+
     <div class="story-back">
       <a href="/gallery/" class="btn btn-secondary">← Back to Gallery</a>
     </div>
@@ -49,6 +50,7 @@
         <div class="story-content">
           <p>Loading story content...</p>
         </div>
+
         <div class="story-cta">
           <button class="btn btn-primary vote-btn">Vote for this story</button>
           <button class="btn btn-secondary save-btn">Save Story</button>
@@ -59,11 +61,10 @@
     <section class="related-stories">
       <div class="container">
         <h2>Other Stories You Might Like</h2>
-        <div id="related-stories-grid" class="story-grid">
-          <!-- Populated dynamically -->
-        </div>
+        <div id="related-stories-grid" class="story-grid"></div>
       </div>
     </section>
+
   </main>
 
   <!-- FOOTER -->
@@ -82,31 +83,40 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- APP LOGIC -->
+  <!-- MAIN SCRIPT -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { getQueryParam, loadStory, saveStory, submitVote } from '/js/story.js';
-    import { fetchStoriesWithVotes, renderStories, fetchUserVotes, updateVoteButtons } from '/js/vote.js';
-
-    // Update header based on auth
-    updateUI();
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
-      });
-    });
+    import { getQueryParam, loadStory } from '/js/story.js';
+    import {
+      fetchStoriesWithVotes,
+      renderStoriesForGallery,
+      fetchUserVotes,
+      updateVoteButtons,
+      submitVote,
+      saveStory
+    } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // 1️⃣ Load the main story
+
+      updateUI();
+
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
+      });
+
+      // 1️⃣ Load main story content
       await loadStory();
 
       const storyId = getQueryParam('id');
       if (!storyId) return;
 
-      // 2️⃣ Setup vote button
+      // 2️⃣ Vote button
       const voteBtn = document.querySelector('.story-cta .vote-btn');
       voteBtn.dataset.storyId = storyId;
+
       voteBtn.addEventListener('click', async () => {
         const success = await submitVote(storyId);
         if (success) {
@@ -115,9 +125,10 @@
         }
       });
 
-      // 3️⃣ Setup save button
+      // 3️⃣ Save button
       const saveBtn = document.querySelector('.story-cta .save-btn');
       saveBtn.dataset.storyId = storyId;
+
       saveBtn.addEventListener('click', async () => {
         const success = await saveStory(storyId);
         if (success) {
@@ -128,13 +139,16 @@
 
       // 4️⃣ Load related stories
       const stories = await fetchStoriesWithVotes();
-      const relatedStories = stories.filter(s => s.id !== storyId);
-      renderStories(relatedStories, 'related-stories-grid');
+      const relatedStories = stories.filter(s => String(s.id) !== String(storyId));
 
-      // 5️⃣ Update vote buttons for related stories
+      renderStoriesForGallery(relatedStories, 'related-stories-grid');
+
+      // 5️⃣ Update vote state for related stories
       const userVotes = await fetchUserVotes();
       updateVoteButtons(userVotes, relatedStories);
+
     });
   </script>
+
 </body>
 </html>
