@@ -1,11 +1,16 @@
+// /js/profile.js
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
-import { recantVote } from './vote.js';
+import { recantVote, fetchSavedStories, renderStories, unsaveStory } from './vote.js';
 
 const voteList = document.getElementById('vote-list');
 const noVotes = document.getElementById('no-votes');
+const savedContainer = document.getElementById('my-saved-stories-container');
+const noSaved = document.getElementById('no-saved-stories');
 
-if (!voteList || !noVotes) throw new Error('Profile page missing required elements');
+if (!voteList || !noVotes || !savedContainer || !noSaved) {
+  throw new Error('Profile page missing required elements');
+}
 
 /**
  * Fetch votes for the current user
@@ -49,7 +54,6 @@ async function fetchVotes() {
 
   data.forEach(vote => {
     const li = document.createElement('li');
-
     const title = vote.stories?.title || `Story #${vote.story_id}`;
     const date = new Date(vote.created_at).toLocaleString();
 
@@ -59,24 +63,69 @@ async function fetchVotes() {
         Recant Vote
       </button>
     `;
-
     voteList.appendChild(li);
   });
 }
 
 /**
- * Initialize dashboard
+ * Fetch and render saved stories
+ */
+async function fetchAndRenderSavedStories() {
+  const { success, data } = await fetchSavedStories();
+
+  if (!success || data.length === 0) {
+    savedContainer.style.display = 'none';
+    noSaved.style.display = 'block';
+    return;
+  }
+
+  savedContainer.style.display = 'grid';
+  noSaved.style.display = 'none';
+
+  // Mark all stories as saved so buttons display "Saved"
+  const storiesWithSavedFlag = data.map(story => ({ ...story, isSaved: true }));
+
+  renderStories(storiesWithSavedFlag, 'my-saved-stories-container');
+
+  // Attach Save/Unsave button listeners
+  document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const storyId = btn.dataset.storyId;
+
+      // Unsave
+      const result = await unsaveStory(storyId);
+      if (result.success) {
+        // Remove the story from the container
+        const card = btn.closest('.story-card');
+        if (card) card.remove();
+
+        // Check if container is empty now
+        if (!savedContainer.querySelector('.story-card')) {
+          savedContainer.style.display = 'none';
+          noSaved.style.display = 'block';
+        }
+      } else {
+        alert('Could not unsave story.');
+      }
+    });
+  });
+}
+
+/**
+ * Initialize profile dashboard
  */
 function initProfile() {
   fetchVotes();
+  fetchAndRenderSavedStories();
 
   // Re-fetch votes if login state changes
   supabase.auth.onAuthStateChange(() => {
     fetchVotes();
+    fetchAndRenderSavedStories();
   });
 }
 
-// Recant button handler
+// Recant vote handler
 document.addEventListener('click', async (e) => {
   if (!e.target.matches('.recant-btn')) return;
 
