@@ -21,7 +21,9 @@
         <li><a href="/vote/">Vote</a></li>
         <li><a href="/shop/">Shop</a></li>
         <li><a href="/team/">Team</a></li>
-        <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+        <li class="profile-link" style="display:none;">
+          <a href="/profile/">My Profile</a>
+        </li>
         <li><a href="/login/" class="login-link">Login</a></li>
         <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
       </ul>
@@ -75,12 +77,10 @@
 
 <script type="module">
   import { updateUI, logout } from '/js/auth.js';
-  import { getQueryParam, loadStory } from '/js/story.js';
+  import { loadStory } from '/js/story.js';
   import {
     fetchStoriesWithVotes,
-    renderStoriesForGallery,
-    fetchUserVotes,
-    updateVoteButtons,
+    renderStoriesForHome,   // 👈 changed here
     submitVote,
     saveStory
   } from '/js/vote.js';
@@ -102,7 +102,7 @@
 
     const storyId = story.id;
 
-    // VOTE BUTTON
+    // Vote button
     const voteBtn = document.querySelector('.vote-btn');
     voteBtn.addEventListener('click', async () => {
       const success = await submitVote(storyId);
@@ -112,7 +112,7 @@
       }
     });
 
-    // SAVE BUTTON
+    // Save button
     const saveBtn = document.querySelector('.save-btn');
     saveBtn.addEventListener('click', async () => {
       const result = await saveStory(storyId);
@@ -128,14 +128,13 @@
       }
     });
 
-    // RELATED STORIES
+    // Related stories (READ-ONLY)
     const stories = await fetchStoriesWithVotes();
     const relatedStories = stories.filter(s => s.id !== storyId);
 
-    renderStoriesForGallery(relatedStories, 'related-stories-grid');
+    // 👇 This now renders read-only cards (no Save button)
+    renderStoriesForHome(relatedStories, 'related-stories-grid');
 
-    const userVotes = await fetchUserVotes();
-    updateVoteButtons(userVotes, relatedStories);
   });
 </script>
 
