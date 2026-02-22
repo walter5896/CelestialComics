@@ -82,24 +82,24 @@ async function fetchAndRenderSavedStories() {
   savedContainer.style.display = 'grid';
   noSaved.style.display = 'none';
 
-  // Mark all stories as saved so buttons display "Saved"
+  // Mark all stories as saved so buttons display "Unsave"
   const storiesWithSavedFlag = data.map(story => ({ ...story, isSaved: true }));
 
   renderStories(storiesWithSavedFlag, 'my-saved-stories-container');
 
-  // Attach Save/Unsave button listeners
+  // Attach Unsave button listeners
   document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.textContent = 'Unsave'; // ← set button text for saved stories
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
 
-      // Unsave
       const result = await unsaveStory(storyId);
       if (result.success) {
-        // Remove the story from the container
+        // Remove the story card
         const card = btn.closest('.story-card');
         if (card) card.remove();
 
-        // Check if container is empty now
+        // Show "no saved stories" message if container is empty
         if (!savedContainer.querySelector('.story-card')) {
           savedContainer.style.display = 'none';
           noSaved.style.display = 'block';
@@ -118,7 +118,7 @@ function initProfile() {
   fetchVotes();
   fetchAndRenderSavedStories();
 
-  // Re-fetch votes if login state changes
+  // Re-fetch votes and saved stories if login state changes
   supabase.auth.onAuthStateChange(() => {
     fetchVotes();
     fetchAndRenderSavedStories();
@@ -134,11 +134,11 @@ document.addEventListener('click', async (e) => {
 
   if (result.success) {
     alert('Vote recanted!');
-    fetchVotes(); // refresh list without full reload
+    fetchVotes(); // refresh votes list
   } else {
     alert('Could not recant vote.');
   }
 });
 
-// Run on load
+// Initialize on DOM load
 document.addEventListener('DOMContentLoaded', initProfile);
