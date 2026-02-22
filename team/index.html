@@ -82,7 +82,7 @@
   <!-- APP JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, fetchUserVotes, updateVoteButtons, renderStories, submitVote, initSaveButtons } from '/js/vote.js';
+    import { fetchStoriesWithVotes, fetchUserVotes, updateVoteButtons, renderStoriesForHome, submitVote } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
       // Update login/logout/profile UI
@@ -99,20 +99,21 @@
       const storyGrid = document.getElementById('story-grid');
 
       try {
-        // Fetch stories and render
+        // Fetch stories
         const stories = await fetchStoriesWithVotes();
         if (!stories || stories.length === 0) {
           storyGrid.innerHTML = '<p>No stories found.</p>';
           return;
         }
 
-        renderStories(stories, 'story-grid');
+        // Render stories (home page version)
+        renderStoriesForHome(stories, 'story-grid');
 
         // Fetch user votes and update vote buttons
         const userVotes = await fetchUserVotes();
         updateVoteButtons(userVotes, stories);
 
-        // Delegate vote button clicks
+        // Handle vote button clicks
         storyGrid.addEventListener('click', async e => {
           if (!e.target.matches('.vote-btn')) return;
 
@@ -121,19 +122,13 @@
           const success = await submitVote(storyId);
           if (!success) return;
 
-          // Refresh stories and votes
+          // Refresh stories and vote buttons
           const refreshedStories = await fetchStoriesWithVotes();
-          renderStories(refreshedStories, 'story-grid');
+          renderStoriesForHome(refreshedStories, 'story-grid');
 
           const updatedVotes = await fetchUserVotes();
           updateVoteButtons(updatedVotes, refreshedStories);
-
-          // Re-init save buttons after re-render
-          await initSaveButtons('story-grid');
         });
-
-        // Initialize Save/Unsave buttons
-        await initSaveButtons('story-grid');
 
       } catch (err) {
         console.error('Error loading home stories:', err);
