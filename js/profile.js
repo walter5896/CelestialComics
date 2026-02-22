@@ -1,7 +1,7 @@
 // /js/profile.js
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
-import { recantVote, fetchSavedStories, renderStories } from './vote.js';
+import { recantVote, fetchSavedStories, renderStories, unsaveStory } from './vote.js';
 
 const voteList = document.getElementById('vote-list');
 const noVotes = document.getElementById('no-votes');
@@ -82,12 +82,32 @@ async function fetchAndRenderSavedStories() {
   savedContainer.style.display = 'grid';
   noSaved.style.display = 'none';
 
-  // Add isSaved flag so renderStories knows this is a saved context
+  // Mark all stories as saved so buttons display "Unsave"
   const storiesWithSavedFlag = data.map(story => ({ ...story, isSaved: true }));
 
-  renderStories(storiesWithSavedFlag, 'my-saved-stories-container', {
-    showSaveButton: true,
-    isSavedContext: true
+  renderStories(storiesWithSavedFlag, 'my-saved-stories-container');
+
+  // Attach Unsave button listeners
+  document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.textContent = 'Unsave'; // ← set button text for saved stories
+    btn.addEventListener('click', async () => {
+      const storyId = btn.dataset.storyId;
+
+      const result = await unsaveStory(storyId);
+      if (result.success) {
+        // Remove the story card
+        const card = btn.closest('.story-card');
+        if (card) card.remove();
+
+        // Show "no saved stories" message if container is empty
+        if (!savedContainer.querySelector('.story-card')) {
+          savedContainer.style.display = 'none';
+          noSaved.style.display = 'block';
+        }
+      } else {
+        alert('Could not unsave story.');
+      }
+    });
   });
 }
 
