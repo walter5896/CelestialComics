@@ -76,10 +76,7 @@
     import { initVoting } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Wait for auth state to be ready
       const user = await getCurrentUserAsync();
-
-      // Update login/logout/profile links
       updateUI();
 
       // Logout button
@@ -91,24 +88,17 @@
       });
 
       if (!user) {
-        // Not logged in
         document.getElementById('login-prompt').style.display = 'block';
         document.getElementById('voting-open').style.display = 'none';
         document.getElementById('voting-closed').style.display = 'none';
         return;
       }
 
-      // User is logged in → initialize voting UI
-      await initVoting('story-grid');
+      // Initialize voting and get stories
+      const stories = await initVoting('story-grid');
 
-      // Determine global voting state
-      const stories = await (async () => {
-        // Re-fetch stories to check voting status
-        const { fetchStoriesWithVotes } = await import('/js/vote.js');
-        return await fetchStoriesWithVotes();
-      })();
-
-      const anyOpen = stories.some(s => s.voting_status === 'open');
+      // Show correct voting state
+      const anyOpen = stories?.some(s => s.voting_status === 'open');
       document.getElementById('voting-open').style.display = anyOpen ? 'block' : 'none';
       document.getElementById('voting-closed').style.display = anyOpen ? 'none' : 'block';
     });
