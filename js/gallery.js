@@ -1,23 +1,25 @@
+// /js/gallery.js
 import { getCurrentUserAsync } from './auth.js';
-import { fetchStoriesWithVotes, renderStoriesForGallery, fetchUserVotes, updateVoteButtons, submitVote } from './vote.js';
+import { fetchStoriesWithVotes, renderStories, fetchUserVotes, updateVoteButtons, submitVote } from './vote.js';
 
 async function initGallery() {
   try {
-    await getCurrentUserAsync();
+    await getCurrentUserAsync(); // wait for auth
 
     const stories = await fetchStoriesWithVotes();
-    const grid = document.getElementById('story-grid');
 
+    const grid = document.getElementById('story-grid');
     if (!stories || stories.length === 0) {
       grid.innerHTML = '<p>No stories found.</p>';
       return;
     }
 
-    renderStoriesForGallery(stories, 'story-grid');  // ✅ updated function
+    renderStories(stories, 'story-grid');
 
     const userVotes = await fetchUserVotes();
     updateVoteButtons(userVotes, stories);
 
+    // Delegate vote button clicks
     grid.addEventListener('click', async (e) => {
       if (!e.target.matches('.vote-btn')) return;
       const storyId = e.target.dataset.storyId;
@@ -25,7 +27,7 @@ async function initGallery() {
       if (!success) return;
 
       const updatedStories = await fetchStoriesWithVotes();
-      renderStoriesForGallery(updatedStories, 'story-grid');
+      renderStories(updatedStories, 'story-grid');
 
       const updatedVotes = await fetchUserVotes();
       updateVoteButtons(updatedVotes, updatedStories);
