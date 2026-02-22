@@ -61,7 +61,7 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- MODULE SCRIPT -->
+  <!-- APP JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
     import {
@@ -69,16 +69,17 @@
       submitVote,
       fetchUserVotes,
       updateVoteButtons,
-      renderStories
+      renderStories,
+      initSaveButtons
     } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
-
       // Update login/logout/profile UI
       updateUI();
 
+      // Logout links
       document.querySelectorAll('.logout-link').forEach(el => {
-        el.addEventListener('click', async (e) => {
+        el.addEventListener('click', async e => {
           e.preventDefault();
           await logout();
         });
@@ -87,30 +88,26 @@
       const storyGrid = document.getElementById('story-grid');
 
       try {
-        // Fetch stories (returns array directly)
+        // Fetch stories and render
         const stories = await fetchStoriesWithVotes();
-
-        console.log('Gallery stories:', stories);
 
         if (!stories || stories.length === 0) {
           storyGrid.innerHTML = '<p>No stories found.</p>';
           return;
         }
 
-        // Render stories into grid
         renderStories(stories, 'story-grid');
 
-        // Update vote button states
+        // Fetch user votes and update vote buttons
         const userVotes = await fetchUserVotes();
         updateVoteButtons(userVotes, stories);
 
-        // Delegate vote clicks
-        storyGrid.addEventListener('click', async (e) => {
+        // Delegate vote button clicks
+        storyGrid.addEventListener('click', async e => {
           if (!e.target.matches('.vote-btn')) return;
 
           const btn = e.target;
           const storyId = btn.dataset.storyId;
-
           const success = await submitVote(storyId);
           if (!success) return;
 
@@ -120,13 +117,18 @@
 
           const updatedVotes = await fetchUserVotes();
           updateVoteButtons(updatedVotes, updatedStories);
+
+          // Re-init save buttons after re-render
+          await initSaveButtons('story-grid');
         });
+
+        // Initialize Save/Unsave buttons
+        await initSaveButtons('story-grid');
 
       } catch (err) {
         console.error('Gallery load error:', err);
         storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
       }
-
     });
   </script>
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Team | Project Name</title>
+  <title>Project Name | Home</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -11,12 +11,9 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
-
-      <!-- Hamburger for mobile -->
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
-
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
@@ -24,11 +21,7 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <!-- Profile link (hidden by default, shown if logged in) -->
-          <li class="profile-link" style="display:none;">
-            <a href="/profile/">My Profile</a>
-          </li>
-          <!-- Login/Logout links -->
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -36,33 +29,38 @@
     </div>
   </header>
 
-  <!-- TEAM CONTENT -->
-  <main class="container team-container">
-    <h1>Meet the Team</h1>
-    <p>We’re a small group passionate about storytelling, creativity, and building engaging experiences for our community.</p>
+  <!-- MAIN CONTENT -->
+  <main class="page-container">
+    <!-- HERO SECTION -->
+    <section class="hero">
+      <div class="container hero-container">
+        <h1 class="hero-title">Welcome to Project Name</h1>
+        <p class="hero-subtitle">
+          Discover amazing stories, vote for your favorites, and explore our shop.
+        </p>
+        <div class="hero-cta">
+          <a href="/vote/" class="btn btn-primary">Vote Now</a>
+          <a href="/gallery/" class="btn btn-secondary">Explore Stories</a>
+        </div>
+      </div>
+    </section>
 
-    <div class="team-grid">
-      <article class="team-card">
-        <img src="/assets/images/team1.jpg" alt="Alice Smith" />
-        <h3>Alice Smith</h3>
-        <p>Founder & Project Lead</p>
-        <p>Alice oversees all aspects of the project and ensures everything runs smoothly.</p>
-      </article>
+    <!-- FEATURED STORIES -->
+    <section class="featured-stories">
+      <div class="container">
+        <h2>Featured Stories</h2>
+        <div id="story-grid" class="story-grid"></div>
+      </div>
+    </section>
 
-      <article class="team-card">
-        <img src="/assets/images/team2.jpg" alt="Bob Johnson" />
-        <h3>Bob Johnson</h3>
-        <p>Lead Developer</p>
-        <p>Bob builds and maintains the site, database, and all interactive features.</p>
-      </article>
-
-      <article class="team-card">
-        <img src="/assets/images/team3.jpg" alt="Charlie Lee" />
-        <h3>Charlie Lee</h3>
-        <p>Design & UX</p>
-        <p>Charlie ensures the site is intuitive, beautiful, and consistent across pages.</p>
-      </article>
-    </div>
+    <!-- SHOP PREVIEW -->
+    <section class="shop-preview">
+      <div class="container">
+        <h2>Check Out Our Shop</h2>
+        <p>Get exclusive items and support the project while enjoying great products.</p>
+        <a href="/shop/" class="btn btn-primary">Go to Shop</a>
+      </div>
+    </section>
   </main>
 
   <!-- FOOTER -->
@@ -78,25 +76,69 @@
     </div>
   </footer>
 
-  <!-- IMPORTANT: Load env before auth/supabase -->
+  <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- JS files -->
-  <script type="module" src="/js/utils.js"></script>
+  <!-- APP JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes, fetchUserVotes, updateVoteButtons, renderStories, submitVote, initSaveButtons } from '/js/vote.js';
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // Update login/logout/profile links
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Update login/logout/profile UI
       updateUI();
 
-      // Logout button functionality
+      // Logout links
       document.querySelectorAll('.logout-link').forEach(el => {
-        el.addEventListener('click', async (e) => {
+        el.addEventListener('click', async e => {
           e.preventDefault();
           await logout();
         });
       });
+
+      const storyGrid = document.getElementById('story-grid');
+
+      try {
+        // Fetch stories and render
+        const stories = await fetchStoriesWithVotes();
+        if (!stories || stories.length === 0) {
+          storyGrid.innerHTML = '<p>No stories found.</p>';
+          return;
+        }
+
+        renderStories(stories, 'story-grid');
+
+        // Fetch user votes and update vote buttons
+        const userVotes = await fetchUserVotes();
+        updateVoteButtons(userVotes, stories);
+
+        // Delegate vote button clicks
+        storyGrid.addEventListener('click', async e => {
+          if (!e.target.matches('.vote-btn')) return;
+
+          const btn = e.target;
+          const storyId = btn.dataset.storyId;
+          const success = await submitVote(storyId);
+          if (!success) return;
+
+          // Refresh stories and votes
+          const refreshedStories = await fetchStoriesWithVotes();
+          renderStories(refreshedStories, 'story-grid');
+
+          const updatedVotes = await fetchUserVotes();
+          updateVoteButtons(updatedVotes, refreshedStories);
+
+          // Re-init save buttons after re-render
+          await initSaveButtons('story-grid');
+        });
+
+        // Initialize Save/Unsave buttons
+        await initSaveButtons('story-grid');
+
+      } catch (err) {
+        console.error('Error loading home stories:', err);
+        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
+      }
     });
   </script>
 </body>
