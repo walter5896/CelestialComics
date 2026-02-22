@@ -20,7 +20,7 @@
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/profile/" class="active">My Profile</a></li>
+          <li><a href="/profile/">My Profile</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -30,23 +30,11 @@
 
   <!-- MAIN DASHBOARD -->
   <main class="container">
-    <!-- User Votes Section -->
-    <section id="user-votes">
-      <h2>My Votes</h2>
-      <ul id="vote-list">
-        <!-- Votes rendered here by profile.js -->
-      </ul>
-      <p id="no-votes" style="display:none;">You haven’t voted for any stories yet.</p>
-    </section>
-
-    <!-- Saved Stories Section -->
-    <section id="user-saved-stories">
-      <h2>My Saved Stories</h2>
-      <div id="my-saved-stories-container" class="story-grid">
-        <!-- Saved stories rendered here by vote.js -->
-      </div>
-      <p id="no-saved-stories" style="display:none;">You haven’t saved any stories yet.</p>
-    </section>
+    <h2>My Votes</h2>
+    <ul id="vote-list">
+      <!-- User votes will be populated here -->
+    </ul>
+    <p id="no-votes" style="display:none;">You haven’t voted for any stories yet.</p>
   </main>
 
   <!-- FOOTER -->
@@ -68,10 +56,7 @@
   <!-- JS FILES -->
   <script type="module" src="/js/utils.js"></script>
   <script type="module" src="/js/auth.js"></script>
-  <script type="module" src="/js/vote.js"></script>
   <script type="module" src="/js/profile.js"></script>
-
-  <!-- Initialize Auth UI -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
