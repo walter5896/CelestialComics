@@ -39,6 +39,7 @@
         <h1>Gallery</h1>
         <p>Browse all the stories submitted by our community. Click any story to view details.</p>
 
+        <!-- IMPORTANT: ID must match renderStories() -->
         <div id="story-grid" class="story-grid"></div>
       </div>
     </section>
@@ -65,60 +66,69 @@
     import { updateUI, logout } from '/js/auth.js';
     import {
       fetchStoriesWithVotes,
-      fetchUserVotes,
-      renderStories,
       submitVote,
-      saveStory,
-      updateVoteButtons
+      fetchUserVotes,
+      updateVoteButtons,
+      renderStories
     } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
+
+      // Update login/logout/profile UI
       updateUI();
 
       document.querySelectorAll('.logout-link').forEach(el => {
-        el.addEventListener('click', async e => {
+        el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
         });
       });
 
       const storyGrid = document.getElementById('story-grid');
-      if (!storyGrid) return;
 
-      async function initGallery() {
-        try {
-          const stories = await fetchStoriesWithVotes();
-          const userVotes = await fetchUserVotes();
+      try {
+        // Fetch stories (returns array directly)
+        const stories = await fetchStoriesWithVotes();
 
-          const storiesWithFlag = stories.map(s => ({ ...s, isSaved: false }));
+        console.log('Gallery stories:', stories);
 
-          renderStories(storiesWithFlag, 'story-grid', { showSaveButton: true, isSavedContext: false });
-          updateVoteButtons(userVotes, stories);
-
-          storyGrid.addEventListener('click', async e => {
-            if (e.target.matches('.vote-btn')) {
-              const btn = e.target;
-              const storyId = btn.dataset.storyId;
-              const success = await submitVote(storyId);
-              if (!success) return;
-
-              await initGallery();
-            } else if (e.target.matches('.save-btn')) {
-              const btn = e.target;
-              const storyId = btn.dataset.storyId;
-              const result = await saveStory(storyId);
-              if (result.success) btn.textContent = 'Saved';
-            }
-          });
-
-        } catch (err) {
-          console.error('Error loading gallery stories:', err);
-          storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
+        if (!stories || stories.length === 0) {
+          storyGrid.innerHTML = '<p>No stories found.</p>';
+          return;
         }
+
+        // Render stories into grid
+        renderStories(stories, 'story-grid');
+
+        // Update vote button states
+        const userVotes = await fetchUserVotes();
+        updateVoteButtons(userVotes, stories);
+
+        // Delegate vote clicks
+        storyGrid.addEventListener('click', async (e) => {
+          if (!e.target.matches('.vote-btn')) return;
+
+          const btn = e.target;
+          const storyId = btn.dataset.storyId;
+
+          const success = await submitVote(storyId);
+          if (!success) return;
+
+          // Refresh stories and votes
+          const updatedStories = await fetchStoriesWithVotes();
+          renderStories(updatedStories, 'story-grid');
+
+          const updatedVotes = await fetchUserVotes();
+          updateVoteButtons(updatedVotes, updatedStories);
+        });
+
+      } catch (err) {
+        console.error('Gallery load error:', err);
+        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
       }
 
-      initGallery();
     });
   </script>
+
 </body>
 </html>
