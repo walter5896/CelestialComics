@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Project Name | Home</title>
+  <title>Project Name | Team</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -32,33 +32,22 @@
   <!-- MAIN CONTENT -->
   <main class="page-container">
     <!-- HERO SECTION -->
-    <section class="hero">
+    <section class="hero hero-team">
       <div class="container hero-container">
-        <h1 class="hero-title">Welcome to Project Name</h1>
+        <h1 class="hero-title">Meet Our Team</h1>
         <p class="hero-subtitle">
-          Discover amazing stories, vote for your favorites, and explore our shop.
+          These are the amazing people behind Project Name, making it all happen.
         </p>
-        <div class="hero-cta">
-          <a href="/vote/" class="btn btn-primary">Vote Now</a>
-          <a href="/gallery/" class="btn btn-secondary">Explore Stories</a>
+      </div>
+    </section>
+
+    <!-- TEAM MEMBERS GRID -->
+    <section class="team-members">
+      <div class="container">
+        <h2>Our Team</h2>
+        <div id="team-grid" class="team-grid">
+          <!-- Team members will be rendered here -->
         </div>
-      </div>
-    </section>
-
-    <!-- FEATURED STORIES -->
-    <section class="featured-stories">
-      <div class="container">
-        <h2>Featured Stories</h2>
-        <div id="story-grid" class="story-grid"></div>
-      </div>
-    </section>
-
-    <!-- SHOP PREVIEW -->
-    <section class="shop-preview">
-      <div class="container">
-        <h2>Check Out Our Shop</h2>
-        <p>Get exclusive items and support the project while enjoying great products.</p>
-        <a href="/shop/" class="btn btn-primary">Go to Shop</a>
       </div>
     </section>
   </main>
@@ -79,12 +68,57 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- APP JS -->
+  <!-- TEAM JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, fetchUserVotes, updateVoteButtons, renderStoriesForHome, submitVote } from '/js/vote.js';
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    const teamMembers = [
+      {
+        name: "Alice Johnson",
+        role: "Project Lead",
+        image: "/images/team/alice.jpg",
+        bio: "Alice leads the project with vision and precision.",
+        social: { twitter: "#", linkedin: "#" }
+      },
+      {
+        name: "Bob Smith",
+        role: "Lead Developer",
+        image: "/images/team/bob.jpg",
+        bio: "Bob builds the magic behind the scenes.",
+        social: { twitter: "#", linkedin: "#" }
+      },
+      {
+        name: "Carla Reyes",
+        role: "Designer",
+        image: "/images/team/carla.jpg",
+        bio: "Carla crafts beautiful and intuitive designs.",
+        social: { twitter: "#", linkedin: "#" }
+      },
+      // Add more team members here
+    ];
+
+    function renderTeamMembers(containerId = 'team-grid') {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+      teamMembers.forEach(member => {
+        const card = document.createElement('article');
+        card.className = 'team-card';
+        card.innerHTML = `
+          <img src="${member.image}" alt="${member.name}" class="team-photo"/>
+          <h3 class="team-name">${member.name}</h3>
+          <p class="team-role">${member.role}</p>
+          <p class="team-bio">${member.bio}</p>
+          <div class="team-social">
+            ${member.social.twitter ? `<a href="${member.social.twitter}" target="_blank">Twitter</a>` : ''}
+            ${member.social.linkedin ? `<a href="${member.social.linkedin}" target="_blank">LinkedIn</a>` : ''}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
       // Update login/logout/profile UI
       updateUI();
 
@@ -96,44 +130,8 @@
         });
       });
 
-      const storyGrid = document.getElementById('story-grid');
-
-      try {
-        // Fetch stories
-        const stories = await fetchStoriesWithVotes();
-        if (!stories || stories.length === 0) {
-          storyGrid.innerHTML = '<p>No stories found.</p>';
-          return;
-        }
-
-        // Render stories (home page version)
-        renderStoriesForHome(stories, 'story-grid');
-
-        // Fetch user votes and update vote buttons
-        const userVotes = await fetchUserVotes();
-        updateVoteButtons(userVotes, stories);
-
-        // Handle vote button clicks
-        storyGrid.addEventListener('click', async e => {
-          if (!e.target.matches('.vote-btn')) return;
-
-          const btn = e.target;
-          const storyId = btn.dataset.storyId;
-          const success = await submitVote(storyId);
-          if (!success) return;
-
-          // Refresh stories and vote buttons
-          const refreshedStories = await fetchStoriesWithVotes();
-          renderStoriesForHome(refreshedStories, 'story-grid');
-
-          const updatedVotes = await fetchUserVotes();
-          updateVoteButtons(updatedVotes, refreshedStories);
-        });
-
-      } catch (err) {
-        console.error('Error loading home stories:', err);
-        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
-      }
+      // Render the team
+      renderTeamMembers();
     });
   </script>
 </body>
