@@ -31,7 +31,6 @@
 
   <!-- MAIN CONTENT -->
   <main class="page-container">
-    <!-- HERO SECTION -->
     <section class="hero">
       <div class="container hero-container">
         <h1 class="hero-title">Welcome to Project Name</h1>
@@ -45,20 +44,10 @@
       </div>
     </section>
 
-    <!-- FEATURED STORIES -->
     <section class="featured-stories">
       <div class="container">
         <h2>Featured Stories</h2>
         <div id="story-grid" class="story-grid"></div>
-      </div>
-    </section>
-
-    <!-- SHOP PREVIEW -->
-    <section class="shop-preview">
-      <div class="container">
-        <h2>Check Out Our Shop</h2>
-        <p>Get exclusive items and support the project while enjoying great products.</p>
-        <a href="/shop/" class="btn btn-primary">Go to Shop</a>
       </div>
     </section>
   </main>
@@ -79,58 +68,67 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- APP JS -->
+  <!-- MODULE SCRIPT -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons, renderStories } from '/js/vote.js';
+    import {
+      fetchStoriesWithVotes,
+      fetchUserVotes,
+      renderStories,
+      submitVote,
+      saveStory,
+      updateVoteButtons
+    } from '/js/vote.js';
 
-    updateUI();
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateUI();
 
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async e => {
+          e.preventDefault();
+          await logout();
+        });
       });
-    });
 
-    async function loadHomeStories() {
       const storyGrid = document.getElementById('story-grid');
+      if (!storyGrid) return;
 
-      // Fetch stories with votes
-      const stories = await fetchStoriesWithVotes();
+      async function initHomeGallery() {
+        try {
+          const stories = await fetchStoriesWithVotes();
+          const userVotes = await fetchUserVotes();
 
-      if (!stories || stories.length === 0) {
-        storyGrid.innerHTML = '<p>No stories found.</p>';
-        return;
+          // Mark stories as not saved by default for home/gallery
+          const storiesWithFlag = stories.map(s => ({ ...s, isSaved: false }));
+
+          renderStories(storiesWithFlag, 'story-grid', { showSaveButton: true, isSavedContext: false });
+          updateVoteButtons(userVotes, stories);
+
+          // Delegate clicks for vote & save buttons
+          storyGrid.addEventListener('click', async e => {
+            if (e.target.matches('.vote-btn')) {
+              const btn = e.target;
+              const storyId = btn.dataset.storyId;
+              const success = await submitVote(storyId);
+              if (!success) return;
+
+              await initHomeGallery(); // refresh stories and votes
+            } else if (e.target.matches('.save-btn')) {
+              const btn = e.target;
+              const storyId = btn.dataset.storyId;
+              const result = await saveStory(storyId);
+              if (result.success) btn.textContent = 'Saved';
+            }
+          });
+
+        } catch (err) {
+          console.error('Error loading stories:', err);
+          storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
+        }
       }
 
-      // Render stories
-      renderStories(stories, 'story-grid');
-
-      // Fetch current user's votes
-      const userVotes = await fetchUserVotes();
-      updateVoteButtons(userVotes);
-
-      // Delegate vote button clicks
-      storyGrid.addEventListener('click', async (e) => {
-        if (!e.target.matches('.vote-btn')) return;
-
-        const btn = e.target;
-        const storyId = btn.dataset.storyId;
-
-        const success = await submitVote(storyId);
-        if (!success) return;
-
-        // Refresh stories and votes
-        const refreshedStories = await fetchStoriesWithVotes();
-        renderStories(refreshedStories, 'story-grid');
-
-        const updatedVotes = await fetchUserVotes();
-        updateVoteButtons(updatedVotes);
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', loadHomeStories);
+      initHomeGallery();
+    });
   </script>
 </body>
 </html>
