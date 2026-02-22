@@ -316,15 +316,3 @@ export function attachUnsaveListeners(containerId) {
     });
   });
 }
-/* =======================
-   INIT VOTING FUNCTION
-======================= */
-export async function initVoting(containerId = 'story-grid') {
-  const stories = await fetchStoriesWithVotes();
-  renderStoriesForVote(stories, containerId);
-
-  const userVotes = await fetchUserVotes();
-  updateVoteButtons(userVotes, stories);
-
-  attachVoteListeners(containerId);
-}
