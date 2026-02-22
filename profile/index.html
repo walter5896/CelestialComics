@@ -20,8 +20,7 @@
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
-          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li><a href="/profile/">My Profile</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -29,13 +28,18 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="page-container">
-    <section class="profile-stories">
-      <div class="container">
-        <h2>My Saved Stories</h2>
-        <div id="story-grid" class="story-grid"></div>
-      </div>
+  <!-- MAIN PROFILE DASHBOARD -->
+  <main class="container">
+    <section>
+      <h2>My Votes</h2>
+      <div id="voted-stories" class="story-grid"></div>
+      <p id="no-votes" style="display:none;">You haven’t voted for any stories yet.</p>
+    </section>
+
+    <section>
+      <h2>Saved Stories</h2>
+      <div id="saved-stories" class="story-grid"></div>
+      <p id="no-saved" style="display:none;">You haven’t saved any stories yet.</p>
     </section>
   </main>
 
@@ -55,49 +59,54 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- APP JS -->
+  <!-- JS MODULES -->
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/auth.js"></script>
+  <script type="module" src="/js/vote.js"></script>
+
   <script type="module">
-    import { updateUI, logout, getCurrentUserAsync } from '/js/auth.js';
-    import { fetchSavedStories, renderStories, saveStory, unsaveStory } from '/js/vote.js';
+    import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes, fetchUserVotes, fetchSavedStories, renderStoriesForProfile, attachRecantListeners, attachUnsaveListeners } from '/js/vote.js';
 
-    updateUI();
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Update login/logout links
+      updateUI();
 
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async e => {
+          e.preventDefault();
+          await logout();
+          location.reload();
+        });
       });
-    });
 
-    async function loadProfileStories() {
-      const container = document.getElementById('story-grid');
-      const { success, data: stories } = await fetchSavedStories();
-      if (!success || stories.length === 0) {
-        container.innerHTML = '<p>You have no saved stories.</p>';
+      const user = await getCurrentUserAsync();
+      if (!user) {
+        alert('Please log in to view your profile.');
+        window.location.href = '/login/';
         return;
       }
 
-      // Mark stories as saved
-      stories.forEach(s => s.isSaved = true);
+      // Fetch user's voted stories
+      const allStories = await fetchStoriesWithVotes();
+      const userVotesIds = await fetchUserVotes();
+      const votedStories = allStories.filter(s => userVotesIds.includes(String(s.id)));
 
-      renderStories(stories, 'story-grid');
+      // Fetch saved stories
+      const savedData = await fetchSavedStories();
+      const savedStories = savedData.success ? savedData.data : [];
 
-      // Setup save/unsave toggle
-      container.querySelectorAll('.save-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const storyId = btn.dataset.storyId;
-          if (btn.textContent === 'Saved') {
-            await unsaveStory(storyId);
-            btn.textContent = 'Save Story';
-          } else {
-            await saveStory(storyId);
-            btn.textContent = 'Saved';
-          }
-        });
-      });
-    }
+      // Render profile sections
+      renderStoriesForProfile(votedStories, savedStories, 'voted-stories', 'saved-stories');
 
-    document.addEventListener('DOMContentLoaded', loadProfileStories);
+      // Show/hide empty messages
+      document.getElementById('no-votes').style.display = votedStories.length === 0 ? 'block' : 'none';
+      document.getElementById('no-saved').style.display = savedStories.length === 0 ? 'block' : 'none';
+
+      // Attach recant/unsave button listeners
+      attachRecantListeners('voted-stories');
+      attachUnsaveListeners('saved-stories');
+    });
   </script>
 </body>
 </html>
