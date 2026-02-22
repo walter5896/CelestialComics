@@ -76,93 +76,7 @@ export async function fetchUserVotes() {
 }
 
 /**
- * Save story
- */
-export async function saveStory(storyId) {
-  const user = await getCurrentUserAsync();
-  if (!user) return { success: false, error: 'Not authenticated' };
-
-  const { error } = await supabase
-    .from('saved_stories')
-    .insert({ user_id: user.id, story_id: storyId });
-
-  if (error) {
-    if (error.code === '23505') return { success: true }; // already saved
-    console.error('Save story error:', error);
-    return { success: false, error };
-  }
-
-  return { success: true };
-}
-
-/**
- * Unsave story
- */
-export async function unsaveStory(storyId) {
-  const user = await getCurrentUserAsync();
-  if (!user) return { success: false, error: 'Not authenticated' };
-
-  const { error } = await supabase
-    .from('saved_stories')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('story_id', storyId);
-
-  if (error) {
-    console.error('Unsave story error:', error);
-    return { success: false, error };
-  }
-
-  return { success: true };
-}
-
-/**
- * Check if a story is saved by the current user
- */
-export async function isStorySaved(storyId) {
-  const user = await getCurrentUserAsync();
-  if (!user) return false;
-
-  const { data, error } = await supabase
-    .from('saved_stories')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('story_id', storyId)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return false; // no row found
-    console.error('Error checking saved story:', error);
-    return false;
-  }
-
-  return !!data;
-}
-
-/**
- * Fetch saved stories for profile
- */
-export async function fetchSavedStories() {
-  const user = await getCurrentUserAsync();
-  if (!user) return { success: false, data: [] };
-
-  const { data, error } = await supabase
-    .from('saved_stories')
-    .select('story_id, stories(*)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Fetch saved stories error:', error);
-    return { success: false, data: [] };
-  }
-
-  const stories = data.map(item => item.stories);
-  return { success: true, data: stories };
-}
-
-/**
- * Render stories
+ * Render stories (vote page version, no Save button)
  */
 export function renderStories(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
@@ -173,8 +87,6 @@ export function renderStories(stories, containerId = 'story-grid') {
   stories.forEach(story => {
     const card = document.createElement('article');
     card.className = 'story-card';
-
-    const isSaved = story.isSaved ? 'Saved' : 'Save Story';
 
     card.innerHTML = `
       <img src="${story.image_url}" alt="${story.title}" />
@@ -188,9 +100,6 @@ export function renderStories(stories, containerId = 'story-grid') {
         <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">
           Read More
         </a>
-        <button class="btn btn-secondary save-btn" data-story-id="${story.id}">
-          ${isSaved}
-        </button>
       </div>
     `;
 
@@ -272,21 +181,12 @@ export async function recantVote(storyId) {
 }
 
 /**
- * Initialize voting UI and save buttons
+ * Initialize voting UI (vote page)
+ * Note: Save buttons removed
  */
 export async function initVoting(containerId = 'story-grid') {
   const stories = await fetchStoriesWithVotes();
   const userVotes = await fetchUserVotes();
-
-  // Fetch saved stories and mark them
-  const savedStoriesData = await fetchSavedStories();
-  const savedStoryIds = savedStoriesData.success
-    ? savedStoriesData.data.map(s => String(s.id))
-    : [];
-
-  stories.forEach(s => {
-    s.isSaved = savedStoryIds.includes(String(s.id));
-  });
 
   renderStories(stories, containerId);
   updateVoteButtons(userVotes, stories);
@@ -296,26 +196,9 @@ export async function initVoting(containerId = 'story-grid') {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const success = await submitVote(storyId);
-      if (success) initVoting(containerId); // refresh
+      if (success) initVoting(containerId); // refresh after vote
     });
   });
 
-  // Save button listeners
-  document.querySelectorAll('.save-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const storyId = btn.dataset.storyId;
-      const alreadySaved = savedStoryIds.includes(String(storyId));
-
-      if (alreadySaved) {
-        await unsaveStory(storyId);
-        btn.textContent = 'Save Story';
-        const idx = savedStoryIds.indexOf(String(storyId));
-        if (idx > -1) savedStoryIds.splice(idx, 1);
-      } else {
-        await saveStory(storyId);
-        btn.textContent = 'Saved';
-        savedStoryIds.push(String(storyId));
-      }
-    });
-  });
+  // No Save button listeners — completely removed
 }

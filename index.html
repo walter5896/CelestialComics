@@ -36,7 +36,7 @@
       <div class="container hero-container">
         <h1 class="hero-title">Welcome to Project Name</h1>
         <p class="hero-subtitle">
-          Discover amazing stories, vote for your favorites, and explore our shop.
+          Discover amazing stories and explore our shop.
         </p>
         <div class="hero-cta">
           <a href="/vote/" class="btn btn-primary">Vote Now</a>
@@ -82,74 +82,49 @@
   <!-- APP JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons } from '/js/vote.js';
+    import { fetchStoriesWithVotes } from '/js/vote.js';
 
-    updateUI();
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateUI();
 
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
+      // Logout link
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
       });
-    });
 
-    function renderHomeStories(stories) {
-      const container = document.getElementById('story-grid');
-      if (!container) return;
-
-      container.innerHTML = '';
-
-      stories.forEach(story => {
-        const card = document.createElement('article');
-        card.className = 'story-card';
-        card.innerHTML = `
-          <img src="${story.image_url}" alt="${story.title}" />
-          <h3>${story.title}</h3>
-          <div class="story-actions">
-            <button class="btn btn-primary vote-btn"
-              data-story-id="${story.id}"
-              data-vote-count="${story.vote_count || 0}">
-              Vote (${story.vote_count || 0})
-            </button>
-            <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    async function loadHomeStories() {
+      // Fetch and render stories
       const storyGrid = document.getElementById('story-grid');
-      const stories = await fetchStoriesWithVotes();
 
-      if (!stories || stories.length === 0) {
-        storyGrid.innerHTML = '<p>No stories found.</p>';
-        return;
+      try {
+        const stories = await fetchStoriesWithVotes();
+
+        if (!stories || stories.length === 0) {
+          storyGrid.innerHTML = '<p>No stories found.</p>';
+          return;
+        }
+
+        storyGrid.innerHTML = '';
+        stories.forEach(story => {
+          const card = document.createElement('article');
+          card.className = 'story-card';
+          card.innerHTML = `
+            <img src="${story.image_url}" alt="${story.title}" />
+            <h3>${story.title}</h3>
+            <div class="story-actions">
+              <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
+            </div>
+          `;
+          storyGrid.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error('Home page load error:', err);
+        storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
       }
-
-      renderHomeStories(stories);
-
-      const userVotes = await fetchUserVotes();
-      updateVoteButtons(userVotes, stories);
-
-      storyGrid.addEventListener('click', async (e) => {
-        if (!e.target.matches('.vote-btn')) return;
-
-        const btn = e.target;
-        const storyId = btn.dataset.storyId;
-
-        const success = await submitVote(storyId);
-        if (!success) return;
-
-        const refreshedStories = await fetchStoriesWithVotes();
-        renderHomeStories(refreshedStories);
-
-        const updatedVotes = await fetchUserVotes();
-        updateVoteButtons(updatedVotes, refreshedStories);
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', loadHomeStories);
+    });
   </script>
 </body>
 </html>
