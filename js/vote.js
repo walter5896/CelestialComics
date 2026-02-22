@@ -153,7 +153,7 @@ export function renderStoriesForHome(stories, containerId = 'story-grid') {
   });
 }
 
-// Gallery page: save button only
+// Gallery page: **SAVE BUTTON REMOVED**
 export function renderStoriesForGallery(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -161,13 +161,11 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
   stories.forEach(story => {
     const card = document.createElement('article');
     card.className = 'story-card';
-    const saveText = story.isSaved ? 'Saved' : 'Save Story';
     card.innerHTML = `
       <img src="${story.image_url}" alt="${story.title}" />
       <h3>${story.title}</h3>
       <div class="story-actions">
         <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
-        <button class="btn btn-secondary save-btn" data-story-id="${story.id}">${saveText}</button>
       </div>
     `;
     container.appendChild(card);
@@ -273,7 +271,7 @@ export function attachVoteListeners(containerId = 'story-grid') {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const success = await submitVote(storyId);
-      if (success) location.reload(); // simple refresh to update vote count
+      if (success) location.reload();
     });
   });
 }
@@ -316,6 +314,7 @@ export function attachUnsaveListeners(containerId) {
     });
   });
 }
+
 export async function initVoting(containerId = 'story-grid') {
   const user = await getCurrentUserAsync();
   if (!user) return false; // not logged in
@@ -328,5 +327,5 @@ export async function initVoting(containerId = 'story-grid') {
 
   attachVoteListeners(containerId);
 
-  return stories; // return stories so the HTML can decide which div to show
+  return stories;
 }
