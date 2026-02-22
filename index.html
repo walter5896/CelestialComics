@@ -82,7 +82,7 @@
   <!-- APP JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons, renderStories } from '/js/vote.js';
+    import { fetchStoriesWithVotes, submitVote, fetchUserVotes, updateVoteButtons } from '/js/vote.js';
 
     updateUI();
 
@@ -93,10 +93,33 @@
       });
     });
 
+    function renderHomeStories(stories) {
+      const container = document.getElementById('story-grid');
+      if (!container) return;
+
+      container.innerHTML = '';
+
+      stories.forEach(story => {
+        const card = document.createElement('article');
+        card.className = 'story-card';
+        card.innerHTML = `
+          <img src="${story.image_url}" alt="${story.title}" />
+          <h3>${story.title}</h3>
+          <div class="story-actions">
+            <button class="btn btn-primary vote-btn"
+              data-story-id="${story.id}"
+              data-vote-count="${story.vote_count || 0}">
+              Vote (${story.vote_count || 0})
+            </button>
+            <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
     async function loadHomeStories() {
       const storyGrid = document.getElementById('story-grid');
-
-      // Fetch stories with votes
       const stories = await fetchStoriesWithVotes();
 
       if (!stories || stories.length === 0) {
@@ -104,14 +127,11 @@
         return;
       }
 
-      // Render stories
-      renderStories(stories, 'story-grid');
+      renderHomeStories(stories);
 
-      // Fetch current user's votes
       const userVotes = await fetchUserVotes();
-      updateVoteButtons(userVotes);
+      updateVoteButtons(userVotes, stories);
 
-      // Delegate vote button clicks
       storyGrid.addEventListener('click', async (e) => {
         if (!e.target.matches('.vote-btn')) return;
 
@@ -121,12 +141,11 @@
         const success = await submitVote(storyId);
         if (!success) return;
 
-        // Refresh stories and votes
         const refreshedStories = await fetchStoriesWithVotes();
-        renderStories(refreshedStories, 'story-grid');
+        renderHomeStories(refreshedStories);
 
         const updatedVotes = await fetchUserVotes();
-        updateVoteButtons(updatedVotes);
+        updateVoteButtons(updatedVotes, refreshedStories);
       });
     }
 
