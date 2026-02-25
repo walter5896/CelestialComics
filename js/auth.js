@@ -164,4 +164,3 @@ export async function logout() {
    EXPORTS
 ======================= */
 // bottom exports
-export { updateUI, getCurrentUserAsync, getCurrentUser }; 
