@@ -1,3 +1,6 @@
-
-window.PUBLIC_SUPABASE_URL = "https://axkifbrakyboodtxmimb.supabase.co";
-window.PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4a2lmYnJha3lib29kdHhtaW1iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwODg5MTEsImV4cCI6MjA4MTY2NDkxMX0.v8pMv2VkGWUNjBDzdbfyuNYiWzkag7aYj4XOGFsjMCs";
+// /js/env.js
+window.__env = {
+  PUBLIC_SUPABASE_URL: "https://axkifbrakyboodtxmimb.supabase.co",
+  PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+};
+export {};
