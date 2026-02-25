@@ -29,21 +29,28 @@
   </table>
 
   <script type="module">
-    import { getCurrentProfileAsync } from '../js/auth.js';
-    import { initAdminPanel } from '../js/admin.js'; // make sure admin.js exports initAdminPanel
+    import { getCurrentUserAsync } from '../js/auth.js';
+    import { initAdminPanel } from '../js/admin.js';
 
     (async () => {
-      const profile = await getCurrentProfileAsync();
+      const user = await getCurrentUserAsync(); // get the logged-in user
 
       const statusEl = document.getElementById('status-message');
       const table = document.getElementById('users-table');
 
-      if (!profile) {
+      if (!user) {
         statusEl.textContent = 'Not logged in.';
         return;
       }
 
-      if (profile.role !== 'admin') {
+      // Fetch the user's profile from supabase (to get role)
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error || profile.role !== 'admin') {
         statusEl.textContent = 'Access denied: Admins only.';
         return;
       }
