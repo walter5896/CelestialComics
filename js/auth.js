@@ -144,4 +144,4 @@ export async function logout() {
   }
 }
 
-export { updateUI, getCurrentProfileAsync };
+export { updateUI };
