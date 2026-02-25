@@ -1,44 +1,26 @@
-// js/admin.js
+// admin.js
+import { supabase } from './supabase.js';
+import { getCurrentProfileAsync } from './auth.js';
 
-// Import your Supabase client (make sure supabase.js exists and exports `supabase`)
-import { supabase } from './supabase.js'; // adjust path if needed
-
-// Safe fetchCurrentProfile from auth.js
-async function fetchCurrentProfile() {
-  try {
-    const user = supabase.auth.user();
-    if (!user) return null;
-
-    const { data: profile, error, status } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    // If profile doesn't exist, return a safe default
-    if (error && status !== 406) throw error;
-    return profile || { id: user.id, role: 'user', email: user.email };
-  } catch (error) {
-    console.error('Error fetching profile:', error.message);
-    return { id: null, role: 'user', email: null };
-  }
-}
-
-// Initialize Admin Panel
+/**
+ * Initialize the admin panel
+ * Only accessible by admins
+ */
 async function initAdminPanel() {
-  const profile = await fetchCurrentProfile();
+  const profile = await getCurrentProfileAsync();
 
-  // Redirect non-admins away
   if (!profile || profile.role !== 'admin') {
     alert('Access denied: Admins only');
-    window.location.href = '/'; // Redirect to homepage
+    window.location.href = '/'; // redirect non-admins
     return;
   }
 
-  loadUsers();
+  await loadUsers();
 }
 
-// Load all users into the table
+/**
+ * Load all users and render into the table
+ */
 async function loadUsers() {
   try {
     const { data: users, error } = await supabase
@@ -48,6 +30,8 @@ async function loadUsers() {
     if (error) throw error;
 
     const tbody = document.querySelector('#users-table tbody');
+    if (!tbody) return;
+
     tbody.innerHTML = '';
 
     users.forEach(user => {
@@ -61,20 +45,24 @@ async function loadUsers() {
           </select>
         </td>
         <td>
-          <button onclick="updateRole('${user.id}', this.previousElementSibling.firstElementChild.value)">
+          <button data-user-id="${user.id}" class="save-role-btn">
             Save
           </button>
         </td>
       `;
       tbody.appendChild(row);
     });
-  } catch (error) {
-    console.error('Error loading users:', error.message);
-    alert('Failed to load users. Check console for details.');
+
+    attachSaveRoleListeners();
+  } catch (err) {
+    console.error('Error loading users:', err.message);
+    alert('Failed to load users. Check console.');
   }
 }
 
-// Update a user's role
+/**
+ * Update a user's role
+ */
 async function updateRole(userId, newRole) {
   try {
     const { error } = await supabase
@@ -85,16 +73,29 @@ async function updateRole(userId, newRole) {
     if (error) throw error;
 
     alert('Role updated successfully!');
-    // Optionally reload the table to reflect changes
-    loadUsers();
-  } catch (error) {
-    console.error('Error updating role:', error.message);
-    alert('Failed to update role. Check console for details.');
+    await loadUsers();
+  } catch (err) {
+    console.error('Error updating role:', err.message);
+    alert('Failed to update role. Check console.');
   }
 }
 
-// Expose updateRole globally for inline onclick buttons
+/**
+ * Attach listeners to all Save buttons
+ */
+function attachSaveRoleListeners() {
+  document.querySelectorAll('.save-role-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const userId = btn.dataset.userId;
+      const select = btn.closest('tr').querySelector('select');
+      const newRole = select.value;
+      updateRole(userId, newRole);
+    });
+  });
+}
+
+// Expose for potential inline use
 window.updateRole = updateRole;
 
-// Start the admin panel
-initAdminPanel();
+// Initialize admin panel on DOM ready
+document.addEventListener('DOMContentLoaded', initAdminPanel);

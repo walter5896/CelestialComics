@@ -4,49 +4,71 @@ import { supabase } from './supabase.js';
 console.log('Supabase client:', supabase);
 
 let currentUser = null;
-let currentProfile = { role: 'user' }; // default to user
+let currentProfile = { role: 'user' }; // default
 let authReadyResolve;
-const authReadyPromise = new Promise((resolve) => {
-  authReadyResolve = resolve;
-});
+const authReadyPromise = new Promise(resolve => { authReadyResolve = resolve; });
 
+/**
+ * Wait until auth is ready and return current user
+ */
 export async function getCurrentUserAsync() {
   await authReadyPromise;
   return currentUser;
 }
 
+/**
+ * Get current user synchronously (may be null if not ready)
+ */
 export function getCurrentUser() {
   return currentUser;
 }
 
-// Synchronous UI update (same as your working version)
+/**
+ * Wait until auth is ready and return current profile
+ */
+export async function getCurrentProfileAsync() {
+  await authReadyPromise;
+  return currentProfile;
+}
+
+/**
+ * Update login/logout/profile UI links
+ */
 function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
   const profileLinks = document.querySelectorAll('.profile-link');
 
   if (currentUser) {
-    loginLinks.forEach(el => (el.style.display = 'none'));
-    logoutLinks.forEach(el => (el.style.display = 'inline-block'));
-    profileLinks.forEach(el => (el.style.display = 'inline-block'));
+    loginLinks.forEach(el => el.style.display = 'none');
+    logoutLinks.forEach(el => el.style.display = 'inline-block');
+    profileLinks.forEach(el => el.style.display = 'inline-block');
   } else {
-    loginLinks.forEach(el => (el.style.display = 'inline-block'));
-    logoutLinks.forEach(el => (el.style.display = 'none'));
-    profileLinks.forEach(el => (el.style.display = 'none'));
+    loginLinks.forEach(el => el.style.display = 'inline-block');
+    logoutLinks.forEach(el => el.style.display = 'none');
+    profileLinks.forEach(el => el.style.display = 'none');
   }
+
+  updateAdminLinks();
 }
 
-// Only update admin links asynchronously after profile is fetched
-function updateAdminLinks() {
+/**
+ * Update admin-specific links based on currentProfile.role
+ */
+export function updateAdminLinks() {
   const adminLinks = document.querySelectorAll('.admin-link');
   if (!currentUser) {
     adminLinks.forEach(el => (el.style.display = 'none'));
     return;
   }
-  adminLinks.forEach(el => (el.style.display = currentProfile.role === 'admin' ? 'inline-block' : 'none'));
+  adminLinks.forEach(el => {
+    el.style.display = currentProfile.role === 'admin' ? 'inline-block' : 'none';
+  });
 }
 
-// Fetch profile in the background
+/**
+ * Fetch the profile for the current user
+ */
 async function fetchCurrentProfile() {
   if (!currentUser) return;
   try {
@@ -55,34 +77,46 @@ async function fetchCurrentProfile() {
       .select('*')
       .eq('id', currentUser.id)
       .single();
-    if (error) throw error;
-    currentProfile = data || { role: 'user', id: currentUser.id, email: currentUser.email };
-    updateAdminLinks(); // update admin links once we have the role
+
+    if (error && error.code !== 'PGRST116') throw error; // 406 = not found
+
+    currentProfile = data || { id: currentUser.id, role: 'user', email: currentUser.email };
+    updateAdminLinks();
   } catch (err) {
     console.error('Error fetching profile:', err.message);
+    currentProfile = { id: currentUser.id, role: 'user', email: currentUser.email };
+    updateAdminLinks();
   }
 }
 
-// INITIALIZE: synchronous UI first, then async profile fetch
+/**
+ * INITIALIZE: get session, sync UI, fetch profile async
+ */
 (async () => {
   try {
     const { data } = await supabase.auth.getSession();
     currentUser = data.session?.user ?? null;
-    updateUI();       // sync UI
-    if (currentUser) await fetchCurrentProfile(); // fetch profile in background
+    updateUI();
+    if (currentUser) await fetchCurrentProfile();
   } catch (err) {
-    console.error('Error getting initial auth session:', err);
+    console.error('Error getting initial session:', err);
   } finally {
     authReadyResolve();
   }
 })();
 
+/**
+ * Listen to auth state changes
+ */
 supabase.auth.onAuthStateChange(async (event, session) => {
   currentUser = session?.user ?? null;
-  updateUI();       // sync UI
-  if (currentUser) await fetchCurrentProfile(); // async profile update
+  updateUI();
+  if (currentUser) await fetchCurrentProfile();
 });
 
+/**
+ * Log in
+ */
 export async function login(email, password) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -98,6 +132,9 @@ export async function login(email, password) {
   }
 }
 
+/**
+ * Log out
+ */
 export async function logout() {
   try {
     const { error } = await supabase.auth.signOut();
@@ -105,7 +142,6 @@ export async function logout() {
     currentUser = null;
     currentProfile = { role: 'user' };
     updateUI();
-    updateAdminLinks();
     return true;
   } catch (err) {
     console.error('Logout error:', err.message);
