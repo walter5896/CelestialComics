@@ -42,6 +42,7 @@ function updateUI() {
     logoutLinks.forEach(el => (el.style.display = 'none'));
     profileLinks.forEach(el => (el.style.display = 'none'));
   }
+  window.dispatchEvent(new Event('user-changed'));
 }
 
 // Initialize currentUser by getting the session once at load
