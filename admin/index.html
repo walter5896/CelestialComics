@@ -4,10 +4,20 @@
 <head>
   <meta charset="UTF-8">
   <title>Admin Panel</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }
+    th { background: #f4f4f4; }
+    select { padding: 0.25rem; }
+    button { padding: 0.25rem 0.5rem; }
+  </style>
 </head>
 <body>
   <h1>Admin Panel</h1>
-  <table id="users-table">
+  <p id="status-message">Loading...</p>
+
+  <table id="users-table" style="display:none;">
     <thead>
       <tr>
         <th>Email</th>
@@ -18,6 +28,33 @@
     <tbody></tbody>
   </table>
 
-  <script src="../js/admin.js"></script> <!-- adjust path if needed -->
+  <script type="module">
+    import { getCurrentProfileAsync } from '../js/auth.js';
+    import { initAdminPanel } from '../js/admin.js'; // make sure admin.js exports initAdminPanel
+
+    (async () => {
+      const profile = await getCurrentProfileAsync();
+
+      const statusEl = document.getElementById('status-message');
+      const table = document.getElementById('users-table');
+
+      if (!profile) {
+        statusEl.textContent = 'Not logged in.';
+        return;
+      }
+
+      if (profile.role !== 'admin') {
+        statusEl.textContent = 'Access denied: Admins only.';
+        return;
+      }
+
+      // Admin is logged in
+      statusEl.style.display = 'none';
+      table.style.display = 'table';
+
+      // Initialize admin panel
+      initAdminPanel();
+    })();
+  </script>
 </body>
 </html>
