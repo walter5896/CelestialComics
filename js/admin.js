@@ -1,22 +1,25 @@
 // /js/admin.js
-import { getCurrentUserAsync } from './auth.js';
 import { supabase } from './supabase.js';
+import { getCurrentUserAsync } from './auth.js'; // your current auth.js
 
-// Define your admin email(s)
-const ADMIN_EMAILS = ['youremail@example.com']; // <-- replace with actual admin email
-
-// Initialize Admin Panel
-async function initAdminPanel() {
+// Fetch current profile safely from the DB
+async function fetchCurrentProfile() {
   const user = await getCurrentUserAsync();
+  if (!user) return { id: null, role: 'user', email: null };
 
-  // Redirect non-admins
-  if (!user || !ADMIN_EMAILS.includes(user.email)) {
-    alert('Access denied: Admins only');
-    window.location.href = '/';
-    return;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, role')
+      .eq('id', user.id)
+      .single();
+
+    if (error) throw error;
+    return data || { id: user.id, email: user.email, role: 'user' };
+  } catch (err) {
+    console.error('Error fetching profile:', err.message);
+    return { id: user.id, email: user.email, role: 'user' };
   }
-
-  loadUsers();
 }
 
 // Load all users into the table
@@ -49,8 +52,8 @@ async function loadUsers() {
       `;
       tbody.appendChild(row);
     });
-  } catch (error) {
-    console.error('Error loading users:', error.message);
+  } catch (err) {
+    console.error('Error loading users:', err.message);
     alert('Failed to load users. Check console for details.');
   }
 }
@@ -64,11 +67,10 @@ async function updateRole(userId, newRole) {
       .eq('id', userId);
 
     if (error) throw error;
-
     alert('Role updated successfully!');
-    loadUsers();
-  } catch (error) {
-    console.error('Error updating role:', error.message);
+    await loadUsers();
+  } catch (err) {
+    console.error('Error updating role:', err.message);
     alert('Failed to update role. Check console for details.');
   }
 }
@@ -76,5 +78,12 @@ async function updateRole(userId, newRole) {
 // Expose updateRole globally for inline onclick buttons
 window.updateRole = updateRole;
 
-// Start the admin panel
-initAdminPanel();
+// **New exported function** — initialize the admin panel
+export async function initAdminPanel() {
+  const profile = await fetchCurrentProfile();
+  if (!profile || profile.role !== 'admin') {
+    alert('Access denied: Admins only');
+    return;
+  }
+  await loadUsers();
+}
