@@ -1,47 +1,25 @@
-// js/admin.js
-import { supabase } from './supabase.js';
+// /js/admin.js
 import { getCurrentUserAsync } from './auth.js';
+import { supabase } from './supabase.js';
 
-/**
- * Initialize Admin Panel
- */
+// Define your admin email(s)
+const ADMIN_EMAILS = ['youremail@example.com']; // <-- replace with actual admin email
+
+// Initialize Admin Panel
 async function initAdminPanel() {
-  // Wait for auth to be ready
   const user = await getCurrentUserAsync();
 
-  if (!user) {
-    alert('Please log in to access the admin panel.');
+  // Redirect non-admins
+  if (!user || !ADMIN_EMAILS.includes(user.email)) {
+    alert('Access denied: Admins only');
     window.location.href = '/';
     return;
   }
 
-  // Fetch profile for current user
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (error) {
-    console.error('Error fetching profile:', error);
-    alert('Could not verify admin access. Check console.');
-    window.location.href = '/';
-    return;
-  }
-
-  if (!profile || profile.role !== 'admin') {
-    alert('Access denied: Admins only.');
-    window.location.href = '/';
-    return;
-  }
-
-  // User is an admin — load users table
   loadUsers();
 }
 
-/**
- * Load all users into the table
- */
+// Load all users into the table
 async function loadUsers() {
   try {
     const { data: users, error } = await supabase
@@ -71,15 +49,13 @@ async function loadUsers() {
       `;
       tbody.appendChild(row);
     });
-  } catch (err) {
-    console.error('Error loading users:', err);
+  } catch (error) {
+    console.error('Error loading users:', error.message);
     alert('Failed to load users. Check console for details.');
   }
 }
 
-/**
- * Update a user's role
- */
+// Update a user's role
 async function updateRole(userId, newRole) {
   try {
     const { error } = await supabase
@@ -90,15 +66,15 @@ async function updateRole(userId, newRole) {
     if (error) throw error;
 
     alert('Role updated successfully!');
-    loadUsers(); // reload table
-  } catch (err) {
-    console.error('Error updating role:', err);
+    loadUsers();
+  } catch (error) {
+    console.error('Error updating role:', error.message);
     alert('Failed to update role. Check console for details.');
   }
 }
 
-// Expose globally for inline onclick buttons
+// Expose updateRole globally for inline onclick buttons
 window.updateRole = updateRole;
 
-// Start admin panel after DOM is loaded
-document.addEventListener('DOMContentLoaded', initAdminPanel);
+// Start the admin panel
+initAdminPanel();
