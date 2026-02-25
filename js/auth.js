@@ -140,4 +140,4 @@ export async function logout() {
   }
 }
 
-export { updateUI };
+// ✅ No duplicate export anymore
