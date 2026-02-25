@@ -1,5 +1,6 @@
 // js/admin.js
-import { supabase, getCurrentUserAsync } from './auth.js';
+import { supabase } from './supabase.js';
+import { getCurrentUserAsync } from './auth.js';
 
 /**
  * Initialize Admin Panel
