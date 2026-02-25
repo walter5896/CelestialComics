@@ -169,6 +169,4 @@ export {
   getCurrentUserAsync, 
   getCurrentUser, 
   getCurrentProfileAsync, 
-  login, 
-  logout 
 };
