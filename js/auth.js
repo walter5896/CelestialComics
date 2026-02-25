@@ -4,7 +4,6 @@ import { supabase } from './supabase.js';
 console.log('Supabase client:', supabase);
 
 let currentUser = null;
-let currentProfile = null; // store profile including role
 let authReadyResolve;
 const authReadyPromise = new Promise((resolve) => {
   authReadyResolve = resolve;
@@ -20,14 +19,6 @@ export async function getCurrentUserAsync() {
 }
 
 /**
- * Async function to get current profile
- */
-export async function getCurrentProfileAsync() {
-  await authReadyPromise;
-  return currentProfile;
-}
-
-/**
  * Synchronous getter (may be null if called too early)
  */
 export function getCurrentUser() {
@@ -35,55 +26,29 @@ export function getCurrentUser() {
 }
 
 /**
- * Fetch profile from Supabase safely
- */
-async function fetchCurrentProfile() {
-  if (!currentUser) return { id: null, role: 'user', email: null };
-  try {
-    const { data, error, status } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (error && status !== 406) throw error;
-    return data || { id: currentUser.id, role: 'user', email: currentUser.email };
-  } catch (err) {
-    console.error('Error fetching profile:', err.message);
-    return { id: null, role: 'user', email: null };
-  }
-}
-
-/**
- * Update UI based on currentUser and role
+ * Update UI based on currentUser
  */
 function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
   const profileLinks = document.querySelectorAll('.profile-link');
-  const adminLinks = document.querySelectorAll('.admin-link');
-
-  const role = currentProfile?.role || 'user';
 
   if (currentUser) {
     loginLinks.forEach(el => (el.style.display = 'none'));
     logoutLinks.forEach(el => (el.style.display = 'inline-block'));
     profileLinks.forEach(el => (el.style.display = 'inline-block'));
-    adminLinks.forEach(el => (el.style.display = role === 'admin' ? 'inline-block' : 'none'));
   } else {
     loginLinks.forEach(el => (el.style.display = 'inline-block'));
     logoutLinks.forEach(el => (el.style.display = 'none'));
     profileLinks.forEach(el => (el.style.display = 'none'));
-    adminLinks.forEach(el => (el.style.display = 'none'));
   }
 }
 
-// Initialize currentUser and profile on page load
+// Initialize currentUser by getting the session once at load
 (async () => {
   try {
     const { data } = await supabase.auth.getSession();
     currentUser = data.session?.user ?? null;
-    currentProfile = await fetchCurrentProfile();
     updateUI();
   } catch (err) {
     console.error('Error getting initial auth session:', err);
@@ -92,10 +57,9 @@ function updateUI() {
   }
 })();
 
-// Listen to auth state changes
-supabase.auth.onAuthStateChange(async (event, session) => {
+// Listen to auth state changes (login/logout)
+supabase.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user ?? null;
-  currentProfile = await fetchCurrentProfile();
   updateUI();
 });
 
@@ -110,8 +74,7 @@ export async function login(email, password) {
       alert(`Login failed: ${error.message}`);
       return false;
     }
-    currentUser = data.user ?? data.session?.user ?? null;
-    currentProfile = await fetchCurrentProfile();
+    currentUser = data.user;
     updateUI();
     return true;
   } catch (err) {
@@ -133,7 +96,6 @@ export async function logout() {
       return false;
     }
     currentUser = null;
-    currentProfile = null;
     updateUI();
     return true;
   } catch (err) {
