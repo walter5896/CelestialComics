@@ -3,31 +3,28 @@ import { supabase } from './supabase.js';
 
 console.log('Supabase client:', supabase);
 
+// ----- STATE -----
 let currentUser = null;
+let currentProfile = { role: 'user' }; // default role
 let authReadyResolve;
-const authReadyPromise = new Promise((resolve) => {
-  authReadyResolve = resolve;
-});
+const authReadyPromise = new Promise(resolve => (authReadyResolve = resolve));
 
-/**
- * Async function to get current user,
- * waits until auth state is initialized
- */
+// ----- GETTERS -----
 export async function getCurrentUserAsync() {
   await authReadyPromise;
   return currentUser;
 }
 
-/**
- * Synchronous getter (may be null if called too early)
- */
 export function getCurrentUser() {
   return currentUser;
 }
 
-/**
- * Update UI based on currentUser
- */
+export async function getCurrentProfileAsync() {
+  await authReadyPromise;
+  return currentProfile;
+}
+
+// ----- UI UPDATE -----
 function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
@@ -42,14 +39,46 @@ function updateUI() {
     logoutLinks.forEach(el => (el.style.display = 'none'));
     profileLinks.forEach(el => (el.style.display = 'none'));
   }
+
+  updateAdminLinks();
 }
 
-// Initialize currentUser by getting the session once at load
+function updateAdminLinks() {
+  const adminLinks = document.querySelectorAll('.admin-link');
+  if (!currentUser) {
+    adminLinks.forEach(el => (el.style.display = 'none'));
+    return;
+  }
+  adminLinks.forEach(el => (el.style.display = currentProfile.role === 'admin' ? 'inline-block' : 'none'));
+}
+
+// ----- PROFILE FETCH -----
+async function fetchCurrentProfile() {
+  if (!currentUser) return;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // ignore "no rows" code
+
+    currentProfile = data || { role: 'user', id: currentUser.id, email: currentUser.email };
+    updateAdminLinks();
+  } catch (err) {
+    console.error('Error fetching profile:', err.message);
+    currentProfile = { role: 'user', id: currentUser.id, email: currentUser.email };
+  }
+}
+
+// ----- INITIALIZE -----
 (async () => {
   try {
     const { data } = await supabase.auth.getSession();
     currentUser = data.session?.user ?? null;
     updateUI();
+    if (currentUser) await fetchCurrentProfile();
   } catch (err) {
     console.error('Error getting initial auth session:', err);
   } finally {
@@ -57,52 +86,45 @@ function updateUI() {
   }
 })();
 
-// Listen to auth state changes (login/logout)
-supabase.auth.onAuthStateChange((event, session) => {
+// Listen to auth changes
+supabase.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user ?? null;
   updateUI();
+  if (currentUser) await fetchCurrentProfile();
 });
 
-/**
- * Log in existing user
- */
+// ----- LOGIN / LOGOUT -----
 export async function login(email, password) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('Login error:', error.message);
-      alert(`Login failed: ${error.message}`);
-      return false;
-    }
-    currentUser = data.user;
+    if (error) throw error;
+
+    currentUser = data.user ?? data.session?.user ?? null;
     updateUI();
+    if (currentUser) await fetchCurrentProfile();
     return true;
   } catch (err) {
-    console.error('Unexpected login error:', err);
-    alert('Unexpected login error. Please try again.');
+    console.error('Login error:', err.message);
+    alert(`Login failed: ${err.message}`);
     return false;
   }
 }
 
-/**
- * Log out current user
- */
 export async function logout() {
   try {
     const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Logout error:', error.message);
-      alert(`Logout failed: ${error.message}`);
-      return false;
-    }
+    if (error) throw error;
+
     currentUser = null;
+    currentProfile = { role: 'user' };
     updateUI();
     return true;
   } catch (err) {
-    console.error('Unexpected logout error:', err);
-    alert('Unexpected logout error. Please try again.');
+    console.error('Logout error:', err.message);
+    alert(`Logout failed: ${err.message}`);
     return false;
   }
 }
 
+// ----- EXPORT -----
 export { updateUI };
