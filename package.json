@@ -11,7 +11,7 @@
     "url": "git+https://github.com/walter5896/CelestialComics.git"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.91.1",
+    "@supabase/supabase-js": "^2.97.0",
     "stripe": "^20.2.0"
   }
 }
