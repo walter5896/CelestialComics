@@ -36,6 +36,7 @@ export function getCurrentUser() {
  */
 export async function getCurrentProfileAsync() {
   await authReadyPromise;
+
   if (!currentUser) return { role: 'user', id: null, email: null };
 
   try {
@@ -59,7 +60,7 @@ export async function getCurrentProfileAsync() {
    UI UPDATE
 ======================= */
 
-function updateUI() {
+export function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
   const profileLinks = document.querySelectorAll('.profile-link');
@@ -159,14 +160,3 @@ export async function logout() {
     return false;
   }
 }
-
-/* =======================
-   EXPORTS
-======================= */
-// bottom exports
-export { 
-  updateUI, 
-  getCurrentUserAsync, 
-  getCurrentUser, 
-  getCurrentProfileAsync, 
-};
