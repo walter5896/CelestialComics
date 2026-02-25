@@ -1,19 +1,17 @@
-// /js/auth.js
+// auth.js
 import { supabase } from './supabase.js';
 
 console.log('Supabase client:', supabase);
 
 let currentUser = null;
-let currentProfile = { role: 'user' }; // default profile
 let authReadyResolve;
-const authReadyPromise = new Promise((resolve) => { authReadyResolve = resolve; });
-
-/* =======================
-   USER FUNCTIONS
-======================= */
+const authReadyPromise = new Promise((resolve) => {
+  authReadyResolve = resolve;
+});
 
 /**
- * Async getter for current user (waits for auth init)
+ * Async function to get current user,
+ * waits until auth state is initialized
  */
 export async function getCurrentUserAsync() {
   await authReadyPromise;
@@ -27,44 +25,13 @@ export function getCurrentUser() {
   return currentUser;
 }
 
-/* =======================
-   PROFILE FUNCTIONS
-======================= */
-
 /**
- * Async getter for current user's profile
+ * Update UI based on currentUser
  */
-export async function getCurrentProfileAsync() {
-  await authReadyPromise;
-
-  if (!currentUser) return { role: 'user', id: null, email: null };
-
-  try {
-    const { data, error, status } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (error && status !== 406) throw error;
-
-    currentProfile = data || { role: 'user', id: currentUser.id, email: currentUser.email };
-    return currentProfile;
-  } catch (err) {
-    console.error('Error fetching profile:', err.message);
-    return { role: 'user', id: currentUser.id, email: currentUser.email };
-  }
-}
-
-/* =======================
-   UI UPDATE
-======================= */
-
-export function updateUI() {
+function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
   const profileLinks = document.querySelectorAll('.profile-link');
-  const adminLinks = document.querySelectorAll('.admin-link');
 
   if (currentUser) {
     loginLinks.forEach(el => (el.style.display = 'none'));
@@ -75,30 +42,14 @@ export function updateUI() {
     logoutLinks.forEach(el => (el.style.display = 'none'));
     profileLinks.forEach(el => (el.style.display = 'none'));
   }
-
-  // admin links visible only if role is 'admin'
-  if (currentProfile.role === 'admin') {
-    adminLinks.forEach(el => (el.style.display = 'inline-block'));
-  } else {
-    adminLinks.forEach(el => (el.style.display = 'none'));
-  }
 }
 
-/* =======================
-   AUTH INITIALIZATION
-======================= */
-
+// Initialize currentUser by getting the session once at load
 (async () => {
   try {
     const { data } = await supabase.auth.getSession();
     currentUser = data.session?.user ?? null;
-
     updateUI();
-
-    if (currentUser) {
-      await getCurrentProfileAsync(); // fetch profile after session
-      updateUI();
-    }
   } catch (err) {
     console.error('Error getting initial auth session:', err);
   } finally {
@@ -106,23 +57,15 @@ export function updateUI() {
   }
 })();
 
-// Listen for auth state changes
-supabase.auth.onAuthStateChange(async (_event, session) => {
+// Listen to auth state changes (login/logout)
+supabase.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user ?? null;
-
-  if (currentUser) {
-    await getCurrentProfileAsync();
-  } else {
-    currentProfile = { role: 'user' };
-  }
-
   updateUI();
 });
 
-/* =======================
-   LOGIN / LOGOUT
-======================= */
-
+/**
+ * Log in existing user
+ */
 export async function login(email, password) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -132,7 +75,6 @@ export async function login(email, password) {
       return false;
     }
     currentUser = data.user;
-    await getCurrentProfileAsync();
     updateUI();
     return true;
   } catch (err) {
@@ -142,6 +84,9 @@ export async function login(email, password) {
   }
 }
 
+/**
+ * Log out current user
+ */
 export async function logout() {
   try {
     const { error } = await supabase.auth.signOut();
@@ -151,7 +96,6 @@ export async function logout() {
       return false;
     }
     currentUser = null;
-    currentProfile = { role: 'user' };
     updateUI();
     return true;
   } catch (err) {
@@ -160,3 +104,5 @@ export async function logout() {
     return false;
   }
 }
+
+export { updateUI };
