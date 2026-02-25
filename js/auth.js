@@ -1,5 +1,6 @@
 // auth.js
-import { supabase } from '/js/supabase.js';
+import { supabase } from './supabase.js';
+
 console.log('Supabase client:', supabase);
 
 let currentUser = null;
@@ -18,10 +19,13 @@ export async function getCurrentUserAsync() {
 }
 
 /**
- * Async getter for current profile
+ * Async getter for current profile (includes role)
  */
 export async function getCurrentProfileAsync() {
   await authReadyPromise;
+  if (!currentProfile && currentUser) {
+    currentProfile = await fetchCurrentProfile();
+  }
   return currentProfile;
 }
 
@@ -38,6 +42,8 @@ async function fetchCurrentProfile() {
       .single();
 
     if (error && status !== 406) throw error;
+
+    // Return profile, default to role 'user' if missing
     return data || { id: currentUser.id, role: 'user', email: currentUser.email };
   } catch (err) {
     console.error('Error fetching profile:', err.message);
@@ -47,60 +53,57 @@ async function fetchCurrentProfile() {
 
 /**
  * Update UI elements based on current user and role
- * Synchronous: uses currentProfile if already loaded
  */
-export function updateUI() {
+export async function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
   const profileLinks = document.querySelectorAll('.profile-link');
   const adminLinks = document.querySelectorAll('.admin-link');
 
   if (!currentUser) {
-    loginLinks.forEach(el => el.style.display = 'inline-block');
-    logoutLinks.forEach(el => el.style.display = 'none');
-    profileLinks.forEach(el => el.style.display = 'none');
-    adminLinks.forEach(el => el.style.display = 'none');
+    loginLinks.forEach(el => (el.style.display = 'inline-block'));
+    logoutLinks.forEach(el => (el.style.display = 'none'));
+    profileLinks.forEach(el => (el.style.display = 'none'));
+    adminLinks.forEach(el => (el.style.display = 'none'));
     return;
   }
 
-  loginLinks.forEach(el => el.style.display = 'none');
-  logoutLinks.forEach(el => el.style.display = 'inline-block');
-  profileLinks.forEach(el => el.style.display = 'inline-block');
+  // Ensure profile is loaded
+  if (!currentProfile) {
+    currentProfile = await fetchCurrentProfile();
+  }
 
-  // Only show admin links if profile is loaded and role is admin
-  const role = currentProfile?.role || 'user';
-  adminLinks.forEach(el => el.style.display = role === 'admin' ? 'inline-block' : 'none');
+  loginLinks.forEach(el => (el.style.display = 'none'));
+  logoutLinks.forEach(el => (el.style.display = 'inline-block'));
+  profileLinks.forEach(el => (el.style.display = 'inline-block'));
+
+  const role = currentProfile.role ?? 'user';
+  adminLinks.forEach(el => (el.style.display = role === 'admin' ? 'inline-block' : 'none'));
 }
 
 /**
  * Initialize auth session
  */
-async function initAuth() {
+(async () => {
   try {
     const { data } = await supabase.auth.getSession();
     currentUser = data.session?.user ?? null;
-
-    // Fetch profile once after session is ready
     currentProfile = await fetchCurrentProfile();
-    updateUI();
+    await updateUI();
   } catch (err) {
-    console.error('Error initializing auth:', err);
+    console.error('Error getting initial auth session:', err);
   } finally {
     authReadyResolve();
   }
-}
-
-initAuth();
+})();
 
 /**
  * Listen to auth state changes
  */
 supabase.auth.onAuthStateChange(async (event, session) => {
   currentUser = session?.user ?? null;
-
-  // Fetch profile safely, then update UI
   currentProfile = await fetchCurrentProfile();
-  updateUI();
+  await updateUI();
 });
 
 /**
@@ -111,9 +114,10 @@ export async function login(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    currentUser = data.user;
+    // v2: user comes from session
+    currentUser = data.session?.user ?? null;
     currentProfile = await fetchCurrentProfile();
-    updateUI();
+    await updateUI();
     return true;
   } catch (err) {
     console.error('Login error:', err.message);
@@ -132,7 +136,7 @@ export async function logout() {
 
     currentUser = null;
     currentProfile = null;
-    updateUI();
+    await updateUI();
     return true;
   } catch (err) {
     console.error('Logout error:', err.message);
@@ -140,5 +144,3 @@ export async function logout() {
     return false;
   }
 }
-
-// ✅ No duplicate export anymore
