@@ -22,6 +22,7 @@
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -78,7 +79,7 @@
 
   <!-- ENV -->
   <script src="/js/env.js"></script>
-  <!--Utils-->
+  <!-- Utils -->
   <script type="module" src="/js/utils.js"></script>
 
   <!-- APP JS -->
@@ -99,15 +100,12 @@
 
       // Fetch and render stories
       const storyGrid = document.getElementById('story-grid');
-
       try {
         const stories = await fetchStoriesWithVotes();
-
         if (!stories || stories.length === 0) {
           storyGrid.innerHTML = '<p>No stories found.</p>';
           return;
         }
-
         storyGrid.innerHTML = '';
         stories.forEach(story => {
           const card = document.createElement('article');
@@ -121,12 +119,14 @@
           `;
           storyGrid.appendChild(card);
         });
-
       } catch (err) {
         console.error('Home page load error:', err);
         storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
       }
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
