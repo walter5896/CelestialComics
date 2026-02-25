@@ -1,25 +1,45 @@
-// admin.js
-import { supabase } from './supabase.js';
-import { getCurrentProfileAsync } from './auth.js';
+// js/admin.js
+import { supabase, getCurrentUserAsync } from './auth.js';
 
 /**
- * Initialize the admin panel
- * Only accessible by admins
+ * Initialize Admin Panel
  */
 async function initAdminPanel() {
-  const profile = await getCurrentProfileAsync();
+  // Wait for auth to be ready
+  const user = await getCurrentUserAsync();
 
-  if (!profile || profile.role !== 'admin') {
-    alert('Access denied: Admins only');
-    window.location.href = '/'; // redirect non-admins
+  if (!user) {
+    alert('Please log in to access the admin panel.');
+    window.location.href = '/';
     return;
   }
 
-  await loadUsers();
+  // Fetch profile for current user
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching profile:', error);
+    alert('Could not verify admin access. Check console.');
+    window.location.href = '/';
+    return;
+  }
+
+  if (!profile || profile.role !== 'admin') {
+    alert('Access denied: Admins only.');
+    window.location.href = '/';
+    return;
+  }
+
+  // User is an admin — load users table
+  loadUsers();
 }
 
 /**
- * Load all users and render into the table
+ * Load all users into the table
  */
 async function loadUsers() {
   try {
@@ -30,8 +50,6 @@ async function loadUsers() {
     if (error) throw error;
 
     const tbody = document.querySelector('#users-table tbody');
-    if (!tbody) return;
-
     tbody.innerHTML = '';
 
     users.forEach(user => {
@@ -45,18 +63,16 @@ async function loadUsers() {
           </select>
         </td>
         <td>
-          <button data-user-id="${user.id}" class="save-role-btn">
+          <button onclick="updateRole('${user.id}', this.previousElementSibling.firstElementChild.value)">
             Save
           </button>
         </td>
       `;
       tbody.appendChild(row);
     });
-
-    attachSaveRoleListeners();
   } catch (err) {
-    console.error('Error loading users:', err.message);
-    alert('Failed to load users. Check console.');
+    console.error('Error loading users:', err);
+    alert('Failed to load users. Check console for details.');
   }
 }
 
@@ -73,29 +89,15 @@ async function updateRole(userId, newRole) {
     if (error) throw error;
 
     alert('Role updated successfully!');
-    await loadUsers();
+    loadUsers(); // reload table
   } catch (err) {
-    console.error('Error updating role:', err.message);
-    alert('Failed to update role. Check console.');
+    console.error('Error updating role:', err);
+    alert('Failed to update role. Check console for details.');
   }
 }
 
-/**
- * Attach listeners to all Save buttons
- */
-function attachSaveRoleListeners() {
-  document.querySelectorAll('.save-role-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const userId = btn.dataset.userId;
-      const select = btn.closest('tr').querySelector('select');
-      const newRole = select.value;
-      updateRole(userId, newRole);
-    });
-  });
-}
-
-// Expose for potential inline use
+// Expose globally for inline onclick buttons
 window.updateRole = updateRole;
 
-// Initialize admin panel on DOM ready
+// Start admin panel after DOM is loaded
 document.addEventListener('DOMContentLoaded', initAdminPanel);
