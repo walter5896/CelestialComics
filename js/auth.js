@@ -1,5 +1,6 @@
 // auth.js
-import { supabase } from './supabase.js';
+import { supabase } from '/js/supabase.js';
+console.log('Supabase client:', supabase);
 
 let currentUser = null;
 let currentProfile = null;
