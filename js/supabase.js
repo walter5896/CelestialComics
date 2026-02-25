@@ -1,8 +1,8 @@
-// js/supabase.js
+// /js/supabase.js
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-const supabaseUrl = window.PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = window.PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = window.__env?.PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = window.__env?.PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error("Supabase PUBLIC env vars missing!");
