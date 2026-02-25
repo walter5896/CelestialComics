@@ -4,14 +4,14 @@ import { supabase } from './supabase.js';
 console.log('Supabase client:', supabase);
 
 let currentUser = null;
-let currentProfile = null;
 let authReadyResolve;
 const authReadyPromise = new Promise((resolve) => {
   authReadyResolve = resolve;
 });
 
 /**
- * Async getter for current user
+ * Async function to get current user,
+ * waits until auth state is initialized
  */
 export async function getCurrentUserAsync() {
   await authReadyPromise;
@@ -19,77 +19,37 @@ export async function getCurrentUserAsync() {
 }
 
 /**
- * Async getter for current profile (includes role)
+ * Synchronous getter (may be null if called too early)
  */
-export async function getCurrentProfileAsync() {
-  await authReadyPromise;
-  if (!currentProfile && currentUser) {
-    currentProfile = await fetchCurrentProfile();
-  }
-  return currentProfile;
+export function getCurrentUser() {
+  return currentUser;
 }
 
 /**
- * Fetch the user's profile safely from Supabase
+ * Update UI based on currentUser
  */
-async function fetchCurrentProfile() {
-  if (!currentUser) return { id: null, role: 'user', email: null };
-  try {
-    const { data, error, status } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (error && status !== 406) throw error;
-
-    // Return profile, default to role 'user' if missing
-    return data || { id: currentUser.id, role: 'user', email: currentUser.email };
-  } catch (err) {
-    console.error('Error fetching profile:', err.message);
-    return { id: null, role: 'user', email: null };
-  }
-}
-
-/**
- * Update UI elements based on current user and role
- */
-export async function updateUI() {
+function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
   const profileLinks = document.querySelectorAll('.profile-link');
-  const adminLinks = document.querySelectorAll('.admin-link');
 
-  if (!currentUser) {
+  if (currentUser) {
+    loginLinks.forEach(el => (el.style.display = 'none'));
+    logoutLinks.forEach(el => (el.style.display = 'inline-block'));
+    profileLinks.forEach(el => (el.style.display = 'inline-block'));
+  } else {
     loginLinks.forEach(el => (el.style.display = 'inline-block'));
     logoutLinks.forEach(el => (el.style.display = 'none'));
     profileLinks.forEach(el => (el.style.display = 'none'));
-    adminLinks.forEach(el => (el.style.display = 'none'));
-    return;
   }
-
-  // Ensure profile is loaded
-  if (!currentProfile) {
-    currentProfile = await fetchCurrentProfile();
-  }
-
-  loginLinks.forEach(el => (el.style.display = 'none'));
-  logoutLinks.forEach(el => (el.style.display = 'inline-block'));
-  profileLinks.forEach(el => (el.style.display = 'inline-block'));
-
-  const role = currentProfile.role ?? 'user';
-  adminLinks.forEach(el => (el.style.display = role === 'admin' ? 'inline-block' : 'none'));
 }
 
-/**
- * Initialize auth session
- */
+// Initialize currentUser by getting the session once at load
 (async () => {
   try {
     const { data } = await supabase.auth.getSession();
     currentUser = data.session?.user ?? null;
-    currentProfile = await fetchCurrentProfile();
-    await updateUI();
+    updateUI();
   } catch (err) {
     console.error('Error getting initial auth session:', err);
   } finally {
@@ -97,13 +57,10 @@ export async function updateUI() {
   }
 })();
 
-/**
- * Listen to auth state changes
- */
-supabase.auth.onAuthStateChange(async (event, session) => {
+// Listen to auth state changes (login/logout)
+supabase.auth.onAuthStateChange((event, session) => {
   currentUser = session?.user ?? null;
-  currentProfile = await fetchCurrentProfile();
-  await updateUI();
+  updateUI();
 });
 
 /**
@@ -112,16 +69,17 @@ supabase.auth.onAuthStateChange(async (event, session) => {
 export async function login(email, password) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-
-    // v2: user comes from session
-    currentUser = data.session?.user ?? null;
-    currentProfile = await fetchCurrentProfile();
-    await updateUI();
+    if (error) {
+      console.error('Login error:', error.message);
+      alert(`Login failed: ${error.message}`);
+      return false;
+    }
+    currentUser = data.user;
+    updateUI();
     return true;
   } catch (err) {
-    console.error('Login error:', err.message);
-    alert(`Login failed: ${err.message}`);
+    console.error('Unexpected login error:', err);
+    alert('Unexpected login error. Please try again.');
     return false;
   }
 }
@@ -132,15 +90,19 @@ export async function login(email, password) {
 export async function logout() {
   try {
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-
+    if (error) {
+      console.error('Logout error:', error.message);
+      alert(`Logout failed: ${error.message}`);
+      return false;
+    }
     currentUser = null;
-    currentProfile = null;
-    await updateUI();
+    updateUI();
     return true;
   } catch (err) {
-    console.error('Logout error:', err.message);
-    alert(`Logout failed: ${err.message}`);
+    console.error('Unexpected logout error:', err);
+    alert('Unexpected logout error. Please try again.');
     return false;
   }
 }
+
+export { updateUI };
