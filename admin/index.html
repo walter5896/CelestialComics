@@ -9,8 +9,7 @@
     table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
     th, td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }
     th { background: #f4f4f4; }
-    select { padding: 0.25rem; }
-    button { padding: 0.25rem 0.5rem; }
+    select, button { padding: 0.25rem; }
   </style>
 </head>
 <body>
@@ -28,48 +27,51 @@
     <tbody></tbody>
   </table>
 
-  <!-- MUST load env first -->
-  <script src="/js/env.js"></script>
-
   <script type="module">
     import { getCurrentUserAsync } from '../js/auth.js';
-    import { supabase } from '../js/supabase.js';
-    import { initAdminPanel } from '../js/admin.js';
 
     (async () => {
+      const user = await getCurrentUserAsync();
       const statusEl = document.getElementById('status-message');
       const table = document.getElementById('users-table');
-
-      const user = await getCurrentUserAsync();
+      const tbody = table.querySelector('tbody');
 
       if (!user) {
         statusEl.textContent = 'Not logged in.';
         return;
       }
 
-      // Fetch the user's profile to check role
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+      // Check if user is admin by looking up their profile
+      const res = await fetch('/.netlify/functions/get-users');
+      const users = await res.json();
+      const currentUserProfile = users.find(u => u.id === user.id);
 
-      if (error) {
-        console.error(error);
-        statusEl.textContent = 'Error loading profile.';
-        return;
-      }
-
-      if (profile.role !== 'admin') {
+      if (!currentUserProfile || currentUserProfile.role !== 'admin') {
         statusEl.textContent = 'Access denied: Admins only.';
         return;
       }
 
-      // Admin confirmed
+      // Admin logged in
       statusEl.style.display = 'none';
       table.style.display = 'table';
 
-      initAdminPanel();
+      // Render users
+      tbody.innerHTML = '';
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${u.email}</td>
+          <td>${u.role}</td>
+          <td>
+            <select>
+              <option value="user" ${u.role==='user'?'selected':''}>user</option>
+              <option value="admin" ${u.role==='admin'?'selected':''}>admin</option>
+            </select>
+            <button data-user-id="${u.id}">Update</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
     })();
   </script>
 </body>
