@@ -27,6 +27,9 @@
     <tbody></tbody>
   </table>
 
+  <!-- Load env first so Supabase client works -->
+  <script src="/js/env.js"></script>
+
   <script type="module">
     import { getCurrentUserAsync } from '../js/auth.js';
 
@@ -41,7 +44,7 @@
         return;
       }
 
-      // Check if user is admin by looking up their profile
+      // Check if user is admin by calling Netlify function
       const res = await fetch('/.netlify/functions/get-users');
       const users = await res.json();
       const currentUserProfile = users.find(u => u.id === user.id);
