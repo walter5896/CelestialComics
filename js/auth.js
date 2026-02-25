@@ -4,16 +4,14 @@ import { supabase } from './supabase.js';
 console.log('Supabase client:', supabase);
 
 let currentUser = null;
-let currentProfile = { role: 'user' }; // default profile
+let currentProfile = { role: 'user' }; // default role
 let authReadyResolve;
-const authReadyPromise = new Promise((resolve) => { authReadyResolve = resolve; });
-
-/* =======================
-   USER FUNCTIONS
-======================= */
+const authReadyPromise = new Promise((resolve) => {
+  authReadyResolve = resolve;
+});
 
 /**
- * Async getter for current user (waits for auth init)
+ * Async getter for current user, waits until auth state is initialized
  */
 export async function getCurrentUserAsync() {
   await authReadyPromise;
@@ -21,44 +19,23 @@ export async function getCurrentUserAsync() {
 }
 
 /**
- * Synchronous getter (may be null if called too early)
+ * Synchronous getter for current user
  */
 export function getCurrentUser() {
   return currentUser;
 }
 
-/* =======================
-   PROFILE FUNCTIONS
-======================= */
-
 /**
- * Async getter for current user's profile
+ * Async getter for current profile
  */
 export async function getCurrentProfileAsync() {
   await authReadyPromise;
-  if (!currentUser) return { role: 'user', id: null, email: null };
-
-  try {
-    const { data, error, status } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (error && status !== 406) throw error;
-
-    currentProfile = data || { role: 'user', id: currentUser.id, email: currentUser.email };
-    return currentProfile;
-  } catch (err) {
-    console.error('Error fetching profile:', err.message);
-    return { role: 'user', id: currentUser.id, email: currentUser.email };
-  }
+  return currentProfile;
 }
 
-/* =======================
-   UI UPDATE
-======================= */
-
+/**
+ * Update UI based on currentUser
+ */
 function updateUI() {
   const loginLinks = document.querySelectorAll('.login-link');
   const logoutLinks = document.querySelectorAll('.logout-link');
@@ -75,7 +52,7 @@ function updateUI() {
     profileLinks.forEach(el => (el.style.display = 'none'));
   }
 
-  // admin links visible only if role is 'admin'
+  // Show admin links only for admins
   if (currentProfile.role === 'admin') {
     adminLinks.forEach(el => (el.style.display = 'inline-block'));
   } else {
@@ -83,84 +60,84 @@ function updateUI() {
   }
 }
 
-/* =======================
-   AUTH INITIALIZATION
-======================= */
+/**
+ * Fetch current profile from Supabase safely
+ */
+async function fetchCurrentProfile() {
+  if (!currentUser) return;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
 
+    if (error && error.code !== 'PGRST116') { // ignore "no rows" errors
+      throw error;
+    }
+
+    currentProfile = data || { id: currentUser.id, role: 'user', email: currentUser.email };
+    updateUI();
+  } catch (err) {
+    console.error('Error fetching profile:', err.message);
+  }
+}
+
+// INITIALIZE: get session and fetch profile
 (async () => {
   try {
     const { data } = await supabase.auth.getSession();
     currentUser = data.session?.user ?? null;
-
     updateUI();
-
-    if (currentUser) {
-      await getCurrentProfileAsync(); // fetch profile after session
-      updateUI();
-    }
+    if (currentUser) await fetchCurrentProfile();
   } catch (err) {
-    console.error('Error getting initial auth session:', err);
+    console.error('Error initializing auth:', err);
   } finally {
     authReadyResolve();
   }
 })();
 
-// Listen for auth state changes
-supabase.auth.onAuthStateChange(async (_event, session) => {
+// Listen to auth state changes
+supabase.auth.onAuthStateChange(async (event, session) => {
   currentUser = session?.user ?? null;
-
-  if (currentUser) {
-    await getCurrentProfileAsync();
-  } else {
-    currentProfile = { role: 'user' };
-  }
-
   updateUI();
+  if (currentUser) await fetchCurrentProfile();
 });
 
-/* =======================
-   LOGIN / LOGOUT
-======================= */
-
+/**
+ * Log in
+ */
 export async function login(email, password) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      console.error('Login error:', error.message);
-      alert(`Login failed: ${error.message}`);
-      return false;
-    }
+    if (error) throw error;
     currentUser = data.user;
-    await getCurrentProfileAsync();
+    await fetchCurrentProfile();
     updateUI();
     return true;
   } catch (err) {
-    console.error('Unexpected login error:', err);
-    alert('Unexpected login error. Please try again.');
+    console.error('Login error:', err.message);
+    alert(`Login failed: ${err.message}`);
     return false;
   }
 }
 
+/**
+ * Log out
+ */
 export async function logout() {
   try {
     const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Logout error:', error.message);
-      alert(`Logout failed: ${error.message}`);
-      return false;
-    }
+    if (error) throw error;
     currentUser = null;
     currentProfile = { role: 'user' };
     updateUI();
     return true;
   } catch (err) {
-    console.error('Unexpected logout error:', err);
-    alert('Unexpected logout error. Please try again.');
+    console.error('Logout error:', err.message);
+    alert(`Logout failed: ${err.message}`);
     return false;
   }
 }
 
-/* =======================
-   EXPORTS
-======================= */
 export { updateUI, getCurrentUserAsync, getCurrentUser, getCurrentProfileAsync };
