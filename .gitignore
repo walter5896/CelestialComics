@@ -1,2 +1,34 @@
-.env
+# -----------------------------
+# Node / Build Stuff
+# -----------------------------
 node_modules/
+dist/
+build/
+.cache/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# -----------------------------
+# Environment Files (SERVER ONLY)
+# -----------------------------
+.env
+.env.*
+!.env.example
+
+# -----------------------------
+# DO NOT IGNORE FRONTEND env.js
+# -----------------------------
+# (we intentionally commit /js/env.js
+# because it contains PUBLIC Supabase keys)
