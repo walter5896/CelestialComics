@@ -5,27 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Winner | Project Name</title>
   <link rel="stylesheet" href="/css/main.css" />
-  <style>
-    .winner-page { padding: 2rem 1rem; max-width: 800px; margin: auto; }
-    .story-card { background: #fff; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 1.5rem; text-align: center; }
-    .story-card img { max-width: 100%; border-radius: 0.5rem; margin-bottom: 1rem; }
-    .btn { display: inline-block; padding: 0.5rem 1rem; border-radius: 0.375rem; text-decoration: none; font-weight: 600; margin: 0.25rem; }
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-secondary { background: #6b7280; color: white; }
-    .winner-empty { font-size: 1.25rem; text-align: center; margin: 2rem 0; color: #374151; }
-  </style>
 </head>
 <body>
-
   <!-- HEADER -->
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -33,41 +30,121 @@
 
   <!-- WINNER SECTION -->
   <main class="container winner-page">
+    <section class="winner-hero">
+      <h1>🏆 Winner of the Voting!</h1>
+      <p>Congratulations to the story that received the most votes!</p>
+    </section>
 
-    <!-- Empty winner message -->
-    <div id="winner-empty" class="winner-empty" style="display:none;">
-      🏆 No winner has been determined yet. Check back after the voting period ends!
-    </div>
+    <!-- Empty placeholder when voting is open -->
+    <section id="winner-empty" class="winner-empty" style="display:none;">
+      <p>The winner will be revealed once voting has ended.</p>
+    </section>
 
     <!-- Winner details -->
-    <section id="winner-details" style="display:none;">
+    <section id="winner-details" class="winner-details" style="display:none;">
       <div class="story-card">
-        <img id="winner-image" src="" alt="Winning Story" />
-        <h2 id="winner-name">Winning Story Title</h2>
-        <p id="winner-story">Winning story description goes here.</p>
-        <a href="/gallery/story.html" class="btn btn-primary" id="winner-link">Read Full Story</a>
-      </div>
-
-      <div style="text-align:center; margin-top:1rem;">
-        <a href="/vote/" class="btn btn-secondary">Back to Vote</a>
-        <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
+        <img id="winner-image" src="" alt="" />
+        <h2 id="winner-name"></h2>
+        <p id="winner-author"></p>
+        <p id="winner-story"></p>
+        <a id="winner-link" href="#" class="btn btn-primary">Read Full Story</a>
       </div>
     </section>
 
+    <section class="winner-cta">
+      <a href="/vote/" class="btn btn-secondary">Back to Vote</a>
+      <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
+    </section>
   </main>
 
   <!-- FOOTER -->
-  <footer class="site-footer" style="text-align:center; padding:2rem 1rem; background:#f3f4f6;">
-    <p>&copy; 2025 Project Name. All rights reserved.</p>
-    <nav class="footer-nav">
-      <a href="/gallery/">Gallery</a> |
-      <a href="/vote/">Vote</a> |
-      <a href="/shop/">Shop</a> |
-      <a href="/team/">Team</a>
-    </nav>
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
   </footer>
 
-  <!-- JS files -->
-  <script type="module" src="/js/winner.js"></script>
+  <!-- ENV -->
+  <script src="/js/env.js"></script>
+  <!-- Utils -->
+  <script type="module" src="/js/utils.js"></script>
+
+  <!-- Winner JS -->
+  <script type="module">
+    import { supabase } from '/js/supabase.js';
+    import { updateUI, logout } from '/js/auth.js';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateUI();
+
+      // Logout link
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
+      });
+
+      const winnerEmpty = document.getElementById('winner-empty');
+      const winnerDetails = document.getElementById('winner-details');
+      const winnerNameEl = document.getElementById('winner-name');
+      const winnerStoryEl = document.getElementById('winner-story');
+      const winnerAuthorEl = document.getElementById('winner-author');
+      const winnerImageEl = document.getElementById('winner-image');
+      const winnerLinkEl = document.getElementById('winner-link');
+
+      try {
+        // Check if voting is still open
+        const { data: settings, error: settingsError } = await supabase
+          .from('settings')
+          .select('voting_open')
+          .single();
+
+        if (settingsError) throw settingsError;
+
+        const isVotingOpen = settings?.voting_open ?? false;
+
+        if (isVotingOpen) {
+          winnerEmpty.style.display = 'block';
+          winnerDetails.style.display = 'none';
+          return;
+        }
+
+        winnerEmpty.style.display = 'none';
+        winnerDetails.style.display = 'block';
+
+        // Fetch top story by votes
+        const { data: winnerData, error: winnerError } = await supabase
+          .from('stories')
+          .select('id, title, author, description, image_url')
+          .order('votes', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (winnerError) throw winnerError;
+
+        if (winnerData) {
+          winnerNameEl.textContent = winnerData.title;
+          winnerStoryEl.textContent = winnerData.description;
+          winnerAuthorEl.textContent = `By ${winnerData.author}`;
+          winnerImageEl.src = winnerData.image_url || '/assets/images/story1.jpg';
+          winnerImageEl.alt = winnerData.title;
+          winnerLinkEl.href = `/gallery/story.html?id=${winnerData.id}`;
+        }
+
+      } catch (err) {
+        console.error('Error loading winner:', err);
+        winnerEmpty.style.display = 'block';
+        winnerEmpty.textContent = 'Winner information could not be loaded at this time.';
+        winnerDetails.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
