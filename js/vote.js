@@ -6,47 +6,45 @@ import { getCurrentUserAsync } from './auth.js';
    FETCH FUNCTIONS
 ======================= */
 
+// Updated to match global voting window (no per-story voting_status)
 export async function fetchStoriesWithVotes() {
   try {
+    // Fetch all stories
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
       .select('id, title, image_url');
-
     if (storiesError) throw storiesError;
 
-    const storyIds = stories.map(s => s.id);
-
-    // Vote counts
+    // Fetch all votes
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
-      .select('story_id')
-      .in('story_id', storyIds);
-
+      .select('story_id');
     if (votesError) throw votesError;
 
+    // Count votes per story
     const voteCounts = votesData.reduce((acc, v) => {
       acc[String(v.story_id)] = (acc[String(v.story_id)] || 0) + 1;
       return acc;
     }, {});
 
-    // Voting status
+    // Fetch the latest global voting window
     const { data: votingDataRaw, error: votingError } = await supabase
       .from('voting_status')
-      .select('story_id, status')
-      .in('story_id', storyIds);
-
+      .select('*')
+      .limit(1);
     if (votingError) throw votingError;
 
-    const votingMap = {};
-    votingDataRaw.forEach(v => {
-      votingMap[String(v.story_id)] = v.status;
-    });
+    const votingStatus = votingDataRaw[0] || {};
+    const status = votingStatus.is_open ? 'open' :
+                   votingStatus.is_closed ? 'closed' : 'upcoming';
 
     return stories.map(story => ({
       ...story,
       vote_count: voteCounts[String(story.id)] || 0,
-      voting_status: votingMap[String(story.id)] || 'upcoming'
+      voting_status: status,
+      winner_id: votingStatus.winner_id || null
     }));
+
   } catch (err) {
     console.error('Error fetching stories with votes:', err);
     return [];
@@ -134,7 +132,6 @@ export async function unsaveStory(storyId) {
    RENDERERS
 ======================= */
 
-// Home page: read-only
 export function renderStoriesForHome(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -153,7 +150,6 @@ export function renderStoriesForHome(stories, containerId = 'story-grid') {
   });
 }
 
-// Gallery page: **SAVE BUTTON REMOVED**
 export function renderStoriesForGallery(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -172,7 +168,6 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
   });
 }
 
-// Vote page: vote + read more
 export function renderStoriesForVote(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -197,7 +192,6 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
   });
 }
 
-// MyProfile page: voted + saved stories
 export function renderStoriesForProfile(votedStories, savedStories, votedContainerId, savedContainerId) {
   const votedContainer = document.getElementById(votedContainerId);
   const savedContainer = document.getElementById(savedContainerId);
