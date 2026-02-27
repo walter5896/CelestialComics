@@ -21,6 +21,7 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
+          <!-- Login/Logout links -->
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -30,27 +31,25 @@
 
   <!-- WINNER SECTION -->
   <main class="container winner-page">
-    <section class="winner-hero">
-      <h1>🏆 Winner of the Voting!</h1>
-      <p>Congratulations to the story that received the most votes!</p>
-    </section>
+    <!-- Shown if no winner yet -->
+    <div id="winner-empty" style="display:none">
+      <h2>No Winner Yet 🏆</h2>
+      <p>The voting period is still ongoing or no winner has been set.</p>
+    </div>
 
-    <!-- Empty placeholder when voting is open -->
-    <section id="winner-empty" class="winner-empty" style="display:none;">
-      <p>The winner will be revealed once voting has ended.</p>
-    </section>
-
-    <!-- Winner details -->
-    <section id="winner-details" class="winner-details" style="display:none;">
+    <!-- Shown if a winner exists -->
+    <div id="winner-details" style="display:none">
       <div class="story-card">
-        <img id="winner-image" src="" alt="" />
-        <h2 id="winner-name"></h2>
-        <p id="winner-author"></p>
-        <p id="winner-story"></p>
-        <a id="winner-link" href="#" class="btn btn-primary">Read Full Story</a>
+        <img id="winner-image" src="" alt="Winning Story" />
+        <h2 id="winner-name">Winning Story Title</h2>
+        <p id="winner-story">Description of the winning story.</p>
+        <p>
+          Read the full story <a id="winner-link" href="#">here</a>
+        </p>
       </div>
-    </section>
+    </div>
 
+    <!-- CTA buttons -->
     <section class="winner-cta">
       <a href="/vote/" class="btn btn-secondary">Back to Vote</a>
       <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
@@ -72,78 +71,25 @@
 
   <!-- ENV -->
   <script src="/js/env.js"></script>
-  <!-- Utils -->
-  <script type="module" src="/js/utils.js"></script>
 
   <!-- Winner JS -->
+  <script type="module" src="/js/winner.js"></script>
+
+  <!-- Auth utils -->
   <script type="module">
-    import { supabase } from '/js/supabase.js';
     import { updateUI, logout } from '/js/auth.js';
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
-      // Logout link
+      // Logout links
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
+          window.location.href = '/';
         });
       });
-
-      const winnerEmpty = document.getElementById('winner-empty');
-      const winnerDetails = document.getElementById('winner-details');
-      const winnerNameEl = document.getElementById('winner-name');
-      const winnerStoryEl = document.getElementById('winner-story');
-      const winnerAuthorEl = document.getElementById('winner-author');
-      const winnerImageEl = document.getElementById('winner-image');
-      const winnerLinkEl = document.getElementById('winner-link');
-
-      try {
-        // Check if voting is still open
-        const { data: settings, error: settingsError } = await supabase
-          .from('settings')
-          .select('voting_open')
-          .single();
-
-        if (settingsError) throw settingsError;
-
-        const isVotingOpen = settings?.voting_open ?? false;
-
-        if (isVotingOpen) {
-          winnerEmpty.style.display = 'block';
-          winnerDetails.style.display = 'none';
-          return;
-        }
-
-        winnerEmpty.style.display = 'none';
-        winnerDetails.style.display = 'block';
-
-        // Fetch top story by votes
-        const { data: winnerData, error: winnerError } = await supabase
-          .from('stories')
-          .select('id, title, author, description, image_url')
-          .order('votes', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (winnerError) throw winnerError;
-
-        if (winnerData) {
-          winnerNameEl.textContent = winnerData.title;
-          winnerStoryEl.textContent = winnerData.description;
-          winnerAuthorEl.textContent = `By ${winnerData.author}`;
-          winnerImageEl.src = winnerData.image_url || '/assets/images/story1.jpg';
-          winnerImageEl.alt = winnerData.title;
-          winnerLinkEl.href = `/gallery/story.html?id=${winnerData.id}`;
-        }
-
-      } catch (err) {
-        console.error('Error loading winner:', err);
-        winnerEmpty.style.display = 'block';
-        winnerEmpty.textContent = 'Winner information could not be loaded at this time.';
-        winnerDetails.style.display = 'none';
-      }
     });
   </script>
 </body>
