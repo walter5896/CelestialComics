@@ -6,7 +6,6 @@ import { getCurrentUserAsync } from './auth.js';
    FETCH FUNCTIONS
 ======================= */
 
-// Updated to match global voting window (no per-story voting_status)
 export async function fetchStoriesWithVotes() {
   try {
     // Fetch all stories
@@ -15,36 +14,44 @@ export async function fetchStoriesWithVotes() {
       .select('id, title, image_url');
     if (storiesError) throw storiesError;
 
-    // Fetch all votes
+    const storyIds = stories.map(s => s.id);
+
+    // Count votes per story
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
       .select('story_id');
     if (votesError) throw votesError;
 
-    // Count votes per story
     const voteCounts = votesData.reduce((acc, v) => {
       acc[String(v.story_id)] = (acc[String(v.story_id)] || 0) + 1;
       return acc;
     }, {});
 
-    // Fetch the latest global voting window
-    const { data: votingDataRaw, error: votingError } = await supabase
-      .from('voting_status')
-      .select('*')
+    // Fetch current global voting period
+    const { data: votingPeriods, error: votingError } = await supabase
+      .from('voting_periods')
+      .select('start_time, end_time')
+      .order('start_time', { ascending: false })
       .limit(1);
     if (votingError) throw votingError;
 
-    const votingStatus = votingDataRaw[0] || {};
-    const status = votingStatus.is_open ? 'open' :
-                   votingStatus.is_closed ? 'closed' : 'upcoming';
+    const now = new Date();
+    let globalStatus = 'upcoming';
+    if (votingPeriods && votingPeriods.length > 0) {
+      const { start_time, end_time } = votingPeriods[0];
+      const start = new Date(start_time);
+      const end = new Date(end_time);
+      if (now < start) globalStatus = 'upcoming';
+      else if (now >= start && now <= end) globalStatus = 'open';
+      else globalStatus = 'closed';
+    }
 
+    // Attach vote counts & global voting status to each story
     return stories.map(story => ({
       ...story,
       vote_count: voteCounts[String(story.id)] || 0,
-      voting_status: status,
-      winner_id: votingStatus.winner_id || null
+      voting_status: globalStatus
     }));
-
   } catch (err) {
     console.error('Error fetching stories with votes:', err);
     return [];
