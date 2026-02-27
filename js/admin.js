@@ -21,7 +21,6 @@ async function fetchCurrentProfile() {
     if (error) throw error;
 
     return data || { id: user.id, email: user.email, role: 'user' };
-
   } catch (err) {
     console.error('Error fetching profile:', err.message);
     return { id: user.id, email: user.email, role: 'user' };
@@ -81,7 +80,6 @@ async function updateRole(userId, newRole) {
 
     alert('Role updated successfully!');
     await loadUsers();
-
   } catch (err) {
     console.error('Error updating role:', err.message);
     alert('Failed to update role.');
@@ -94,27 +92,74 @@ async function updateRole(userId, newRole) {
 
 async function determineWinner() {
   try {
-    const res = await fetch('/.netlify/functions/determine-winner', {
-      method: 'POST'
+    const res = await fetch('/.netlify/functions/determine-winner', { method: 'POST' });
+    const result = await res.json();
+
+    if (!res.ok) throw new Error(result.error || 'Unknown error');
+
+    if (result.success) {
+      alert(`Winner determined!\n\nStory ID: ${result.winner_id}\nTotal Votes: ${result.vote_count}`);
+    } else {
+      alert(result.message);
+    }
+  } catch (err) {
+    console.error('Error determining winner:', err.message);
+    alert('Failed to determine winner. Check console for details.');
+  }
+}
+
+/* =========================================
+   VOTING PERIOD MANAGEMENT
+========================================= */
+
+async function loadVotingPeriod() {
+  try {
+    const { data: periods, error } = await supabase
+      .from('voting_periods')
+      .select('start_time, end_time')
+      .order('start_time', { ascending: false })
+      .limit(1);
+
+    if (error) throw error;
+
+    if (periods && periods.length > 0) {
+      const startInput = document.getElementById('voting-start');
+      const endInput = document.getElementById('voting-end');
+
+      startInput.value = new Date(periods[0].start_time).toISOString().slice(0,16);
+      endInput.value = new Date(periods[0].end_time).toISOString().slice(0,16);
+    }
+  } catch (err) {
+    console.error('Error loading voting period:', err.message);
+  }
+}
+
+async function updateVotingPeriod(event) {
+  event.preventDefault();
+
+  const start_time = document.getElementById('voting-start').value;
+  const end_time = document.getElementById('voting-end').value;
+  const msgEl = document.getElementById('voting-status-message');
+
+  try {
+    const res = await fetch('/.netlify/functions/set-voting-period', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_time, end_time })
     });
 
     const result = await res.json();
 
-    if (!res.ok) {
-      throw new Error(result.error || 'Unknown error');
-    }
-
     if (result.success) {
-      alert(
-        `Winner determined!\n\nStory ID: ${result.winner_id}\nTotal Votes: ${result.vote_count}`
-      );
+      msgEl.textContent = 'Voting period updated successfully!';
+      msgEl.style.color = 'green';
     } else {
-      alert(result.message);
+      msgEl.textContent = `Error: ${result.error}`;
+      msgEl.style.color = 'red';
     }
-
   } catch (err) {
-    console.error('Error determining winner:', err.message);
-    alert('Failed to determine winner. Check console for details.');
+    msgEl.textContent = `Error: ${err.message}`;
+    msgEl.style.color = 'red';
   }
 }
 
@@ -130,7 +175,23 @@ export async function initAdminPanel() {
     return;
   }
 
+  // Show user table and voting section
+  document.getElementById('users-table').style.display = 'table';
+  document.getElementById('voting-section').style.display = 'block';
+
+  // Load all users
   await loadUsers();
+
+  // Load voting period
+  await loadVotingPeriod();
+
+  // Attach voting period form handler
+  const votingForm = document.getElementById('voting-period-form');
+  votingForm.addEventListener('submit', updateVotingPeriod);
+
+  // Attach Determine Winner button
+  const winnerBtn = document.getElementById('determine-winner-btn');
+  winnerBtn.addEventListener('click', determineWinner);
 }
 
 /* =========================================
