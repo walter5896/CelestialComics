@@ -1,4 +1,3 @@
-<!-- admin/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,9 +43,17 @@
         return;
       }
 
-      // Check if user is admin by calling Netlify function
-      const res = await fetch('/.netlify/functions/get-users');
-      const users = await res.json();
+      // Fetch all users
+      let users = [];
+      try {
+        const res = await fetch('/.netlify/functions/get-users');
+        users = await res.json();
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+        statusEl.textContent = 'Error loading users.';
+        return;
+      }
+
       const currentUserProfile = users.find(u => u.id === user.id);
 
       if (!currentUserProfile || currentUserProfile.role !== 'admin') {
@@ -75,7 +82,38 @@
         `;
         tbody.appendChild(tr);
       });
+
+      // Attach event listeners to Update buttons
+      tbody.querySelectorAll('button').forEach(button => {
+        button.addEventListener('click', async () => {
+          const userId = button.dataset.userId;
+          const select = button.previousElementSibling;
+          const newRole = select.value;
+
+          try {
+            const res = await fetch('/.netlify/functions/update-user-role', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, role: newRole })
+            });
+
+            const result = await res.json();
+
+            if (res.ok) {
+              alert(`Role updated to ${newRole} successfully!`);
+              // Optionally, update the table row without reload
+              button.closest('tr').querySelector('td:nth-child(2)').textContent = newRole;
+            } else {
+              alert(`Failed to update role: ${result.error}`);
+            }
+          } catch (err) {
+            console.error('Error updating role:', err);
+            alert('Error updating role, check console.');
+          }
+        });
+      });
+
     })();
   </script>
 </body>
-</html>
+</html>   
