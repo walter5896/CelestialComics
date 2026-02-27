@@ -1,57 +1,61 @@
 // /js/winner.js
-import { supabase } from './supabase.js'; // Make sure supabase.js exports your client
+import { supabase } from './supabase.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const winnerEmpty = document.getElementById('winner-empty');
   const winnerDetails = document.getElementById('winner-details');
   const winnerNameEl = document.getElementById('winner-name');
   const winnerStoryEl = document.getElementById('winner-story');
+  const winnerImageEl = document.getElementById('winner-image');
 
-  // 1️⃣ Get voting status from Supabase
-  const { data: settings, error: settingsError } = await supabase
-    .from('settings') // or whatever table you track global voting status
-    .select('voting_open')
-    .single();
-
-  if (settingsError) {
-    console.error('Error fetching voting status:', settingsError);
-    // fallback: assume voting is closed
-  }
-
-  const isVotingOpen = settings?.voting_open ?? false;
-
-  // 2️⃣ Show the correct page state
-  if (isVotingOpen) {
-    winnerEmpty.style.display = 'block';
-    winnerDetails.style.display = 'none';
-  } else {
-    winnerEmpty.style.display = 'none';
-    winnerDetails.style.display = 'block';
-
-    // 3️⃣ Fetch winner info
-    const { data: winnerData, error: winnerError } = await supabase
-      .from('stories') // replace with your stories table
-      .select('id, title, author, description, image_url')
-      .order('votes', { ascending: false }) // assuming you track votes
+  try {
+    // 1️⃣ Get the latest voting period with a winner
+    const { data: period, error: periodError } = await supabase
+      .from('voting_periods')
+      .select('winner_id')
+      .order('end_time', { ascending: false })
       .limit(1)
       .single();
 
-    if (winnerError) {
-      console.error('Error fetching winner:', winnerError);
+    if (periodError) throw periodError;
+
+    // 2️⃣ Determine if a winner exists
+    if (!period?.winner_id) {
+      // No winner yet
+      winnerEmpty.style.display = 'block';
+      winnerDetails.style.display = 'none';
       return;
     }
 
-    // 4️⃣ Populate winner details
-    if (winnerData) {
-      winnerNameEl.textContent = winnerData.title;
-      winnerStoryEl.textContent = winnerData.description;
+    // 3️⃣ Fetch winner story
+    const { data: winnerData, error: winnerError } = await supabase
+      .from('stories')
+      .select('id, title, author, description, image_url, created_at')
+      .eq('id', period.winner_id)
+      .single();
 
-      // Optional: update an image if you have one
-      const winnerImageEl = document.getElementById('winner-image');
-      if (winnerImageEl && winnerData.image_url) {
-        winnerImageEl.src = winnerData.image_url;
-        winnerImageEl.alt = winnerData.title;
-      }
+    if (winnerError) throw winnerError;
+
+    if (!winnerData) {
+      winnerEmpty.style.display = 'block';
+      winnerDetails.style.display = 'none';
+      return;
     }
+
+    // 4️⃣ Populate DOM
+    winnerEmpty.style.display = 'none';
+    winnerDetails.style.display = 'block';
+    winnerNameEl.textContent = winnerData.title;
+    winnerStoryEl.textContent = winnerData.description || 'No description available.';
+    if (winnerImageEl && winnerData.image_url) {
+      winnerImageEl.src = winnerData.image_url;
+      winnerImageEl.alt = winnerData.title;
+    }
+
+  } catch (err) {
+    console.error('Error fetching winner:', err);
+    // fallback: show empty winner
+    winnerEmpty.style.display = 'block';
+    winnerDetails.style.display = 'none';
   }
 });
