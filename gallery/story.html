@@ -74,7 +74,7 @@
 </footer>
 
 <script src="/js/env.js"></script>
- <script type="module" src="/js/utils.js"></script>
+<script type="module" src="/js/utils.js"></script>
 
 <script type="module">
   import { updateUI, logout } from '/js/auth.js';
@@ -83,18 +83,18 @@
     fetchStoriesWithVotes,
     renderStoriesForHome,
     fetchSavedStories,
-    submitVote,
     saveStory
   } from '/js/vote.js';
+  import { handleVoteButtonState } from '/js/votingStateControl.js';
 
   document.addEventListener('DOMContentLoaded', async () => {
-
     updateUI();
 
     document.querySelectorAll('.logout-link').forEach(el => {
       el.addEventListener('click', async (e) => {
         e.preventDefault();
         await logout();
+        location.reload();
       });
     });
 
@@ -111,7 +111,15 @@
 
     // Vote button
     const voteBtn = document.querySelector('.vote-btn');
+    await handleVoteButtonState(voteBtn, storyId); // disables if voting closed
+
     voteBtn.addEventListener('click', async () => {
+      // check again in case voting period changed
+      const canVote = await handleVoteButtonState(voteBtn, storyId);
+      if (!canVote) return;
+
+      // proceed with voting
+      const { submitVote } = await import('/js/vote.js'); // dynamic import
       const success = await submitVote(storyId);
       if (success) {
         voteBtn.disabled = true;
@@ -121,7 +129,6 @@
 
     // Save button
     const saveBtn = document.querySelector('.save-btn');
-
     if (alreadySaved) {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Already Saved';
@@ -144,7 +151,6 @@
     const stories = await fetchStoriesWithVotes();
     const relatedStories = stories.filter(s => s.id !== storyId);
     renderStoriesForHome(relatedStories, 'related-stories-grid');
-
   });
 </script>
 
