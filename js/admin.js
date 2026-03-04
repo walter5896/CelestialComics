@@ -1,12 +1,10 @@
 // /js/admin.js
-
 import { supabase } from './supabase.js';
 import { getCurrentUserAsync } from './auth.js';
 
 /* =========================================
    AUTH / PROFILE
 ========================================= */
-
 async function fetchCurrentProfile() {
   const user = await getCurrentUserAsync();
   if (!user) return { id: null, role: 'user', email: null };
@@ -30,7 +28,6 @@ async function fetchCurrentProfile() {
 /* =========================================
    USER MANAGEMENT
 ========================================= */
-
 async function loadUsers() {
   try {
     const { data: users, error } = await supabase
@@ -62,7 +59,6 @@ async function loadUsers() {
       `;
       tbody.appendChild(row);
     });
-
   } catch (err) {
     console.error('Error loading users:', err.message);
     alert('Failed to load users. Check console for details.');
@@ -89,7 +85,6 @@ async function updateRole(userId, newRole) {
 /* =========================================
    VOTING CONTROLS
 ========================================= */
-
 async function determineWinner() {
   try {
     const res = await fetch('/.netlify/functions/determine-winner', { method: 'POST' });
@@ -111,7 +106,6 @@ async function determineWinner() {
 /* =========================================
    VOTING PERIOD MANAGEMENT
 ========================================= */
-
 async function loadVotingPeriod() {
   try {
     const { data: periods, error } = await supabase
@@ -123,11 +117,23 @@ async function loadVotingPeriod() {
     if (error) throw error;
 
     if (periods && periods.length > 0) {
+      const currentPeriod = periods[0];
       const startInput = document.getElementById('voting-start');
       const endInput = document.getElementById('voting-end');
+      const winnerBtn = document.getElementById('determine-winner-btn');
 
-      startInput.value = new Date(periods[0].start_time).toISOString().slice(0,16);
-      endInput.value = new Date(periods[0].end_time).toISOString().slice(0,16);
+      startInput.value = new Date(currentPeriod.start_time).toISOString().slice(0,16);
+      endInput.value = new Date(currentPeriod.end_time).toISOString().slice(0,16);
+
+      // Disable Determine Winner if voting is still open
+      const now = new Date();
+      if (now < new Date(currentPeriod.end_time)) {
+        winnerBtn.disabled = true;
+        winnerBtn.textContent = 'Voting Still Open';
+      } else {
+        winnerBtn.disabled = false;
+        winnerBtn.textContent = 'Determine Winner';
+      }
     }
   } catch (err) {
     console.error('Error loading voting period:', err.message);
@@ -140,6 +146,7 @@ async function updateVotingPeriod(event) {
   const start_time = document.getElementById('voting-start').value;
   const end_time = document.getElementById('voting-end').value;
   const msgEl = document.getElementById('voting-status-message');
+  const winnerBtn = document.getElementById('determine-winner-btn');
 
   try {
     const res = await fetch('/.netlify/functions/set-voting-period', {
@@ -153,6 +160,17 @@ async function updateVotingPeriod(event) {
     if (result.success) {
       msgEl.textContent = 'Voting period updated successfully!';
       msgEl.style.color = 'green';
+
+      // Update Determine Winner button state based on new end_time
+      const now = new Date();
+      if (now < new Date(end_time)) {
+        winnerBtn.disabled = true;
+        winnerBtn.textContent = 'Voting Still Open';
+      } else {
+        winnerBtn.disabled = false;
+        winnerBtn.textContent = 'Determine Winner';
+      }
+
     } else {
       msgEl.textContent = `Error: ${result.error}`;
       msgEl.style.color = 'red';
@@ -166,7 +184,6 @@ async function updateVotingPeriod(event) {
 /* =========================================
    INIT ADMIN PANEL
 ========================================= */
-
 export async function initAdminPanel() {
   const profile = await fetchCurrentProfile();
 
@@ -197,6 +214,5 @@ export async function initAdminPanel() {
 /* =========================================
    GLOBAL EXPOSURE (for inline onclick)
 ========================================= */
-
 window.updateRole = updateRole;
 window.determineWinner = determineWinner;
