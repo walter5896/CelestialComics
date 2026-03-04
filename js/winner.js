@@ -61,10 +61,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Link to story page
-    if (winnerLinkEl) {
-      winnerLinkEl.href = `/story.html?id=${winnerData.id}`;
-      winnerLinkEl.textContent = 'Read Full Story';
-    }
+  if (winnerLinkEl) {
+  // adjust the path below based on your actual story page location
+  winnerLinkEl.href = `/story/index.html?id=${winnerData.id}`;
+  winnerLinkEl.textContent = 'Read Full Story';
+}
 
   } catch (err) {
     console.error('Error fetching winner:', err);
