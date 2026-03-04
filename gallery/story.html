@@ -75,12 +75,13 @@
   import { updateUI, logout } from '/js/auth.js';
   import { loadStory } from '/js/story.js';
   import { fetchStoriesWithVotes, renderStoriesForHome, fetchSavedStories, submitVote, saveStory } from '/js/vote.js';
-  import { enforceVotingRules } from '/js/votingStateControl.js';
+  import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
 
   document.addEventListener('DOMContentLoaded', async () => {
 
     updateUI();
 
+    // Logout handler
     document.querySelectorAll('.logout-link').forEach(el => {
       el.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -94,16 +95,17 @@
     if (!story) return;
     const storyId = story.id;
 
-    // Populate story hero
+    // Populate hero section
     document.querySelector('.story-title').textContent = story.title;
     document.querySelector('.story-meta').textContent = story.author || '';
     const heroImg = document.querySelector('.story-hero-img');
     heroImg.src = story.image_url || '';
     heroImg.alt = story.title;
 
-    // Set data-story-id on buttons
+    // Buttons
     const voteBtn = document.querySelector('.vote-btn');
     voteBtn.dataset.storyId = storyId;
+
     const saveBtn = document.querySelector('.save-btn');
     saveBtn.dataset.storyId = storyId;
 
@@ -117,7 +119,11 @@
     }
 
     // Attach vote listener
-    voteBtn.addEventListener('click', async () => {
+    voteBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      // Disable click if button is already disabled by voting restrictions
+      if (voteBtn.disabled) return;
+
       const success = await submitVote(storyId);
       if (success) {
         voteBtn.disabled = true;
@@ -139,13 +145,14 @@
       }
     });
 
-    // Render related stories (read-only)
+    // Related stories
     const stories = await fetchStoriesWithVotes();
     const relatedStories = stories.filter(s => s.id !== storyId);
     renderStoriesForHome(relatedStories, 'related-stories-grid');
 
-    // === ENFORCE VOTING RULES on this single-story page ===
-    await enforceVotingRules('.story-cta');
+    // === SINGLE STORY VOTING RESTRICTIONS ===
+    await restrictSingleStoryVoting(story, voteBtn);
+
   });
 </script>
 
