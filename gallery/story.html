@@ -73,9 +73,6 @@
   </div>
 </footer>
 
-<script src="/js/env.js"></script>
- <script type="module" src="/js/utils.js"></script>
-
 <script type="module">
   import { updateUI, logout } from '/js/auth.js';
   import { loadStory } from '/js/story.js';
@@ -86,6 +83,9 @@
     submitVote,
     saveStory
   } from '/js/vote.js';
+
+  // NEW: import voting rules
+  import { enforceVotingRules } from '/js/votingStateControl.js';
 
   document.addEventListener('DOMContentLoaded', async () => {
 
@@ -144,6 +144,11 @@
     const stories = await fetchStoriesWithVotes();
     const relatedStories = stories.filter(s => s.id !== storyId);
     renderStoriesForHome(relatedStories, 'related-stories-grid');
+
+    // ==============================
+    // NEW: enforce voting rules on this page
+    // ==============================
+    await enforceVotingRules('story-actions');
 
   });
 </script>
