@@ -10,17 +10,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const winnerLinkEl = document.getElementById('winner-link');
 
   try {
-    // 1️⃣ Get the latest voting period with a winner
+    // 1️⃣ Get the latest voting period
     const { data: period, error: periodError } = await supabase
       .from('voting_periods')
-      .select('winner_id, end_time')
+      .select('winner_id')
       .order('end_time', { ascending: false })
       .limit(1)
       .single();
 
     if (periodError) throw periodError;
 
-    // 2️⃣ Determine if a winner exists
+    // 2️⃣ Check if a winner exists
     if (!period?.winner_id) {
       winnerEmpty.style.display = 'block';
       winnerDetails.style.display = 'none';
@@ -30,12 +30,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3️⃣ Fetch winner story (columns that actually exist)
     const { data: winnerData, error: winnerError } = await supabase
       .from('stories')
-      .select('id, title, image_url, created_at')
+      .select('id, title, image_url')
       .eq('id', period.winner_id)
       .single();
 
     if (winnerError) throw winnerError;
-
     if (!winnerData) {
       winnerEmpty.style.display = 'block';
       winnerDetails.style.display = 'none';
@@ -46,25 +45,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     winnerEmpty.style.display = 'none';
     winnerDetails.style.display = 'block';
 
-    winnerNameEl.textContent = winnerData.title;
-    winnerStoryEl.textContent = 'Story details not available.'; // placeholder
+    // Title
+    winnerNameEl.textContent = winnerData.title || 'Winning Story';
 
+    // Placeholder description (optional; you can add description later)
+    winnerStoryEl.textContent = 'Story details not available.';
+
+    // Image
     if (winnerImageEl && winnerData.image_url) {
       winnerImageEl.src = winnerData.image_url;
       winnerImageEl.alt = winnerData.title;
+      winnerImageEl.style.display = 'block';
     } else if (winnerImageEl) {
-      winnerImageEl.style.display = 'none'; // hide image if none
+      winnerImageEl.style.display = 'none';
     }
 
-    // Optional: link to story page if route exists
-   if (winnerLinkEl) {
-  winnerLinkEl.href = `/story.html?id=${winnerData.id}`;
-}
-    // Optional: show voting period end date
-    const endDate = new Date(period.end_time);
-    const endDateEl = document.getElementById('winner-end-date');
-    if (endDateEl) {
-      endDateEl.textContent = `Winner determined after voting ended on ${endDate.toLocaleString()}`;
+    // Link to story page
+    if (winnerLinkEl) {
+      winnerLinkEl.href = `/story.html?id=${winnerData.id}`;
+      winnerLinkEl.textContent = 'Read Full Story';
     }
 
   } catch (err) {
