@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const winnerLinkEl = document.getElementById('winner-link');
 
   try {
-    // 1️⃣ Get the latest voting period
     const { data: period, error: periodError } = await supabase
       .from('voting_periods')
       .select('winner_id')
@@ -20,52 +19,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (periodError) throw periodError;
 
-    // 2️⃣ Check if a winner exists
     if (!period?.winner_id) {
       winnerEmpty.style.display = 'block';
       winnerDetails.style.display = 'none';
       return;
     }
 
-    // 3️⃣ Fetch winner story (columns that actually exist)
     const { data: winnerData, error: winnerError } = await supabase
       .from('stories')
       .select('id, title, image_url')
       .eq('id', period.winner_id)
       .single();
 
-    if (winnerError) throw winnerError;
-    if (!winnerData) {
+    if (winnerError || !winnerData) {
       winnerEmpty.style.display = 'block';
       winnerDetails.style.display = 'none';
       return;
     }
 
-    // 4️⃣ Populate DOM
+    // Populate DOM
     winnerEmpty.style.display = 'none';
     winnerDetails.style.display = 'block';
-
-    // Title
-    winnerNameEl.textContent = winnerData.title || 'Winning Story';
-
-    // Placeholder description (optional; you can add description later)
-    winnerStoryEl.textContent = 'Story details not available.';
-
-    // Image
+    winnerNameEl.textContent = winnerData.title;
+    winnerStoryEl.textContent = 'Read the full story below.';
     if (winnerImageEl && winnerData.image_url) {
       winnerImageEl.src = winnerData.image_url;
       winnerImageEl.alt = winnerData.title;
-      winnerImageEl.style.display = 'block';
-    } else if (winnerImageEl) {
-      winnerImageEl.style.display = 'none';
     }
 
-    // Link to story page
-  if (winnerLinkEl) {
-  // adjust the path below based on your actual story page location
-  winnerLinkEl.href = `/story/index.html?id=${winnerData.id}`;
-  winnerLinkEl.textContent = 'Read Full Story';
-}
+    // Set correct story page link
+    if (winnerLinkEl) {
+      winnerLinkEl.href = `/story/?id=${winnerData.id}`;
+      winnerLinkEl.textContent = 'Read Full Story';
+    }
 
   } catch (err) {
     console.error('Error fetching winner:', err);
