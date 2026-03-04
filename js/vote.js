@@ -8,11 +8,15 @@ import { getCurrentUserAsync } from './auth.js';
 
 export async function fetchStoriesWithVotes() {
   try {
+    // Fetch all stories
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
       .select('id, title, image_url');
     if (storiesError) throw storiesError;
 
+    const storyIds = stories.map(s => s.id);
+
+    // Count votes per story
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
       .select('story_id');
@@ -23,6 +27,7 @@ export async function fetchStoriesWithVotes() {
       return acc;
     }, {});
 
+    // Fetch current global voting period
     const { data: votingPeriods, error: votingError } = await supabase
       .from('voting_periods')
       .select('start_time, end_time')
@@ -41,6 +46,7 @@ export async function fetchStoriesWithVotes() {
       else globalStatus = 'closed';
     }
 
+    // Attach vote counts & global voting status to each story
     return stories.map(story => ({
       ...story,
       vote_count: voteCounts[String(story.id)] || 0,
@@ -111,7 +117,9 @@ export async function saveStory(storyId) {
   const { error } = await supabase
     .from('saved_stories')
     .insert({ user_id: user.id, story_id: storyId });
-  if (error && error.code !== '23505') { console.error(error); return { success: false }; }
+  if (error && error.code !== '23505') {
+    console.error(error); return { success: false };
+  }
   return { success: true };
 }
 
@@ -194,7 +202,6 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
 export function renderStoriesForProfile(votedStories, savedStories, votedContainerId, savedContainerId) {
   const votedContainer = document.getElementById(votedContainerId);
   const savedContainer = document.getElementById(savedContainerId);
-
   if (votedContainer) {
     votedContainer.innerHTML = '';
     votedStories.forEach(story => {
@@ -309,13 +316,9 @@ export function attachUnsaveListeners(containerId) {
   });
 }
 
-/* =======================
-   INIT FUNCTIONS
-======================= */
-
 export async function initVoting(containerId = 'story-grid') {
   const user = await getCurrentUserAsync();
-  if (!user) return false;
+  if (!user) return false; // not logged in
 
   const stories = await fetchStoriesWithVotes();
   renderStoriesForVote(stories, containerId);
