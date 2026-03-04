@@ -64,16 +64,23 @@
   <script type="module" src="/js/utils.js"></script>
   <script type="module" src="/js/auth.js"></script>
   <script type="module" src="/js/vote.js"></script>
-  
+  <script type="module" src="/js/votingStateControl.js"></script>
 
   <script type="module">
     import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes, fetchUserVotes, fetchSavedStories, renderStoriesForProfile, attachRecantListeners, attachUnsaveListeners } from '/js/vote.js';
+    import { 
+      fetchStoriesWithVotes, 
+      fetchUserVotes, 
+      fetchSavedStories, 
+      renderStoriesForProfile, 
+      attachRecantListeners, 
+      attachUnsaveListeners 
+    } from '/js/vote.js';
+    import { enforceVotingRules } from '/js/votingStateControl.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Update login/logout links
+      // Update login/logout UI
       updateUI();
-
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async e => {
           e.preventDefault();
@@ -89,7 +96,7 @@
         return;
       }
 
-      // Fetch user's voted stories
+      // Fetch all stories and user votes
       const allStories = await fetchStoriesWithVotes();
       const userVotesIds = await fetchUserVotes();
       const votedStories = allStories.filter(s => userVotesIds.includes(String(s.id)));
@@ -101,13 +108,16 @@
       // Render profile sections
       renderStoriesForProfile(votedStories, savedStories, 'voted-stories', 'saved-stories');
 
-      // Show/hide empty messages
+      // Show empty messages if needed
       document.getElementById('no-votes').style.display = votedStories.length === 0 ? 'block' : 'none';
       document.getElementById('no-saved').style.display = savedStories.length === 0 ? 'block' : 'none';
 
-      // Attach recant/unsave button listeners
+      // Attach button listeners
       attachRecantListeners('voted-stories');
       attachUnsaveListeners('saved-stories');
+
+      // Disable voting/recant buttons if voting is closed
+      await enforceVotingRules('voted-stories');
     });
   </script>
 </body>
