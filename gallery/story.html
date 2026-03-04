@@ -72,88 +72,83 @@
 <script type="module" src="/js/utils.js"></script>
 
 <script type="module">
-  import { updateUI, logout } from '/js/auth.js';
-  import { loadStory } from '/js/story.js';
-  import { fetchStoriesWithVotes, renderStoriesForHome, fetchSavedStories, submitVote, saveStory } from '/js/vote.js';
-  import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
+import { updateUI, logout } from '/js/auth.js';
+import { loadStory } from '/js/story.js';
+import { fetchStoriesWithVotes, renderStoriesForHome, fetchSavedStories, submitVote, saveStory } from '/js/vote.js';
+import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
 
-  document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
-    updateUI();
+  updateUI();
 
-    // Logout handler
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
-        location.reload();
-      });
-    });
-
-    // Load main story
-    const story = await loadStory();
-    if (!story) return;
-    const storyId = story.id;
-
-    // Populate hero section
-    document.querySelector('.story-title').textContent = story.title;
-    document.querySelector('.story-meta').textContent = story.author || '';
-    const heroImg = document.querySelector('.story-hero-img');
-    heroImg.src = story.image_url || '';
-    heroImg.alt = story.title;
-
-    // Buttons
-    const voteBtn = document.querySelector('.vote-btn');
-    voteBtn.dataset.storyId = storyId;
-
-    const saveBtn = document.querySelector('.save-btn');
-    saveBtn.dataset.storyId = storyId;
-
-    // Check if already saved
-    const savedResult = await fetchSavedStories();
-    const savedStories = savedResult.success ? savedResult.data : [];
-    const alreadySaved = savedStories.some(s => String(s.id) === String(storyId));
-    if (alreadySaved) {
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Already Saved';
-    }
-
-    // Attach vote listener
-    voteBtn.addEventListener('click', async (e) => {
+  document.querySelectorAll('.logout-link').forEach(el => {
+    el.addEventListener('click', async (e) => {
       e.preventDefault();
-      // Disable click if button is already disabled by voting restrictions
-      if (voteBtn.disabled) return;
+      await logout();
+      location.reload();
+    });
+  });
 
+  // Load main story
+  const story = await loadStory();
+  if (!story) return;
+  const storyId = story.id;
+
+  // Populate story hero
+  document.querySelector('.story-title').textContent = story.title;
+  document.querySelector('.story-meta').textContent = story.author || '';
+  const heroImg = document.querySelector('.story-hero-img');
+  heroImg.src = story.image_url || '';
+  heroImg.alt = story.title;
+
+  // Set data-story-id on buttons
+  const voteBtn = document.querySelector('.vote-btn');
+  voteBtn.dataset.storyId = storyId;
+  const saveBtn = document.querySelector('.save-btn');
+  saveBtn.dataset.storyId = storyId;
+
+  // === ENFORCE SINGLE STORY VOTING RULES ===
+  await restrictSingleStoryVoting(story, voteBtn);
+
+  // Only attach vote listener if voting is allowed
+  if (!voteBtn.disabled) {
+    voteBtn.addEventListener('click', async () => {
       const success = await submitVote(storyId);
       if (success) {
         voteBtn.disabled = true;
         voteBtn.textContent = 'Voted';
       }
     });
+  }
 
-    // Attach save listener
-    saveBtn.addEventListener('click', async () => {
-      const result = await saveStory(storyId);
-      if (result.success) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saved';
-      } else if (result.reason === 'already_saved') {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Already Saved';
-      } else {
-        alert('Failed to save story.');
-      }
-    });
+  // Save button logic
+  const savedResult = await fetchSavedStories();
+  const savedStories = savedResult.success ? savedResult.data : [];
+  const alreadySaved = savedStories.some(s => String(s.id) === String(storyId));
+  if (alreadySaved) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Already Saved';
+  }
 
-    // Related stories
-    const stories = await fetchStoriesWithVotes();
-    const relatedStories = stories.filter(s => s.id !== storyId);
-    renderStoriesForHome(relatedStories, 'related-stories-grid');
-
-    // === SINGLE STORY VOTING RESTRICTIONS ===
-    await restrictSingleStoryVoting(story, voteBtn);
-
+  saveBtn.addEventListener('click', async () => {
+    const result = await saveStory(storyId);
+    if (result.success) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saved';
+    } else if (result.reason === 'already_saved') {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Already Saved';
+    } else {
+      alert('Failed to save story.');
+    }
   });
+
+  // Related stories (read-only)
+  const stories = await fetchStoriesWithVotes();
+  const relatedStories = stories.filter(s => s.id !== storyId);
+  renderStoriesForHome(relatedStories, 'related-stories-grid');
+
+});
 </script>
 
 </body>
