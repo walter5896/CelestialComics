@@ -74,7 +74,7 @@
 </footer>
 
 <script src="/js/env.js"></script>
- <script type="module" src="/js/utils.js"></script>
+<script type="module" src="/js/utils.js"></script>
 
 <script type="module">
   import { updateUI, logout } from '/js/auth.js';
@@ -82,10 +82,14 @@
   import {
     fetchStoriesWithVotes,
     renderStoriesForHome,
-    fetchSavedStories,
-    submitVote,
-    saveStory
+    fetchSavedStories
   } from '/js/vote.js';
+
+  // Import your new voting period logic
+  import {
+    handleVoteButtonState,
+    handleRecantButtonState
+  } from '/js/votingStateControl.js'; // <-- your new module
 
   document.addEventListener('DOMContentLoaded', async () => {
 
@@ -95,14 +99,20 @@
       el.addEventListener('click', async (e) => {
         e.preventDefault();
         await logout();
+        location.reload();
       });
     });
 
     // Load main story
     const story = await loadStory();
     if (!story) return;
-
     const storyId = story.id;
+
+    // Set story info
+    document.querySelector('.story-title').textContent = story.title;
+    document.querySelector('.story-hero-img').src = story.image_url;
+    document.querySelector('.story-hero-img').alt = story.title;
+    document.querySelector('.story-content').innerHTML = story.content || '<p>No content available.</p>';
 
     // Get saved stories to check if this story is already saved
     const savedResult = await fetchSavedStories();
@@ -111,8 +121,10 @@
 
     // Vote button
     const voteBtn = document.querySelector('.vote-btn');
+    handleVoteButtonState(voteBtn, storyId); // <-- disables if voting closed
+
     voteBtn.addEventListener('click', async () => {
-      const success = await submitVote(storyId);
+      const success = await handleVoteButtonState(voteBtn, storyId, true); // true = attempt vote
       if (success) {
         voteBtn.disabled = true;
         voteBtn.textContent = 'Voted';
@@ -128,13 +140,12 @@
     }
 
     saveBtn.addEventListener('click', async () => {
+      if (alreadySaved) return;
+      const { saveStory } = await import('/js/vote.js');
       const result = await saveStory(storyId);
       if (result.success) {
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saved';
-      } else if (result.reason === 'already_saved') {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Already Saved';
       } else {
         alert('Failed to save story.');
       }
