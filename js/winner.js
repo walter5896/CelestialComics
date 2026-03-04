@@ -57,10 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Optional: link to story page if route exists
-    if (winnerLinkEl) {
-      winnerLinkEl.href = `/story/?id=${winnerData.id}`;
-    }
-
+   if (winnerLinkEl) {
+  winnerLinkEl.href = `/story.html?id=${winnerData.id}`;
+}
     // Optional: show voting period end date
     const endDate = new Date(period.end_time);
     const endDateEl = document.getElementById('winner-end-date');
