@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const winnerLinkEl = document.getElementById('winner-link');
 
   try {
+    // Get the latest voting period with a winner
     const { data: period, error: periodError } = await supabase
       .from('voting_periods')
       .select('winner_id')
@@ -19,12 +20,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (periodError) throw periodError;
 
+    // If no winner yet, show empty UI
     if (!period?.winner_id) {
       winnerEmpty.style.display = 'block';
       winnerDetails.style.display = 'none';
       return;
     }
 
+    // Fetch winner story basic info
     const { data: winnerData, error: winnerError } = await supabase
       .from('stories')
       .select('id, title, image_url')
@@ -37,19 +40,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Populate DOM
+    // Populate UI
     winnerEmpty.style.display = 'none';
     winnerDetails.style.display = 'block';
     winnerNameEl.textContent = winnerData.title;
     winnerStoryEl.textContent = 'Read the full story below.';
+
     if (winnerImageEl && winnerData.image_url) {
       winnerImageEl.src = winnerData.image_url;
       winnerImageEl.alt = winnerData.title;
     }
 
-    // Set correct story page link
+    // Fix link to story page relative to /winner/index.html
     if (winnerLinkEl) {
-      winnerLinkEl.href = `/story/?id=${winnerData.id}`;
+      winnerLinkEl.href = `../story.html?id=${winnerData.id}`;
       winnerLinkEl.textContent = 'Read Full Story';
     }
 
