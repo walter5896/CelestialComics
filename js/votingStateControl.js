@@ -2,16 +2,15 @@
 import { fetchStoriesWithVotes, fetchUserVotes } from './vote.js';
 
 /**
- * Disable voting/recant buttons if voting is closed or upcoming.
- * Works for multiple buttons (vote/recant) or a single story page.
- * containerSelector: the HTML container to search buttons in
+ * Disable voting/recant buttons if voting is closed
+ * containerId: the HTML container where your story cards are
  */
-export async function enforceVotingRules(containerSelector = '.story-cta') {
+export async function enforceVotingRules(containerId = 'story-grid') {
   // Fetch stories with vote counts & global voting status
   const stories = await fetchStoriesWithVotes();
   const userVotes = await fetchUserVotes();
 
-  const container = document.querySelector(containerSelector);
+  const container = document.getElementById(containerId);
   if (!container) return;
 
   container.querySelectorAll('.vote-btn, .recant-btn').forEach(btn => {
@@ -19,37 +18,33 @@ export async function enforceVotingRules(containerSelector = '.story-cta') {
     const story = stories.find(s => String(s.id) === String(storyId));
     if (!story) return;
 
-    // Voting is closed
     if (story.voting_status === 'closed') {
       btn.disabled = true;
 
+      // Update text based on button type
       if (btn.classList.contains('vote-btn')) {
         btn.textContent = `Voting Closed (${btn.dataset.voteCount || 0})`;
       } else if (btn.classList.contains('recant-btn')) {
         btn.textContent = 'Cannot Recant - Voting Closed';
       }
-
-    // Voting not started yet
     } else if (story.voting_status === 'upcoming') {
-      btn.disabled = true;
       if (btn.classList.contains('vote-btn')) {
+        btn.disabled = true;
         btn.textContent = 'Voting Starts Soon';
       } else if (btn.classList.contains('recant-btn')) {
+        btn.disabled = true;
         btn.textContent = 'Cannot Recant - Voting Not Started';
       }
-
-    // Voting is open
     } else if (story.voting_status === 'open') {
+      // Enable buttons if voting is open
       if (btn.classList.contains('vote-btn')) {
-        const hasVoted = userVotes.includes(String(storyId));
-        btn.disabled = hasVoted;
-        btn.textContent = hasVoted
+        btn.disabled = userVotes.includes(String(storyId));
+        btn.textContent = userVotes.includes(String(storyId))
           ? `Voted (${btn.dataset.voteCount || 0})`
           : `Vote (${btn.dataset.voteCount || 0})`;
       } else if (btn.classList.contains('recant-btn')) {
-        const hasVoted = userVotes.includes(String(storyId));
-        btn.disabled = !hasVoted;
-        btn.textContent = hasVoted ? 'Recant Vote' : 'Recant Disabled';
+        btn.disabled = !userVotes.includes(String(storyId));
+        btn.textContent = 'Recant Vote';
       }
     }
   });
