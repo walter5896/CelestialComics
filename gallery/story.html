@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   updateUI();
 
+  // Logout link
   document.querySelectorAll('.logout-link').forEach(el => {
     el.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -89,34 +90,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // Load main story
+  // Load story
   const story = await loadStory();
   if (!story) return;
   const storyId = story.id;
 
-  // Populate story hero
+  // Populate hero section
   document.querySelector('.story-title').textContent = story.title;
   document.querySelector('.story-meta').textContent = story.author || '';
   const heroImg = document.querySelector('.story-hero-img');
   heroImg.src = story.image_url || '';
   heroImg.alt = story.title;
 
-  // Set data-story-id on buttons
+  // Buttons
   const voteBtn = document.querySelector('.vote-btn');
   voteBtn.dataset.storyId = storyId;
+  voteBtn.dataset.voteCount = story.vote_count || 0;
+
   const saveBtn = document.querySelector('.save-btn');
   saveBtn.dataset.storyId = storyId;
 
-  // === ENFORCE SINGLE STORY VOTING RULES ===
+  // Apply single-story voting restrictions
   await restrictSingleStoryVoting(story, voteBtn);
 
-  // Only attach vote listener if voting is allowed
+  // Attach vote listener only if voting is allowed
   if (!voteBtn.disabled) {
     voteBtn.addEventListener('click', async () => {
       const success = await submitVote(storyId);
       if (success) {
         voteBtn.disabled = true;
-        voteBtn.textContent = 'Voted';
+        voteBtn.textContent = `Voted (${story.vote_count || 0})`;
       }
     });
   }
@@ -143,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Related stories (read-only)
+  // Related stories
   const stories = await fetchStoriesWithVotes();
   const relatedStories = stories.filter(s => s.id !== storyId);
   renderStoriesForHome(relatedStories, 'related-stories-grid');
