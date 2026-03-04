@@ -8,6 +8,7 @@ import { getCurrentUserAsync } from './auth.js';
 
 export async function fetchStoriesWithVotes() {
   try {
+    // Fetch all stories
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
       .select('id, title, image_url');
@@ -15,6 +16,7 @@ export async function fetchStoriesWithVotes() {
 
     const storyIds = stories.map(s => s.id);
 
+    // Count votes per story
     const { data: votesData, error: votesError } = await supabase
       .from('votes')
       .select('story_id');
@@ -25,6 +27,7 @@ export async function fetchStoriesWithVotes() {
       return acc;
     }, {});
 
+    // Fetch current global voting period
     const { data: votingPeriods, error: votingError } = await supabase
       .from('voting_periods')
       .select('start_time, end_time')
@@ -43,6 +46,7 @@ export async function fetchStoriesWithVotes() {
       else globalStatus = 'closed';
     }
 
+    // Attach vote counts & global voting status to each story
     return stories.map(story => ({
       ...story,
       vote_count: voteCounts[String(story.id)] || 0,
@@ -82,11 +86,7 @@ export async function fetchSavedStories() {
    VOTE / SAVE FUNCTIONS
 ======================= */
 
-export async function submitVote(storyId, votingStatus = 'open') {
-  if (votingStatus !== 'open') {
-    alert('Voting is closed.');
-    return false;
-  }
+export async function submitVote(storyId) {
   const user = await getCurrentUserAsync();
   if (!user) { alert('You must be logged in to vote!'); return false; }
   const { error } = await supabase.from('votes')
@@ -99,11 +99,7 @@ export async function submitVote(storyId, votingStatus = 'open') {
   return true;
 }
 
-export async function recantVote(storyId, votingStatus = 'open') {
-  if (votingStatus !== 'open') {
-    alert('Voting is closed. You cannot recant.');
-    return { success: false, error: 'Voting closed' };
-  }
+export async function recantVote(storyId) {
   const user = await getCurrentUserAsync();
   if (!user) return { success: false, error: 'Not logged in' };
   const { error } = await supabase
@@ -275,9 +271,7 @@ export function attachVoteListeners(containerId = 'story-grid') {
   document.querySelectorAll(`#${containerId} .vote-btn`).forEach(btn => {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
-      // Pass voting status to submitVote
-      const status = btn.closest('.story-card')?.dataset?.votingStatus || 'open';
-      const success = await submitVote(storyId, status);
+      const success = await submitVote(storyId);
       if (success) location.reload();
     });
   });
@@ -306,8 +300,7 @@ export function attachRecantListeners(containerId) {
   document.querySelectorAll(`#${containerId} .recant-btn`).forEach(btn => {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
-      const status = btn.closest('.story-card')?.dataset?.votingStatus || 'open';
-      const res = await recantVote(storyId, status);
+      const res = await recantVote(storyId);
       if (res.success) location.reload();
     });
   });
@@ -325,7 +318,7 @@ export function attachUnsaveListeners(containerId) {
 
 export async function initVoting(containerId = 'story-grid') {
   const user = await getCurrentUserAsync();
-  if (!user) return false;
+  if (!user) return false; // not logged in
 
   const stories = await fetchStoriesWithVotes();
   renderStoriesForVote(stories, containerId);
