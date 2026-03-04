@@ -21,9 +21,7 @@
         <li><a href="/vote/">Vote</a></li>
         <li><a href="/shop/">Shop</a></li>
         <li><a href="/team/">Team</a></li>
-        <li class="profile-link" style="display:none;">
-          <a href="/profile/">My Profile</a>
-        </li>
+        <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
         <li><a href="/login/" class="login-link">Login</a></li>
         <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
       </ul>
@@ -47,10 +45,7 @@
 
   <section class="story-body">
     <div class="container">
-      <div class="story-content">
-        <p>Loading story content...</p>
-      </div>
-
+      <div class="story-content"><p>Loading story content...</p></div>
       <div class="story-cta">
         <button class="btn btn-primary vote-btn" data-story-id="">Vote for this story</button>
         <button class="btn btn-secondary save-btn" data-story-id="">Save Story</button>
@@ -97,27 +92,25 @@
     // Load main story
     const story = await loadStory();
     if (!story) return;
-
     const storyId = story.id;
 
-    // Populate story hero and CTA buttons
+    // Populate story hero
     document.querySelector('.story-title').textContent = story.title;
     document.querySelector('.story-meta').textContent = story.author || '';
     const heroImg = document.querySelector('.story-hero-img');
     heroImg.src = story.image_url || '';
     heroImg.alt = story.title;
 
+    // Set data-story-id on buttons
     const voteBtn = document.querySelector('.vote-btn');
     voteBtn.dataset.storyId = storyId;
-
     const saveBtn = document.querySelector('.save-btn');
     saveBtn.dataset.storyId = storyId;
 
-    // Fetch saved stories to determine if this story is already saved
+    // Check if already saved
     const savedResult = await fetchSavedStories();
     const savedStories = savedResult.success ? savedResult.data : [];
     const alreadySaved = savedStories.some(s => String(s.id) === String(storyId));
-
     if (alreadySaved) {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Already Saved';
@@ -146,13 +139,13 @@
       }
     });
 
-    // Related stories (read-only)
+    // Render related stories (read-only)
     const stories = await fetchStoriesWithVotes();
     const relatedStories = stories.filter(s => s.id !== storyId);
     renderStoriesForHome(relatedStories, 'related-stories-grid');
 
-    // === ENFORCE VOTING RULES (disable vote/recant if closed or upcoming) ===
-    await enforceVotingRules('story-grid'); // defaults to story-cta buttons if you prefer, can adjust container
+    // === ENFORCE VOTING RULES on this single-story page ===
+    await enforceVotingRules('.story-cta');
   });
 </script>
 
