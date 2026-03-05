@@ -95,6 +95,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!story) return;
   const storyId = story.id;
 
+  // Enrich story with vote_count and voting_status from global fetch
+  const storiesWithVotes = await fetchStoriesWithVotes();
+  const fullStory = storiesWithVotes.find(s => String(s.id) === String(storyId));
+  if (fullStory) {
+    story.voting_status = fullStory.voting_status;
+    story.vote_count = fullStory.vote_count;
+  }
+
   // Populate hero section
   document.querySelector('.story-title').textContent = story.title;
   document.querySelector('.story-meta').textContent = story.author || '';
@@ -118,8 +126,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     voteBtn.addEventListener('click', async () => {
       const success = await submitVote(storyId);
       if (success) {
+        story.vote_count = (story.vote_count || 0) + 1;
         voteBtn.disabled = true;
-        voteBtn.textContent = `Voted (${story.vote_count || 0})`;
+        voteBtn.textContent = `Voted (${story.vote_count})`;
       }
     });
   }
