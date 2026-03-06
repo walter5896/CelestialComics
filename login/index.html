@@ -24,13 +24,14 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-
-          <!-- Login / Logout / Profile links -->
-          <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
+          <li class="admin-link" style="display:none;">
+            <a href="/admin/index.html">Admin Panel</a>
+          </li>
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -63,33 +64,38 @@
     </div>
   </footer>
 
-  <!-- ENV (must load first) -->
+  <!-- ENV -->
   <script src="/js/env.js"></script>
+
+  <!-- Utils -->
+  <script type="module" src="/js/utils.js"></script>
 
   <!-- AUTH SCRIPT -->
   <script type="module">
     import { login, logout, updateUI } from '/js/auth.js';
 
-    // Update login/logout/profile links on page load
-    updateUI();
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
 
-    // Handle login form submission
-    const form = document.getElementById('login-form');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const success = await login(email, password);
-      if (success) window.location.href = '/';
-    });
-
-    // Logout link functionality
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
+      const form = document.getElementById('login-form');
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        await logout();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const success = await login(email, password);
+        if (success) window.location.href = '/';
+      });
+
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
       });
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>

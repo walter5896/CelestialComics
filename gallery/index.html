@@ -25,6 +25,9 @@
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
+          <li class="admin-link" style="display:none;">
+            <a href="/admin/index.html">Admin Panel</a>
+          </li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -39,7 +42,6 @@
         <h1>Gallery</h1>
         <p>Browse all the stories submitted by our community. Click any story to view details.</p>
 
-        <!-- IMPORTANT: matches vote.js default -->
         <div id="story-grid" class="story-grid"></div>
       </div>
     </section>
@@ -61,9 +63,13 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
+  <!-- Utils -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- MODULE SCRIPT -->
+  <!-- Gallery -->
   <script type="module" src="/js/gallery.js"></script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
