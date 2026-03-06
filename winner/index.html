@@ -21,7 +21,8 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <!-- Login/Logout links -->
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -29,34 +30,32 @@
     </div>
   </header>
 
-<!-- WINNER SECTION -->
-<main class="container winner-page">
-  <!-- Shown if no winner yet -->
-  <div id="winner-empty" style="display:none">
-    <h2>No Winner Yet 🏆</h2>
-    <p>The voting period is still ongoing or no winner has been set.</p>
-  </div>
-
-  <!-- Shown if a winner exists -->
-  <div id="winner-details" style="display:none">
-    <div class="story-card">
-      <img id="winner-image" src="" alt="Winning Story" />
-      <h2 id="winner-name">Winning Story Title</h2>
-      <!-- Only one paragraph for message or description -->
-      <p id="winner-story"></p>
-      <!-- Only one link for reading the full story -->
-      <p>
-        <a id="winner-link" href="#" class="btn btn-primary">Read Full Story</a>
-      </p>
+  <!-- WINNER SECTION -->
+  <main class="container winner-page">
+    <!-- Shown if no winner yet -->
+    <div id="winner-empty" style="display:none">
+      <h2>No Winner Yet 🏆</h2>
+      <p>The voting period is still ongoing or no winner has been set.</p>
     </div>
-  </div>
 
-  <!-- CTA buttons -->
-  <section class="winner-cta">
-    <a href="/vote/" class="btn btn-secondary">Back to Vote</a>
-    <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
-  </section>
-</main>
+    <!-- Shown if a winner exists -->
+    <div id="winner-details" style="display:none">
+      <div class="story-card">
+        <img id="winner-image" src="" alt="Winning Story" />
+        <h2 id="winner-name">Winning Story Title</h2>
+        <p id="winner-story"></p>
+        <p>
+          <a id="winner-link" href="#" class="btn btn-primary">Read Full Story</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- CTA buttons -->
+    <section class="winner-cta">
+      <a href="/vote/" class="btn btn-secondary">Back to Vote</a>
+      <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
+    </section>
+  </main>
 
   <!-- FOOTER -->
   <footer class="site-footer">
@@ -77,6 +76,8 @@
   <!-- Winner JS -->
   <script type="module" src="/js/winner.js"></script>
 
+  <script type="module" src="/js/utils.js"></script>
+
   <!-- Auth utils -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
@@ -84,7 +85,6 @@
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
-      // Logout links
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
@@ -94,5 +94,8 @@
       });
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
