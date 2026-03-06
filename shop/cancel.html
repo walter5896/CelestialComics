@@ -26,12 +26,14 @@
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
 
-          <!-- Profile link (hidden by default, shown if logged in) -->
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
 
-          <!-- Login/Logout links -->
+          <li class="admin-link" style="display:none;">
+            <a href="/admin/index.html">Admin Panel</a>
+          </li>
+
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -62,24 +64,29 @@
     </div>
   </footer>
 
-  <!-- ENV (must load before Supabase usage) -->
+  <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- JS files -->
+  <!-- Utils -->
   <script type="module" src="/js/utils.js"></script>
+
+  <!-- Auth UI -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
-    // Update login/logout links based on Supabase session
-    updateUI();
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
 
-    // Enable logout functionality
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
       });
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>

@@ -25,11 +25,15 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <!-- Profile link (hidden by default, shown if logged in) -->
+
           <li class="profile-link" style="display:none;">
             <a href="/profile/">My Profile</a>
           </li>
-          <!-- Login/Logout links -->
+
+          <li class="admin-link" style="display:none;">
+            <a href="/admin/index.html">Admin Panel</a>
+          </li>
+
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -47,7 +51,6 @@
       <h3>Crack</h3>
       <p>LOTS of money</p>
 
-      <!-- THIS IS THE BUTTON WE USE FOR THE TEST -->
       <button id="buy-btn" class="btn btn-primary">Buy Now</button>
 
       <a href="/shop/cancel.html" class="btn btn-secondary">Cancel Purchase</a>
@@ -67,26 +70,33 @@
     </div>
   </footer>
 
-  <!-- ENV (must load before Supabase usage) -->
+  <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- JS files -->
+  <!-- Utils -->
   <script type="module" src="/js/utils.js"></script>
+
+  <!-- Shop logic -->
   <script type="module" src="/js/shop.js"></script>
 
+  <!-- Auth UI -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
-    // Update login/logout/profile links based on user session
-    updateUI();
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
 
-    // Logout functionality
-    document.querySelectorAll('.logout-link').forEach(el => {
-      el.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
+      document.querySelectorAll('.logout-link').forEach(el => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+        });
       });
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
+
 </body>
 </html>
