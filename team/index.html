@@ -22,6 +22,7 @@
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -67,7 +68,9 @@
 
   <!-- ENV -->
   <script src="/js/env.js"></script>
-   <script type="module" src="/js/utils.js"></script>
+
+  <!-- Utils -->
+  <script type="module" src="/js/utils.js"></script>
 
   <!-- TEAM JS -->
   <script type="module">
@@ -94,8 +97,7 @@
         image: "/images/team/carla.jpg",
         bio: "Carla crafts beautiful and intuitive designs.",
         social: { twitter: "#", linkedin: "#" }
-      },
-      // Add more team members here
+      }
     ];
 
     function renderTeamMembers(containerId = 'team-grid') {
@@ -120,10 +122,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Update login/logout/profile UI
       updateUI();
 
-      // Logout links
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async e => {
           e.preventDefault();
@@ -131,9 +131,11 @@
         });
       });
 
-      // Render the team
       renderTeamMembers();
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
