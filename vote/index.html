@@ -22,6 +22,7 @@
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -73,16 +74,13 @@
   <!-- AUTH + VOTING INIT -->
   <script type="module">
     import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
-    import { initVoting } from '/js/vote.js';
+    import { initVoting, fetchStoriesWithVotes } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Wait for auth state to be ready
       const user = await getCurrentUserAsync();
 
-      // Update login/logout/profile links
       updateUI();
 
-      // Logout button
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
@@ -91,27 +89,23 @@
       });
 
       if (!user) {
-        // Not logged in
         document.getElementById('login-prompt').style.display = 'block';
         document.getElementById('voting-open').style.display = 'none';
         document.getElementById('voting-closed').style.display = 'none';
         return;
       }
 
-      // User is logged in → initialize voting UI
       await initVoting('story-grid');
 
-      // Determine global voting state
-      const stories = await (async () => {
-        // Re-fetch stories to check voting status
-        const { fetchStoriesWithVotes } = await import('/js/vote.js');
-        return await fetchStoriesWithVotes();
-      })();
-
+      const stories = await fetchStoriesWithVotes();
       const anyOpen = stories.some(s => s.voting_status === 'open');
+
       document.getElementById('voting-open').style.display = anyOpen ? 'block' : 'none';
       document.getElementById('voting-closed').style.display = anyOpen ? 'none' : 'block';
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
