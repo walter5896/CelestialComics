@@ -21,7 +21,8 @@
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
-          <li><a href="/profile/">My Profile</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
         </ul>
@@ -79,8 +80,8 @@
     import { enforceVotingRules } from '/js/votingStateControl.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // Update login/logout UI
       updateUI();
+
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async e => {
           e.preventDefault();
@@ -96,29 +97,26 @@
         return;
       }
 
-      // Fetch all stories and user votes
       const allStories = await fetchStoriesWithVotes();
       const userVotesIds = await fetchUserVotes();
       const votedStories = allStories.filter(s => userVotesIds.includes(String(s.id)));
 
-      // Fetch saved stories
       const savedData = await fetchSavedStories();
       const savedStories = savedData.success ? savedData.data : [];
 
-      // Render profile sections
       renderStoriesForProfile(votedStories, savedStories, 'voted-stories', 'saved-stories');
 
-      // Show empty messages if needed
       document.getElementById('no-votes').style.display = votedStories.length === 0 ? 'block' : 'none';
       document.getElementById('no-saved').style.display = savedStories.length === 0 ? 'block' : 'none';
 
-      // Attach button listeners
       attachRecantListeners('voted-stories');
       attachUnsaveListeners('saved-stories');
 
-      // Disable voting/recant buttons if voting is closed
       await enforceVotingRules('voted-stories');
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
