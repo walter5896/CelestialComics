@@ -33,6 +33,11 @@
   <!-- MAIN PROFILE DASHBOARD -->
   <main class="container">
     <section>
+      <h2>My Vote Balance</h2>
+      <p id="vote-balance">Loading...</p>
+    </section>
+
+    <section>
       <h2>My Votes</h2>
       <div id="voted-stories" class="story-grid"></div>
       <p id="no-votes" style="display:none;">You haven’t voted for any stories yet.</p>
@@ -72,6 +77,7 @@
     import {
       fetchStoriesWithVotes,
       fetchUserVotes,
+      fetchUserVoteBalance,
       fetchSavedStories,
       renderStoriesForProfile,
       attachRecantListeners,
@@ -97,9 +103,15 @@
         return;
       }
 
+      // Show current vote balance
+      const voteBalance = await fetchUserVoteBalance();
+      document.getElementById('vote-balance').textContent = `${voteBalance} vote(s) remaining`;
+
+      // Fetch all stories and user vote rows
       const allStories = await fetchStoriesWithVotes();
       const userVotes = await fetchUserVotes();
 
+      // Build voted stories list with per-story vote counts
       const votedStories = allStories
         .filter(story =>
           userVotes.some(v => String(v.story_id) === String(story.id) && Number(v.vote_count) > 0)
@@ -112,17 +124,22 @@
           };
         });
 
+      // Fetch saved stories
       const savedData = await fetchSavedStories();
       const savedStories = savedData.success ? savedData.data : [];
 
+      // Render sections
       renderStoriesForProfile(votedStories, savedStories, 'voted-stories', 'saved-stories');
 
+      // Empty states
       document.getElementById('no-votes').style.display = votedStories.length === 0 ? 'block' : 'none';
       document.getElementById('no-saved').style.display = savedStories.length === 0 ? 'block' : 'none';
 
+      // Attach listeners
       attachRecantListeners('voted-stories');
       attachUnsaveListeners('saved-stories');
 
+      // Enforce voting rules for recant buttons
       await enforceVotingRules('voted-stories');
     });
   </script>
