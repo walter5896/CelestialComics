@@ -20,7 +20,7 @@ export async function fetchStoriesWithVotes() {
 
     if (votesError) throw votesError;
 
-    const voteCounts = votesData.reduce((acc, vote) => {
+    const voteCounts = (votesData || []).reduce((acc, vote) => {
       const storyId = String(vote.story_id);
       const count = Number(vote.vote_count) || 0;
       acc[storyId] = (acc[storyId] || 0) + count;
@@ -135,7 +135,11 @@ export async function submitVote(storyId, amount = 1) {
   const currentBalance = await fetchUserVoteBalance();
   if (currentBalance < voteAmount) {
     alert(`You do not have enough votes. Remaining votes: ${currentBalance}`);
-    return { success: false, reason: 'insufficient_balance', balance: currentBalance };
+    return {
+      success: false,
+      reason: 'insufficient_balance',
+      balance: currentBalance
+    };
   }
 
   const { data: existingVote, error: existingVoteError } = await supabase
@@ -392,6 +396,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
       card.innerHTML = `
         <img src="${story.image_url}" alt="${story.title}" />
         <h3>${story.title}</h3>
+        <p>You cast ${story.user_vote_count || 0} vote(s)</p>
         <div class="story-actions">
           <button class="btn btn-primary recant-btn" data-story-id="${story.id}">
             Recant 1 Vote

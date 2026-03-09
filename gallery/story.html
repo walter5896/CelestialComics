@@ -79,7 +79,6 @@ import { fetchStoriesWithVotes, renderStoriesForHome, fetchSavedStories, submitV
 import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-
   updateUI();
 
   document.querySelectorAll('.logout-link').forEach(el => {
@@ -116,20 +115,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   await restrictSingleStoryVoting(story, voteBtn);
 
-  if (!voteBtn.disabled) {
-    voteBtn.addEventListener('click', async () => {
-      const success = await submitVote(storyId);
-      if (success) {
-        story.vote_count = (story.vote_count || 0) + 1;
-        voteBtn.disabled = true;
-        voteBtn.textContent = `Voted (${story.vote_count})`;
-      }
-    });
-  }
+  voteBtn.addEventListener('click', async () => {
+    const result = await submitVote(storyId, 1);
+
+    if (result.success) {
+      story.vote_count = (story.vote_count || 0) + 1;
+      voteBtn.dataset.voteCount = story.vote_count;
+      voteBtn.textContent = `Add Vote (${story.vote_count})`;
+    } else if (result.reason === 'insufficient_balance') {
+      voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
+    }
+  });
 
   const savedResult = await fetchSavedStories();
   const savedStories = savedResult.success ? savedResult.data : [];
   const alreadySaved = savedStories.some(s => String(s.id) === String(storyId));
+
   if (alreadySaved) {
     saveBtn.disabled = true;
     saveBtn.textContent = 'Already Saved';
@@ -151,7 +152,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const stories = await fetchStoriesWithVotes();
   const relatedStories = stories.filter(s => s.id !== storyId);
   renderStoriesForHome(relatedStories, 'related-stories-grid');
-
 });
 </script>
 

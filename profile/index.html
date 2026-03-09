@@ -69,13 +69,13 @@
 
   <script type="module">
     import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
-    import { 
-      fetchStoriesWithVotes, 
-      fetchUserVotes, 
-      fetchSavedStories, 
-      renderStoriesForProfile, 
-      attachRecantListeners, 
-      attachUnsaveListeners 
+    import {
+      fetchStoriesWithVotes,
+      fetchUserVotes,
+      fetchSavedStories,
+      renderStoriesForProfile,
+      attachRecantListeners,
+      attachUnsaveListeners
     } from '/js/vote.js';
     import { enforceVotingRules } from '/js/votingStateControl.js';
 
@@ -98,8 +98,19 @@
       }
 
       const allStories = await fetchStoriesWithVotes();
-      const userVotesIds = await fetchUserVotes();
-      const votedStories = allStories.filter(s => userVotesIds.includes(String(s.id)));
+      const userVotes = await fetchUserVotes();
+
+      const votedStories = allStories
+        .filter(story =>
+          userVotes.some(v => String(v.story_id) === String(story.id) && Number(v.vote_count) > 0)
+        )
+        .map(story => {
+          const voteRow = userVotes.find(v => String(v.story_id) === String(story.id));
+          return {
+            ...story,
+            user_vote_count: voteRow ? Number(voteRow.vote_count) || 0 : 0
+          };
+        });
 
       const savedData = await fetchSavedStories();
       const savedStories = savedData.success ? savedData.data : [];
