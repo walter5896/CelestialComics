@@ -53,6 +53,22 @@
     button:hover { background: #1d4ed8; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    .danger-btn {
+      background: #dc2626;
+    }
+
+    .danger-btn:hover {
+      background: #b91c1c;
+    }
+
+    .secondary-btn {
+      background: #6b7280;
+    }
+
+    .secondary-btn:hover {
+      background: #4b5563;
+    }
+
     .section-card {
       background: #ffffff;
       padding: 1.5rem;
@@ -115,6 +131,19 @@
     .story-chip strong {
       display: block;
       margin-bottom: 0.35rem;
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .helper-text {
+      font-size: 0.9rem;
+      color: #4b5563;
+      margin-top: 0.25rem;
     }
 
     @media (max-width: 768px) {
@@ -180,9 +209,17 @@
 
     <!-- STORY MANAGEMENT -->
     <div class="section-card" id="story-management-section" style="display:none;">
-      <h2>Create Story</h2>
+      <h2>Story Management</h2>
 
-      <form id="create-story-form">
+      <div class="field-group">
+        <label for="story-select">Edit Existing Story</label>
+        <select id="story-select">
+          <option value="">-- Create New Story --</option>
+        </select>
+        <p class="helper-text">Choose a story to edit, or leave blank to create a new one.</p>
+      </div>
+
+      <form id="story-form">
         <div class="field-group">
           <label for="story-title">Title</label>
           <input type="text" id="story-title" required>
@@ -194,8 +231,8 @@
         </div>
 
         <div class="field-group">
-          <label for="story-image-url">Image URL</label>
-          <input type="text" id="story-image-url" placeholder="https://...">
+          <label for="story-cover-image-url">Cover Image URL</label>
+          <input type="text" id="story-cover-image-url" placeholder="https://...">
         </div>
 
         <div class="field-group">
@@ -208,7 +245,11 @@
           <label for="story-active" style="margin-bottom:0;">Active / published</label>
         </div>
 
-        <button type="submit" id="create-story-btn">Create Story</button>
+        <div class="action-row">
+          <button type="submit" id="save-story-btn">Create Story</button>
+          <button type="button" id="reset-story-btn" class="secondary-btn">Reset Form</button>
+          <button type="button" id="delete-story-btn" class="danger-btn" style="display:none;">Delete Story</button>
+        </div>
       </form>
 
       <p id="story-status-message" class="section-message"></p>
@@ -245,15 +286,26 @@
     const votingMsg = document.getElementById('voting-status-message');
 
     const storySection = document.getElementById('story-management-section');
-    const storyForm = document.getElementById('create-story-form');
-    const createStoryBtn = document.getElementById('create-story-btn');
+    const storySelect = document.getElementById('story-select');
+    const storyForm = document.getElementById('story-form');
+    const saveStoryBtn = document.getElementById('save-story-btn');
+    const resetStoryBtn = document.getElementById('reset-story-btn');
+    const deleteStoryBtn = document.getElementById('delete-story-btn');
     const storyMsg = document.getElementById('story-status-message');
     const storiesPreview = document.getElementById('stories-preview');
+
+    const storyTitle = document.getElementById('story-title');
+    const storyAuthor = document.getElementById('story-author');
+    const storyCoverImageUrl = document.getElementById('story-cover-image-url');
+    const storyDescription = document.getElementById('story-description');
+    const storyActive = document.getElementById('story-active');
 
     const productSection = document.getElementById('product-management-section');
 
     let currentUser = null;
     let currentAccessToken = null;
+    let allStories = [];
+    let editingStoryId = null;
 
     document.getElementById('logout-link').addEventListener('click', async (e) => {
       e.preventDefault();
@@ -268,6 +320,31 @@
         return null;
       }
       return data?.session?.access_token || null;
+    }
+
+    function clearStoryForm() {
+      editingStoryId = null;
+      storySelect.value = '';
+      storyForm.reset();
+      storyActive.checked = true;
+      saveStoryBtn.textContent = 'Create Story';
+      deleteStoryBtn.style.display = 'none';
+      storyMsg.textContent = '';
+      storyMsg.style.color = '';
+    }
+
+    function populateStoryForm(story) {
+      editingStoryId = story.id;
+      storyTitle.value = story.title || '';
+      storyAuthor.value = story.author || '';
+      storyCoverImageUrl.value = story.cover_image_url || '';
+      storyDescription.value = story.description || '';
+      storyActive.checked = !!story.active;
+
+      saveStoryBtn.textContent = 'Update Story';
+      deleteStoryBtn.style.display = 'inline-block';
+      storyMsg.textContent = '';
+      storyMsg.style.color = '';
     }
 
     async function determineWinner() {
@@ -350,19 +427,26 @@
       try {
         const { data: stories, error } = await supabase
           .from('stories')
-          .select('id, title, author, active, created_at')
+          .select('id, title, author, description, cover_image_url, active, created_at')
           .order('created_at', { ascending: false });
 
         if (error) throw error;
 
+        allStories = stories || [];
         storiesPreview.innerHTML = '';
+        storySelect.innerHTML = '<option value="">-- Create New Story --</option>';
 
-        if (!stories || stories.length === 0) {
+        if (!allStories.length) {
           storiesPreview.innerHTML = '<p>No stories yet.</p>';
           return;
         }
 
-        stories.forEach(story => {
+        allStories.forEach(story => {
+          const option = document.createElement('option');
+          option.value = story.id;
+          option.textContent = story.title;
+          storySelect.appendChild(option);
+
           const div = document.createElement('div');
           div.className = 'story-chip';
           div.innerHTML = `
@@ -378,19 +462,80 @@
       }
     }
 
+    storySelect.addEventListener('change', () => {
+      const selectedId = storySelect.value;
+
+      if (!selectedId) {
+        clearStoryForm();
+        return;
+      }
+
+      const selectedStory = allStories.find(story => story.id === selectedId);
+      if (selectedStory) {
+        populateStoryForm(selectedStory);
+      }
+    });
+
+    resetStoryBtn.addEventListener('click', () => {
+      clearStoryForm();
+    });
+
+    deleteStoryBtn.addEventListener('click', async () => {
+      if (!editingStoryId) return;
+
+      const confirmed = confirm('Are you sure you want to delete this story? This will also delete its story pages.');
+      if (!confirmed) return;
+
+      try {
+        const token = await getAccessToken();
+        if (!token) throw new Error('No active session found.');
+
+        deleteStoryBtn.disabled = true;
+        deleteStoryBtn.textContent = 'Deleting...';
+
+        const res = await fetch('/.netlify/functions/delete-story', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ story_id: editingStoryId })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(result.error || 'Failed to delete story');
+        }
+
+        storyMsg.textContent = 'Story deleted successfully!';
+        storyMsg.style.color = 'green';
+
+        clearStoryForm();
+        await loadStoriesPreview();
+      } catch (err) {
+        console.error('Error deleting story:', err);
+        storyMsg.textContent = err.message || 'Failed to delete story.';
+        storyMsg.style.color = 'red';
+      } finally {
+        deleteStoryBtn.disabled = false;
+        deleteStoryBtn.textContent = 'Delete Story';
+      }
+    });
+
     storyForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       storyMsg.textContent = '';
-      createStoryBtn.disabled = true;
-      createStoryBtn.textContent = 'Creating...';
+      saveStoryBtn.disabled = true;
+      saveStoryBtn.textContent = editingStoryId ? 'Updating...' : 'Creating...';
 
       try {
-        const title = document.getElementById('story-title').value.trim();
-        const author = document.getElementById('story-author').value.trim();
-        const image_url = document.getElementById('story-image-url').value.trim();
-        const description = document.getElementById('story-description').value.trim();
-        const active = document.getElementById('story-active').checked;
+        const title = storyTitle.value.trim();
+        const author = storyAuthor.value.trim();
+        const cover_image_url = storyCoverImageUrl.value.trim();
+        const description = storyDescription.value.trim();
+        const active = storyActive.checked;
 
         if (!title) {
           throw new Error('Title is required.');
@@ -401,41 +546,61 @@
           throw new Error('No active session found.');
         }
 
-        const res = await fetch('/.netlify/functions/create-story', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            title,
-            author,
-            image_url,
-            description,
-            active
-          })
-        });
+        let res;
+
+        if (editingStoryId) {
+          res = await fetch('/.netlify/functions/update-story', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              story_id: editingStoryId,
+              title,
+              author,
+              cover_image_url,
+              description,
+              active
+            })
+          });
+        } else {
+          res = await fetch('/.netlify/functions/create-story', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              title,
+              author,
+              cover_image_url,
+              description,
+              active
+            })
+          });
+        }
 
         const result = await res.json();
 
         if (!res.ok) {
-          throw new Error(result.error || 'Failed to create story');
+          throw new Error(result.error || (editingStoryId ? 'Failed to update story' : 'Failed to create story'));
         }
 
-        storyMsg.textContent = 'Story created successfully!';
+        storyMsg.textContent = editingStoryId
+          ? 'Story updated successfully!'
+          : 'Story created successfully!';
         storyMsg.style.color = 'green';
 
-        storyForm.reset();
-        document.getElementById('story-active').checked = true;
-
+        clearStoryForm();
         await loadStoriesPreview();
       } catch (err) {
-        console.error('Error creating story:', err);
-        storyMsg.textContent = err.message || 'Failed to create story.';
+        console.error('Error saving story:', err);
+        storyMsg.textContent = err.message || 'Failed to save story.';
         storyMsg.style.color = 'red';
       } finally {
-        createStoryBtn.disabled = false;
-        createStoryBtn.textContent = 'Create Story';
+        saveStoryBtn.disabled = false;
+        saveStoryBtn.textContent = editingStoryId ? 'Update Story' : 'Create Story';
       }
     });
 

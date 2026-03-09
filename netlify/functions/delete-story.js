@@ -1,4 +1,4 @@
-// /.netlify/functions/create-story.js
+// /.netlify/functions/delete-story.js
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -52,46 +52,28 @@ export async function handler(event) {
       };
     }
 
-    const {
-      title,
-      description,
-      author,
-      cover_image_url,
-      active = true
-    } = JSON.parse(event.body || '{}');
+    const { story_id } = JSON.parse(event.body || '{}');
 
-    if (!title || !title.trim()) {
+    if (!story_id) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Title is required' })
+        body: JSON.stringify({ error: 'story_id is required' })
       };
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('stories')
-      .insert([
-        {
-          title: title.trim(),
-          description: description || null,
-          author: author || null,
-          cover_image_url: cover_image_url || null,
-          active
-        }
-      ])
-      .select()
-      .single();
+      .delete()
+      .eq('id', story_id);
 
     if (error) throw error;
 
     return {
       statusCode: 200,
-      body: JSON.stringify({
-        success: true,
-        story: data
-      })
+      body: JSON.stringify({ success: true })
     };
   } catch (err) {
-    console.error('create-story error:', err);
+    console.error('delete-story error:', err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message || 'Server error' })
