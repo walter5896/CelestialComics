@@ -29,18 +29,20 @@ export async function loadStory() {
       return null;
     }
 
-    // Inject into DOM
-    document.querySelector('.story-title').textContent = story.title;
-    document.querySelector('.story-meta').textContent =
-      `By ${story.author} | Published ${story.published_at}`;
+    // Inject into DOM using current schema
+    document.querySelector('.story-title').textContent = story.title || 'Untitled Story';
+    document.querySelector('.story-meta').textContent = story.author
+      ? `By ${story.author}`
+      : '';
 
     const heroImg = document.querySelector('.story-hero-img');
-    heroImg.src = story.image_url;
-    heroImg.alt = story.title;
+    heroImg.src = story.cover_image_url || story.image_url || '';
+    heroImg.alt = story.title || 'Story cover';
 
-    document.querySelector('.story-content').innerHTML = story.content;
+    document.querySelector('.story-content').innerHTML =
+      `<p>${story.description || 'No story description available yet.'}</p>`;
 
-    return story; // IMPORTANT
+    return story;
   } catch (err) {
     console.error('Unexpected error loading story:', err);
     document.querySelector('.story-title').textContent = 'Error loading story';

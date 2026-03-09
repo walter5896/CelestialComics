@@ -100,11 +100,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     story.vote_count = fullStory.vote_count;
   }
 
-  document.querySelector('.story-title').textContent = story.title;
+  document.querySelector('.story-title').textContent = story.title || 'Untitled Story';
   document.querySelector('.story-meta').textContent = story.author || '';
+
   const heroImg = document.querySelector('.story-hero-img');
-  heroImg.src = story.image_url || '';
-  heroImg.alt = story.title;
+  heroImg.src = story.cover_image_url || story.image_url || '';
+  heroImg.alt = story.title || 'Story cover';
+
+  const storyContent = document.querySelector('.story-content');
+  storyContent.innerHTML = `<p>${story.description || 'No story description available yet.'}</p>`;
 
   const voteBtn = document.querySelector('.vote-btn');
   voteBtn.dataset.storyId = storyId;
