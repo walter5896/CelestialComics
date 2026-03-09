@@ -11,23 +11,28 @@ export async function restrictSingleStoryVoting(story, voteBtn) {
 
   const userVotes = await fetchUserVotes();
   const storyId = String(story.id);
-  const hasVoted = userVotes.includes(storyId);
+
+  const existingVote = userVotes.find(v => String(v.story_id) === storyId);
+  const userVoteCount = existingVote ? Number(existingVote.vote_count) || 0 : 0;
 
   switch (story.voting_status) {
     case 'closed':
       voteBtn.disabled = true;
       voteBtn.textContent = `Voting Closed (${voteBtn.dataset.voteCount || 0})`;
       break;
+
     case 'upcoming':
       voteBtn.disabled = true;
       voteBtn.textContent = 'Voting Starts Soon';
       break;
+
     case 'open':
-      voteBtn.disabled = hasVoted;
-      voteBtn.textContent = hasVoted
-        ? `Voted (${voteBtn.dataset.voteCount || 0})`
+      voteBtn.disabled = false;
+      voteBtn.textContent = userVoteCount > 0
+        ? `Add Vote (${voteBtn.dataset.voteCount || 0})`
         : `Vote (${voteBtn.dataset.voteCount || 0})`;
       break;
+
     default:
       voteBtn.disabled = true;
       voteBtn.textContent = 'Voting Unavailable';
