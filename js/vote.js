@@ -10,7 +10,7 @@ export async function fetchStoriesWithVotes() {
   try {
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
-      .select('id, title, image_url');
+      .select('id, title, image_url, cover_image_url, author, description, active');
 
     if (storiesError) throw storiesError;
 
@@ -314,6 +314,10 @@ export async function unsaveStory(storyId) {
    RENDERERS
 ======================= */
 
+function getStoryImage(story) {
+  return story.cover_image_url || story.image_url || '';
+}
+
 export function renderStoriesForHome(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -324,7 +328,7 @@ export function renderStoriesForHome(stories, containerId = 'story-grid') {
     const card = document.createElement('article');
     card.className = 'story-card';
     card.innerHTML = `
-      <img src="${story.image_url}" alt="${story.title}" />
+      <img src="${getStoryImage(story)}" alt="${story.title}" />
       <h3>${story.title}</h3>
       <div class="story-actions">
         <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
@@ -344,7 +348,7 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
     const card = document.createElement('article');
     card.className = 'story-card';
     card.innerHTML = `
-      <img src="${story.image_url}" alt="${story.title}" />
+      <img src="${getStoryImage(story)}" alt="${story.title}" />
       <h3>${story.title}</h3>
       <div class="story-actions">
         <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
@@ -366,7 +370,7 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
     const voteCount = Number(story.vote_count) || 0;
 
     card.innerHTML = `
-      <img src="${story.image_url}" alt="${story.title}" />
+      <img src="${getStoryImage(story)}" alt="${story.title}" />
       <h3>${story.title}</h3>
       <div class="story-actions">
         <button
@@ -394,7 +398,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
       const card = document.createElement('article');
       card.className = 'story-card';
       card.innerHTML = `
-        <img src="${story.image_url}" alt="${story.title}" />
+        <img src="${getStoryImage(story)}" alt="${story.title}" />
         <h3>${story.title}</h3>
         <p>You cast ${story.user_vote_count || 0} vote(s)</p>
         <div class="story-actions">
@@ -415,7 +419,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
       const card = document.createElement('article');
       card.className = 'story-card';
       card.innerHTML = `
-        <img src="${story.image_url}" alt="${story.title}" />
+        <img src="${getStoryImage(story)}" alt="${story.title}" />
         <h3>${story.title}</h3>
         <div class="story-actions">
           <button class="btn btn-secondary unsave-btn" data-story-id="${story.id}">
