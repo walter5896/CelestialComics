@@ -53,21 +53,11 @@
     button:hover { background: #1d4ed8; }
     button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .danger-btn {
-      background: #dc2626;
-    }
+    .danger-btn { background: #dc2626; }
+    .danger-btn:hover { background: #b91c1c; }
 
-    .danger-btn:hover {
-      background: #b91c1c;
-    }
-
-    .secondary-btn {
-      background: #6b7280;
-    }
-
-    .secondary-btn:hover {
-      background: #4b5563;
-    }
+    .secondary-btn { background: #6b7280; }
+    .secondary-btn:hover { background: #4b5563; }
 
     .section-card {
       background: #ffffff;
@@ -77,9 +67,7 @@
       margin-bottom: 2rem;
     }
 
-    .section-card h2 {
-      margin-bottom: 1rem;
-    }
+    .section-card h2 { margin-bottom: 1rem; }
 
     .section-card label {
       display: block;
@@ -87,9 +75,7 @@
       font-weight: 600;
     }
 
-    .field-group {
-      margin-bottom: 1rem;
-    }
+    .field-group { margin-bottom: 1rem; }
 
     .inline-checkbox {
       display: flex;
@@ -107,13 +93,8 @@
       font-size: 0.95rem;
     }
 
-    .stories-list {
-      margin-top: 1.5rem;
-    }
-
-    .stories-list h3 {
-      margin-bottom: 0.75rem;
-    }
+    .stories-list { margin-top: 1.5rem; }
+    .stories-list h3 { margin-bottom: 0.75rem; }
 
     .story-chip-list {
       display: grid;
@@ -133,6 +114,16 @@
       margin-bottom: 0.35rem;
     }
 
+    .story-chip img {
+      display: block;
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid #d1d5db;
+    }
+
     .action-row {
       display: flex;
       flex-wrap: wrap;
@@ -144,6 +135,14 @@
       font-size: 0.9rem;
       color: #4b5563;
       margin-top: 0.25rem;
+    }
+
+    .cover-preview {
+      display: none;
+      max-width: 220px;
+      margin-top: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
     }
 
     @media (max-width: 768px) {
@@ -231,8 +230,14 @@
         </div>
 
         <div class="field-group">
-          <label for="story-cover-image-url">Cover Image URL</label>
-          <input type="text" id="story-cover-image-url" placeholder="https://...">
+          <label for="story-cover-file">Cover Image Upload</label>
+          <input type="file" id="story-cover-file" accept="image/*">
+          <div class="action-row">
+            <button type="button" id="upload-cover-btn" class="secondary-btn">Upload Cover Image</button>
+          </div>
+          <p class="helper-text">Create or select a story first, then upload its cover image.</p>
+          <p id="cover-upload-message" class="section-message"></p>
+          <img id="cover-preview" class="cover-preview" alt="Cover preview">
         </div>
 
         <div class="field-group">
@@ -296,9 +301,13 @@
 
     const storyTitle = document.getElementById('story-title');
     const storyAuthor = document.getElementById('story-author');
-    const storyCoverImageUrl = document.getElementById('story-cover-image-url');
     const storyDescription = document.getElementById('story-description');
     const storyActive = document.getElementById('story-active');
+
+    const storyCoverFile = document.getElementById('story-cover-file');
+    const uploadCoverBtn = document.getElementById('upload-cover-btn');
+    const coverUploadMessage = document.getElementById('cover-upload-message');
+    const coverPreview = document.getElementById('cover-preview');
 
     const productSection = document.getElementById('product-management-section');
 
@@ -322,6 +331,19 @@
       return data?.session?.access_token || null;
     }
 
+    async function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          const base64 = String(result).split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
     function clearStoryForm() {
       editingStoryId = null;
       storySelect.value = '';
@@ -329,17 +351,35 @@
       storyActive.checked = true;
       saveStoryBtn.textContent = 'Create Story';
       deleteStoryBtn.style.display = 'none';
+
       storyMsg.textContent = '';
       storyMsg.style.color = '';
+
+      coverUploadMessage.textContent = '';
+      coverUploadMessage.style.color = '';
+      storyCoverFile.value = '';
+      coverPreview.src = '';
+      coverPreview.style.display = 'none';
     }
 
     function populateStoryForm(story) {
       editingStoryId = story.id;
       storyTitle.value = story.title || '';
       storyAuthor.value = story.author || '';
-      storyCoverImageUrl.value = story.cover_image_url || '';
       storyDescription.value = story.description || '';
       storyActive.checked = !!story.active;
+
+      if (story.cover_image_url) {
+        coverPreview.src = story.cover_image_url;
+        coverPreview.style.display = 'block';
+      } else {
+        coverPreview.src = '';
+        coverPreview.style.display = 'none';
+      }
+
+      coverUploadMessage.textContent = '';
+      coverUploadMessage.style.color = '';
+      storyCoverFile.value = '';
 
       saveStoryBtn.textContent = 'Update Story';
       deleteStoryBtn.style.display = 'inline-block';
@@ -450,6 +490,7 @@
           const div = document.createElement('div');
           div.className = 'story-chip';
           div.innerHTML = `
+            ${story.cover_image_url ? `<img src="${story.cover_image_url}" alt="${story.title} cover">` : ''}
             <strong>${story.title}</strong>
             <div>${story.author || 'No author set'}</div>
             <div>Status: ${story.active ? 'Active' : 'Inactive'}</div>
@@ -478,6 +519,75 @@
 
     resetStoryBtn.addEventListener('click', () => {
       clearStoryForm();
+    });
+
+    uploadCoverBtn.addEventListener('click', async () => {
+      try {
+        coverUploadMessage.textContent = '';
+        coverUploadMessage.style.color = '';
+
+        if (!editingStoryId) {
+          throw new Error('Create or select a story before uploading a cover image.');
+        }
+
+        const file = storyCoverFile.files?.[0];
+        if (!file) {
+          throw new Error('Please choose an image file first.');
+        }
+
+        const token = await getAccessToken();
+        if (!token) {
+          throw new Error('No active session found.');
+        }
+
+        uploadCoverBtn.disabled = true;
+        uploadCoverBtn.textContent = 'Uploading...';
+
+        const file_base64 = await fileToBase64(file);
+
+        const res = await fetch('/.netlify/functions/upload-story-cover', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            story_id: editingStoryId,
+            file_name: file.name,
+            file_type: file.type,
+            file_base64
+          })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(result.error || 'Failed to upload cover image');
+        }
+
+        coverUploadMessage.textContent = 'Cover image uploaded successfully!';
+        coverUploadMessage.style.color = 'green';
+
+        if (result.cover_image_url) {
+          coverPreview.src = result.cover_image_url;
+          coverPreview.style.display = 'block';
+        }
+
+        storyCoverFile.value = '';
+        await loadStoriesPreview();
+
+        if (editingStoryId) {
+          const refreshedStory = allStories.find(story => story.id === editingStoryId);
+          if (refreshedStory) populateStoryForm(refreshedStory);
+        }
+      } catch (err) {
+        console.error('Error uploading cover image:', err);
+        coverUploadMessage.textContent = err.message || 'Failed to upload cover image.';
+        coverUploadMessage.style.color = 'red';
+      } finally {
+        uploadCoverBtn.disabled = false;
+        uploadCoverBtn.textContent = 'Upload Cover Image';
+      }
     });
 
     deleteStoryBtn.addEventListener('click', async () => {
@@ -533,7 +643,6 @@
       try {
         const title = storyTitle.value.trim();
         const author = storyAuthor.value.trim();
-        const cover_image_url = storyCoverImageUrl.value.trim();
         const description = storyDescription.value.trim();
         const active = storyActive.checked;
 
@@ -545,6 +654,9 @@
         if (!token) {
           throw new Error('No active session found.');
         }
+
+        const selectedStory = allStories.find(story => story.id === editingStoryId);
+        const cover_image_url = selectedStory?.cover_image_url || null;
 
         let res;
 
@@ -592,8 +704,17 @@
           : 'Story created successfully!';
         storyMsg.style.color = 'green';
 
+        const returnedStoryId = result.story?.id || null;
+
         clearStoryForm();
         await loadStoriesPreview();
+
+        if (!editingStoryId && returnedStoryId) {
+          editingStoryId = returnedStoryId;
+          storySelect.value = returnedStoryId;
+          const createdStory = allStories.find(story => story.id === returnedStoryId);
+          if (createdStory) populateStoryForm(createdStory);
+        }
       } catch (err) {
         console.error('Error saving story:', err);
         storyMsg.textContent = err.message || 'Failed to save story.';
