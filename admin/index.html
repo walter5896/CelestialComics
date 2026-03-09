@@ -27,23 +27,104 @@
     tr:nth-child(even) { background: #f9fafb; }
     tr:hover { background: #f3f4f6; }
 
-    select, button, input { padding: 0.4rem 0.6rem; border-radius: 0.375rem; border: 1px solid #d1d5db; font-size: 0.9rem; }
+    select, button, input, textarea {
+      padding: 0.55rem 0.7rem;
+      border-radius: 0.375rem;
+      border: 1px solid #d1d5db;
+      font-size: 0.95rem;
+      width: 100%;
+    }
 
-    button { background: #2563eb; color: white; cursor: pointer; transition: background 0.2s; margin-top: 0.5rem; }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 0.5rem;
+      width: auto;
+      min-width: 160px;
+    }
+
     button:hover { background: #1d4ed8; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .voting-section { background: #ffffff; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-    .voting-section h2 { margin-bottom: 1rem; }
-    .voting-section label { display: block; margin-bottom: 0.5rem; }
-    .voting-section input { width: 100%; max-width: 250px; margin-bottom: 1rem; }
+    .section-card {
+      background: #ffffff;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+
+    .section-card h2 {
+      margin-bottom: 1rem;
+    }
+
+    .section-card label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+    }
+
+    .field-group {
+      margin-bottom: 1rem;
+    }
+
+    .inline-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .inline-checkbox input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+
+    .section-message {
+      margin-top: 0.75rem;
+      font-size: 0.95rem;
+    }
+
+    .stories-list {
+      margin-top: 1.5rem;
+    }
+
+    .stories-list h3 {
+      margin-bottom: 0.75rem;
+    }
+
+    .story-chip-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .story-chip {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 0.9rem;
+    }
+
+    .story-chip strong {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
 
     @media (max-width: 768px) {
       nav ul { flex-direction: column; width: 100%; margin-top: 0.5rem; }
       table, th, td { font-size: 0.9rem; }
-      button, select, input { font-size: 0.85rem; }
+      button, select, input, textarea { font-size: 0.9rem; }
     }
+
     @media (max-width: 480px) {
-      table { font-size: 0.8rem; }
+      table { font-size: 0.82rem; }
       th, td { padding: 0.5rem; }
     }
   </style>
@@ -75,24 +156,73 @@
     </table>
 
     <!-- VOTING CONTROLS -->
-    <div class="voting-section" id="voting-section" style="display:none;">
+    <div class="section-card" id="voting-section" style="display:none;">
       <h2>Voting Controls</h2>
 
-      <!-- Global Voting Period Editor -->
       <form id="voting-period-form">
-        <label>
-          Start Time:
+        <div class="field-group">
+          <label for="voting-start">Start Time</label>
           <input type="datetime-local" id="voting-start" required>
-        </label>
-        <label>
-          End Time:
+        </div>
+
+        <div class="field-group">
+          <label for="voting-end">End Time</label>
           <input type="datetime-local" id="voting-end" required>
-        </label>
+        </div>
+
         <button type="submit">Update Voting Period</button>
       </form>
-      <p id="voting-status-message"></p>
 
-      <button id="determine-winner-btn">Determine Winner</button>
+      <p id="voting-status-message" class="section-message"></p>
+
+      <button id="determine-winner-btn" type="button">Determine Winner</button>
+    </div>
+
+    <!-- STORY MANAGEMENT -->
+    <div class="section-card" id="story-management-section" style="display:none;">
+      <h2>Create Story</h2>
+
+      <form id="create-story-form">
+        <div class="field-group">
+          <label for="story-title">Title</label>
+          <input type="text" id="story-title" required>
+        </div>
+
+        <div class="field-group">
+          <label for="story-author">Author</label>
+          <input type="text" id="story-author" placeholder="Optional author/team name">
+        </div>
+
+        <div class="field-group">
+          <label for="story-image-url">Image URL</label>
+          <input type="text" id="story-image-url" placeholder="https://...">
+        </div>
+
+        <div class="field-group">
+          <label for="story-description">Description</label>
+          <textarea id="story-description" placeholder="Story description..."></textarea>
+        </div>
+
+        <div class="field-group inline-checkbox">
+          <input type="checkbox" id="story-active" checked>
+          <label for="story-active" style="margin-bottom:0;">Active / published</label>
+        </div>
+
+        <button type="submit" id="create-story-btn">Create Story</button>
+      </form>
+
+      <p id="story-status-message" class="section-message"></p>
+
+      <div class="stories-list">
+        <h3>Current Stories</h3>
+        <div id="stories-preview" class="story-chip-list"></div>
+      </div>
+    </div>
+
+    <!-- PRODUCT MANAGEMENT PLACEHOLDER -->
+    <div class="section-card" id="product-management-section" style="display:none;">
+      <h2>Product Management</h2>
+      <p>Next step: add create/edit product support with <code>votes_granted</code>.</p>
     </div>
   </div>
 
@@ -103,8 +233,10 @@
     import { supabase } from '../js/supabase.js';
 
     const statusEl = document.getElementById('status-message');
+
     const table = document.getElementById('users-table');
     const tbody = table.querySelector('tbody');
+
     const votingSection = document.getElementById('voting-section');
     const determineWinnerBtn = document.getElementById('determine-winner-btn');
     const votingForm = document.getElementById('voting-period-form');
@@ -112,32 +244,58 @@
     const votingEnd = document.getElementById('voting-end');
     const votingMsg = document.getElementById('voting-status-message');
 
-    // Logout
+    const storySection = document.getElementById('story-management-section');
+    const storyForm = document.getElementById('create-story-form');
+    const createStoryBtn = document.getElementById('create-story-btn');
+    const storyMsg = document.getElementById('story-status-message');
+    const storiesPreview = document.getElementById('stories-preview');
+
+    const productSection = document.getElementById('product-management-section');
+
+    let currentUser = null;
+    let currentAccessToken = null;
+
     document.getElementById('logout-link').addEventListener('click', async (e) => {
       e.preventDefault();
       await logout();
       window.location.href = '/';
     });
 
-    // Determine winner button
+    async function getAccessToken() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Error getting session:', error);
+        return null;
+      }
+      return data?.session?.access_token || null;
+    }
+
     async function determineWinner() {
       try {
-        const res = await fetch('/.netlify/functions/determine-winner', { method: 'POST' });
+        const token = await getAccessToken();
+
+        const res = await fetch('/.netlify/functions/determine-winner', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+
         const result = await res.json();
+
         if (!res.ok) throw new Error(result.error || 'Unknown error');
+
         if (result.success) {
           alert(`Winner determined!\n\nStory ID: ${result.winner_id}\nVotes: ${result.vote_count}`);
         } else {
-          alert(result.message);
+          alert(result.message || 'No winner determined.');
         }
       } catch (err) {
         console.error('Error determining winner:', err);
         alert('Failed to determine winner. Check console.');
       }
     }
+
     determineWinnerBtn.addEventListener('click', determineWinner);
 
-    // Load current voting period into inputs
     async function loadVotingPeriod() {
       try {
         const { data: periods, error } = await supabase
@@ -147,27 +305,34 @@
           .limit(1);
 
         if (!error && periods && periods.length > 0) {
-          votingStart.value = new Date(periods[0].start_time).toISOString().slice(0,16);
-          votingEnd.value = new Date(periods[0].end_time).toISOString().slice(0,16);
+          votingStart.value = new Date(periods[0].start_time).toISOString().slice(0, 16);
+          votingEnd.value = new Date(periods[0].end_time).toISOString().slice(0, 16);
         }
       } catch (err) {
         console.error('Error loading voting period:', err);
       }
     }
 
-    // Handle voting period form submit
     votingForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+
       const start_time = votingStart.value;
       const end_time = votingEnd.value;
 
       try {
+        const token = await getAccessToken();
+
         const res = await fetch('/.netlify/functions/set-voting-period', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({ start_time, end_time })
         });
+
         const result = await res.json();
+
         if (result.success) {
           votingMsg.textContent = 'Voting period updated successfully!';
           votingMsg.style.color = 'green';
@@ -181,27 +346,133 @@
       }
     });
 
-    // Main admin init
+    async function loadStoriesPreview() {
+      try {
+        const { data: stories, error } = await supabase
+          .from('stories')
+          .select('id, title, author, active, created_at')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        storiesPreview.innerHTML = '';
+
+        if (!stories || stories.length === 0) {
+          storiesPreview.innerHTML = '<p>No stories yet.</p>';
+          return;
+        }
+
+        stories.forEach(story => {
+          const div = document.createElement('div');
+          div.className = 'story-chip';
+          div.innerHTML = `
+            <strong>${story.title}</strong>
+            <div>${story.author || 'No author set'}</div>
+            <div>Status: ${story.active ? 'Active' : 'Inactive'}</div>
+          `;
+          storiesPreview.appendChild(div);
+        });
+      } catch (err) {
+        console.error('Error loading stories preview:', err);
+        storiesPreview.innerHTML = '<p>Failed to load stories.</p>';
+      }
+    }
+
+    storyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      storyMsg.textContent = '';
+      createStoryBtn.disabled = true;
+      createStoryBtn.textContent = 'Creating...';
+
+      try {
+        const title = document.getElementById('story-title').value.trim();
+        const author = document.getElementById('story-author').value.trim();
+        const image_url = document.getElementById('story-image-url').value.trim();
+        const description = document.getElementById('story-description').value.trim();
+        const active = document.getElementById('story-active').checked;
+
+        if (!title) {
+          throw new Error('Title is required.');
+        }
+
+        const token = await getAccessToken();
+        if (!token) {
+          throw new Error('No active session found.');
+        }
+
+        const res = await fetch('/.netlify/functions/create-story', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            title,
+            author,
+            image_url,
+            description,
+            active
+          })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(result.error || 'Failed to create story');
+        }
+
+        storyMsg.textContent = 'Story created successfully!';
+        storyMsg.style.color = 'green';
+
+        storyForm.reset();
+        document.getElementById('story-active').checked = true;
+
+        await loadStoriesPreview();
+      } catch (err) {
+        console.error('Error creating story:', err);
+        storyMsg.textContent = err.message || 'Failed to create story.';
+        storyMsg.style.color = 'red';
+      } finally {
+        createStoryBtn.disabled = false;
+        createStoryBtn.textContent = 'Create Story';
+      }
+    });
+
     (async () => {
-      const user = await getCurrentUserAsync();
-      if (!user) { statusEl.textContent = 'Not logged in.'; return; }
+      currentUser = await getCurrentUserAsync();
+      if (!currentUser) {
+        statusEl.textContent = 'Not logged in.';
+        return;
+      }
+
+      currentAccessToken = await getAccessToken();
 
       let users = [];
-      try { 
-        const res = await fetch('/.netlify/functions/get-users'); 
-        users = await res.json(); 
-      } catch (err) { console.error(err); statusEl.textContent = 'Error loading users.'; return; }
+      try {
+        const headers = currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {};
+        const res = await fetch('/.netlify/functions/get-users', { headers });
+        users = await res.json();
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Error loading users.';
+        return;
+      }
 
-      const profile = users.find(u => u.id === user.id);
-      if (!profile || profile.role !== 'admin') { statusEl.textContent = 'Access denied: Admins only.'; return; }
+      const profile = users.find(u => u.id === currentUser.id);
+      if (!profile || profile.role !== 'admin') {
+        statusEl.textContent = 'Access denied: Admins only.';
+        return;
+      }
 
-      // Show tables and voting section
       statusEl.style.display = 'none';
       table.style.display = 'table';
       votingSection.style.display = 'block';
+      storySection.style.display = 'block';
+      productSection.style.display = 'block';
 
-      // Populate user table
       tbody.innerHTML = '';
+
       users.forEach(u => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -209,8 +480,8 @@
           <td>${u.role}</td>
           <td>
             <select>
-              <option value="user" ${u.role==='user'?'selected':''}>user</option>
-              <option value="admin" ${u.role==='admin'?'selected':''}>admin</option>
+              <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
+              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>admin</option>
             </select>
             <button data-user-id="${u.id}">Update</button>
           </td>
@@ -227,20 +498,31 @@
           try {
             const res = await fetch('/.netlify/functions/update-user-role', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId, role: newRole, requesterId: user.id })
+              headers: {
+                'Content-Type': 'application/json',
+                ...(currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {})
+              },
+              body: JSON.stringify({ userId, role: newRole, requesterId: currentUser.id })
             });
+
             const result = await res.json();
+
             if (result.success) {
               button.closest('tr').querySelector('td:nth-child(2)').textContent = newRole;
               button.style.background = '#10b981';
               setTimeout(() => button.style.background = '#2563eb', 800);
-            } else { alert(`Error: ${result.error}`); }
-          } catch (err) { console.error(err); alert('Error updating role.'); }
+            } else {
+              alert(`Error: ${result.error}`);
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Error updating role.');
+          }
         });
       });
 
       await loadVotingPeriod();
+      await loadStoriesPreview();
     })();
   </script>
 </body>
