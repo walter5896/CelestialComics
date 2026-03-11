@@ -79,46 +79,35 @@
 
   <!-- ENV -->
   <script src="/js/env.js"></script>
-  <!-- Utils -->
   <script type="module" src="/js/utils.js"></script>
 
   <!-- APP JS -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
-    import { fetchStoriesWithVotes } from '/js/vote.js';
+    import { fetchStoriesWithVotes, renderStoriesForHome } from '/js/vote.js';
 
     document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
 
-      // Logout link
       document.querySelectorAll('.logout-link').forEach(el => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
+          location.reload();
         });
       });
 
-      // Fetch and render stories
       const storyGrid = document.getElementById('story-grid');
+
       try {
         const stories = await fetchStoriesWithVotes();
+
         if (!stories || stories.length === 0) {
           storyGrid.innerHTML = '<p>No stories found.</p>';
           return;
         }
-        storyGrid.innerHTML = '';
-        stories.forEach(story => {
-          const card = document.createElement('article');
-          card.className = 'story-card';
-          card.innerHTML = `
-            <img src="${story.image_url}" alt="${story.title}" />
-            <h3>${story.title}</h3>
-            <div class="story-actions">
-              <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
-            </div>
-          `;
-          storyGrid.appendChild(card);
-        });
+
+        renderStoriesForHome(stories, 'story-grid');
       } catch (err) {
         console.error('Home page load error:', err);
         storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
