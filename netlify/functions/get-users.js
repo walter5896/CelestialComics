@@ -1,22 +1,62 @@
 // netlify/functions/get-users.js
 import { createClient } from "@supabase/supabase-js";
 
-export async function handler(event, context) {
-  // Use environment variables set in Netlify
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
+export async function handler(event) {
+  if (event.httpMethod !== "GET") {
     return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Supabase service env vars missing" }),
+      statusCode: 405,
+      body: JSON.stringify({ error: "Method not allowed" }),
     };
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+  const authHeader = event.headers.authorization || event.headers.Authorization;
+  const token = authHeader?.replace("Bearer ", "");
+
+  if (!token) {
+    return {
+      statusCode: 401,
+      body: JSON.stringify({ error: "Missing auth token" }),
+    };
+  }
 
   try {
-    const { data, error } = await supabase.from("profiles").select("*");
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ error: "Invalid user token" }),
+      };
+    }
+
+    const { data: requesterProfile, error: requesterError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (requesterError) throw requesterError;
+
+    if (!requesterProfile || requesterProfile.role !== "admin") {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({ error: "Admin access required" }),
+      };
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, email, role, vote_balance, created_at, updated_at")
+      .order("created_at", { ascending: true });
+
     if (error) throw error;
 
     return {
@@ -27,7 +67,7 @@ export async function handler(event, context) {
     console.error("Error fetching users:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err.message || "Server error" }),
     };
   }
 }
