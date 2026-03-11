@@ -1,3 +1,4 @@
+// /.netlify/functions/upload-story-page.js
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -99,7 +100,7 @@ export async function handler(event) {
       : 'png';
 
     const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'png';
-    const storagePath = `${story_id}/page-${nextPageNumber}.${safeExtension}`;
+    const storagePath = `${story_id}/page-${nextPageNumber}-${Date.now()}.${safeExtension}`;
 
     const buffer = Buffer.from(file_base64, 'base64');
 
@@ -125,7 +126,7 @@ export async function handler(event) {
           story_id,
           page_number: nextPageNumber,
           image_url: publicUrl,
-          caption
+          caption: caption?.trim() || null
         }
       ])
       .select()

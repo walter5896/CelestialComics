@@ -6,6 +6,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+function extractStoragePathFromPublicUrl(publicUrl) {
+  if (!publicUrl) return null;
+
+  const marker = '/storage/v1/object/public/story-pages/';
+  const idx = publicUrl.indexOf(marker);
+
+  if (idx === -1) return null;
+
+  return publicUrl.substring(idx + marker.length);
+}
+
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
     return {
@@ -61,12 +72,40 @@ export async function handler(event) {
       };
     }
 
-    const { error } = await supabase
+    // First fetch the page so we know which storage file to delete
+    const { data: pageRow, error: pageLookupError } = await supabase
+      .from('story_pages')
+      .select('id, image_url')
+      .eq('id', page_id)
+      .single();
+
+    if (pageLookupError || !pageRow) {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ error: 'Story page not found' })
+      };
+    }
+
+    // Delete storage object if we can derive the path
+    const storagePath = extractStoragePathFromPublicUrl(pageRow.image_url);
+
+    if (storagePath) {
+      const { error: storageDeleteError } = await supabase.storage
+        .from('story-pages')
+        .remove([storagePath]);
+
+      if (storageDeleteError) {
+        throw storageDeleteError;
+      }
+    }
+
+    // Then delete DB row
+    const { error: deleteRowError } = await supabase
       .from('story_pages')
       .delete()
       .eq('id', page_id);
 
-    if (error) throw error;
+    if (deleteRowError) throw deleteRowError;
 
     return {
       statusCode: 200,
