@@ -23,7 +23,7 @@ let currentStory = null;
 let storyPages = [];
 let currentPageIndex = 0;
 
-function showState(state, message = '') {
+function setState(state, message = '') {
   loadingEl.style.display = state === 'loading' ? 'block' : 'none';
   errorEl.style.display = state === 'error' ? 'block' : 'none';
   emptyEl.style.display = state === 'empty' ? 'block' : 'none';
@@ -32,39 +32,80 @@ function showState(state, message = '') {
   if (state === 'error') {
     errorEl.textContent = message || 'Failed to load story pages.';
   }
+
+  if (state !== 'content') {
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+  }
+}
+
+function updateReaderHeader() {
+  if (!currentStory) {
+    titleEl.textContent = 'Story unavailable';
+    metaEl.textContent = '';
+    return;
+  }
+
+  titleEl.textContent = currentStory.title || 'Untitled Story';
+  metaEl.textContent = currentStory.author ? `By ${currentStory.author}` : '';
 }
 
 function renderCurrentPage() {
-  if (!storyPages.length) return;
+  if (!storyPages.length) {
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    imageEl.src = '';
+    imageEl.alt = '';
+    captionEl.textContent = '';
+    pageIndicatorEl.textContent = 'Page 0 of 0';
+    return;
+  }
 
   const page = storyPages[currentPageIndex];
-  const pageNumber = currentPageIndex + 1;
   const totalPages = storyPages.length;
+  const displayPageNumber = currentPageIndex + 1;
 
   imageEl.src = page.image_url || '';
-  imageEl.alt = `${currentStory?.title || 'Story'} - Page ${page.page_number || pageNumber}`;
+  imageEl.alt = `${currentStory?.title || 'Story'} - Page ${page.page_number || displayPageNumber}`;
 
   captionEl.textContent = page.caption || '';
-  pageIndicatorEl.textContent = `Page ${pageNumber} of ${totalPages}`;
+  pageIndicatorEl.textContent = `Page ${displayPageNumber} of ${totalPages}`;
 
   prevBtn.disabled = currentPageIndex === 0;
   nextBtn.disabled = currentPageIndex === totalPages - 1;
+}
+
+function goToPreviousPage() {
+  if (currentPageIndex <= 0) return;
+  currentPageIndex -= 1;
+  renderCurrentPage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToNextPage() {
+  if (currentPageIndex >= storyPages.length - 1) return;
+  currentPageIndex += 1;
+  renderCurrentPage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function loadReader() {
   const storyId = getQueryParam('id');
 
   if (!storyId) {
+    currentStory = null;
+    storyPages = [];
+    currentPageIndex = 0;
     titleEl.textContent = 'No story specified';
     metaEl.textContent = '';
-    showState('error', 'No story ID was provided.');
+    setState('error', 'No story ID was provided.');
     return;
   }
 
   backToStoryLink.href = `/gallery/story.html?id=${storyId}`;
 
   try {
-    showState('loading');
+    setState('loading');
 
     const { data: story, error: storyError } = await supabase
       .from('stories')
@@ -77,9 +118,7 @@ async function loadReader() {
     }
 
     currentStory = story;
-
-    titleEl.textContent = story.title || 'Untitled Story';
-    metaEl.textContent = story.author ? `By ${story.author}` : '';
+    updateReaderHeader();
 
     const { data: pages, error: pagesError } = await supabase
       .from('story_pages')
@@ -92,26 +131,28 @@ async function loadReader() {
     }
 
     storyPages = pages || [];
+    currentPageIndex = 0;
 
     if (!storyPages.length) {
-      showState('empty');
+      setState('empty');
+      renderCurrentPage();
       return;
     }
 
-    currentPageIndex = 0;
     renderCurrentPage();
-    showState('content');
+    setState('content');
   } catch (err) {
     console.error('Reader load error:', err);
+    currentStory = null;
+    storyPages = [];
+    currentPageIndex = 0;
     titleEl.textContent = 'Unable to load story';
     metaEl.textContent = '';
-    showState('error', err.message || 'Failed to load story pages.');
+    setState('error', err.message || 'Failed to load story pages.');
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  updateUI();
-
+function attachEvents() {
   document.querySelectorAll('.logout-link').forEach(el => {
     el.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -120,21 +161,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  prevBtn.addEventListener('click', () => {
-    if (currentPageIndex > 0) {
-      currentPageIndex -= 1;
-      renderCurrentPage();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  prevBtn.addEventListener('click', goToPreviousPage);
+  nextBtn.addEventListener('click', goToNextPage);
+
+  document.addEventListener('keydown', (e) => {
+    if (contentEl.style.display !== 'block') return;
+
+    if (e.key === 'ArrowLeft') {
+      goToPreviousPage();
+    }
+
+    if (e.key === 'ArrowRight') {
+      goToNextPage();
     }
   });
+}
 
-  nextBtn.addEventListener('click', () => {
-    if (currentPageIndex < storyPages.length - 1) {
-      currentPageIndex += 1;
-      renderCurrentPage();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  });
-
+document.addEventListener('DOMContentLoaded', async () => {
+  updateUI();
+  attachEvents();
   await loadReader();
 });
