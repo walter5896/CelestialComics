@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Read Story | Project Name</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    .reader-page {
+      padding: 2rem 1rem 4rem;
+    }
+
+    .reader-shell {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .reader-topbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .reader-title-wrap h1 {
+      margin-bottom: 0.35rem;
+    }
+
+    .reader-meta {
+      color: #6b7280;
+      font-size: 0.95rem;
+    }
+
+    .reader-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 1rem;
+      padding: 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    .reader-stage {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 400px;
+      background: #f9fafb;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    .reader-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      max-height: 80vh;
+      background: #fff;
+    }
+
+    .reader-caption {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: #374151;
+      text-align: center;
+      min-height: 1.5rem;
+    }
+
+    .reader-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+
+    .reader-page-indicator {
+      font-size: 0.95rem;
+      color: #4b5563;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .reader-loading,
+    .reader-error,
+    .reader-empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #374151;
+    }
+
+    .reader-nav-links {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 640px) {
+      .reader-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .reader-controls {
+        flex-direction: column;
+      }
+
+      .reader-page-indicator {
+        min-width: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+      <nav class="main-nav">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="reader-page">
+    <div class="reader-shell">
+      <div class="reader-topbar">
+        <div class="reader-title-wrap">
+          <h1 id="reader-title">Loading story...</h1>
+          <p id="reader-meta" class="reader-meta"></p>
+        </div>
+
+        <div class="reader-nav-links">
+          <a id="back-to-story-link" href="/gallery/" class="btn btn-secondary">Back to Story</a>
+          <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
+        </div>
+      </div>
+
+      <div id="reader-loading" class="reader-loading">Loading pages...</div>
+      <div id="reader-error" class="reader-error" style="display:none;"></div>
+      <div id="reader-empty" class="reader-empty" style="display:none;">
+        This story does not have any readable pages yet.
+      </div>
+
+      <div id="reader-content" style="display:none;">
+        <div class="reader-card">
+          <div class="reader-stage">
+            <img id="reader-image" class="reader-image" src="" alt="" />
+          </div>
+
+          <p id="reader-caption" class="reader-caption"></p>
+
+          <div class="reader-controls">
+            <button id="prev-page-btn" class="btn btn-secondary" type="button">Previous</button>
+            <div id="reader-page-indicator" class="reader-page-indicator">Page 1 of 1</div>
+            <button id="next-page-btn" class="btn btn-primary" type="button">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/js/env.js"></script>
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/read.js"></script>
+  <script type="module" src="/js/admin-nav.js"></script>
+</body>
+</html>

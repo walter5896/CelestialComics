@@ -67,7 +67,10 @@
       margin-bottom: 2rem;
     }
 
-    .section-card h2 { margin-bottom: 1rem; }
+    .section-card h2,
+    .section-card h3 {
+      margin-bottom: 1rem;
+    }
 
     .section-card label {
       display: block;
@@ -93,35 +96,47 @@
       font-size: 0.95rem;
     }
 
-    .stories-list { margin-top: 1.5rem; }
-    .stories-list h3 { margin-bottom: 0.75rem; }
+    .stories-list,
+    .story-pages-list {
+      margin-top: 1.5rem;
+    }
 
-    .story-chip-list {
+    .stories-list h3,
+    .story-pages-list h3 {
+      margin-bottom: 0.75rem;
+    }
+
+    .story-chip-list,
+    .story-pages-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 0.75rem;
     }
 
-    .story-chip {
+    .story-chip,
+    .story-page-card {
       background: #f3f4f6;
       border: 1px solid #e5e7eb;
       border-radius: 0.5rem;
       padding: 0.9rem;
     }
 
-    .story-chip strong {
+    .story-chip strong,
+    .story-page-card strong {
       display: block;
       margin-bottom: 0.35rem;
     }
 
-    .story-chip img {
+    .story-chip img,
+    .story-page-card img {
       display: block;
       width: 100%;
-      max-height: 180px;
+      max-height: 220px;
       object-fit: cover;
       border-radius: 0.5rem;
       margin-bottom: 0.5rem;
       border: 1px solid #d1d5db;
+      background: #fff;
     }
 
     .action-row {
@@ -154,6 +169,12 @@
     .compact-actions button {
       min-width: 110px;
       margin-top: 0;
+    }
+
+    .story-pages-section {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e5e7eb;
     }
 
     @media (max-width: 768px) {
@@ -275,6 +296,35 @@
       <div class="stories-list">
         <h3>Current Stories</h3>
         <div id="stories-preview" class="story-chip-list"></div>
+      </div>
+
+      <!-- STORY PAGES MANAGER -->
+      <div class="story-pages-section">
+        <h3>Story Pages</h3>
+        <p class="helper-text">Select or create a story first, then upload readable pages for it.</p>
+
+        <form id="story-page-form">
+          <div class="field-group">
+            <label for="story-page-file">Page Image Upload</label>
+            <input type="file" id="story-page-file" accept="image/*">
+          </div>
+
+          <div class="field-group">
+            <label for="story-page-caption">Page Caption</label>
+            <textarea id="story-page-caption" placeholder="Optional caption for this page..."></textarea>
+          </div>
+
+          <div class="action-row">
+            <button type="submit" id="upload-story-page-btn">Upload Story Page</button>
+          </div>
+        </form>
+
+        <p id="story-page-status-message" class="section-message"></p>
+
+        <div class="story-pages-list">
+          <h3>Existing Pages</h3>
+          <div id="story-pages-preview" class="story-pages-grid"></div>
+        </div>
       </div>
     </div>
 

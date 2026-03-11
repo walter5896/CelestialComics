@@ -47,7 +47,9 @@
   <section class="story-body">
     <div class="container">
       <div class="story-content"><p>Loading story content...</p></div>
+
       <div class="story-cta">
+        <a id="read-full-story-btn" href="#" class="btn btn-primary">Read Full Story</a>
         <button class="btn btn-primary vote-btn" data-story-id="">Vote for this story</button>
         <button class="btn btn-secondary save-btn" data-story-id="">Save Story</button>
       </div>
@@ -109,6 +111,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const storyContent = document.querySelector('.story-content');
   storyContent.innerHTML = `<p>${story.description || 'No story description available yet.'}</p>`;
+
+  const readFullStoryBtn = document.getElementById('read-full-story-btn');
+  readFullStoryBtn.href = `/gallery/read.html?id=${storyId}`;
 
   const voteBtn = document.querySelector('.vote-btn');
   voteBtn.dataset.storyId = storyId;

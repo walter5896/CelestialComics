@@ -33,6 +33,13 @@ const uploadCoverBtn = document.getElementById('upload-cover-btn');
 const coverUploadMessage = document.getElementById('cover-upload-message');
 const coverPreview = document.getElementById('cover-preview');
 
+const storyPageForm = document.getElementById('story-page-form');
+const storyPageFile = document.getElementById('story-page-file');
+const storyPageCaption = document.getElementById('story-page-caption');
+const uploadStoryPageBtn = document.getElementById('upload-story-page-btn');
+const storyPageStatusMsg = document.getElementById('story-page-status-message');
+const storyPagesPreview = document.getElementById('story-pages-preview');
+
 const productSection = document.getElementById('product-management-section');
 
 let currentUser = null;
@@ -69,6 +76,18 @@ async function fileToBase64(file) {
   });
 }
 
+function clearStoryPagesUI() {
+  if (storyPageFile) storyPageFile.value = '';
+  if (storyPageCaption) storyPageCaption.value = '';
+  if (storyPageStatusMsg) {
+    storyPageStatusMsg.textContent = '';
+    storyPageStatusMsg.style.color = '';
+  }
+  if (storyPagesPreview) {
+    storyPagesPreview.innerHTML = '<p>Select a story to manage pages.</p>';
+  }
+}
+
 function clearStoryForm() {
   editingStoryId = null;
   if (storySelect) storySelect.value = '';
@@ -92,9 +111,11 @@ function clearStoryForm() {
     coverPreview.src = '';
     coverPreview.style.display = 'none';
   }
+
+  clearStoryPagesUI();
 }
 
-function populateStoryForm(story) {
+async function populateStoryForm(story) {
   editingStoryId = story.id;
   storyTitle.value = story.title || '';
   storyAuthor.value = story.author || '';
@@ -117,6 +138,8 @@ function populateStoryForm(story) {
   deleteStoryBtn.style.display = 'inline-block';
   storyMsg.textContent = '';
   storyMsg.style.color = '';
+
+  await loadStoryPages(story.id);
 }
 
 async function determineWinner() {
@@ -230,6 +253,56 @@ async function loadStoriesPreview() {
   } catch (err) {
     console.error('Error loading stories preview:', err);
     storiesPreview.innerHTML = '<p>Failed to load stories.</p>';
+  }
+}
+
+async function loadStoryPages(storyId) {
+  if (!storyId) {
+    clearStoryPagesUI();
+    return;
+  }
+
+  try {
+    storyPagesPreview.innerHTML = '<p>Loading story pages...</p>';
+
+    const { data: pages, error } = await supabase
+      .from('story_pages')
+      .select('id, story_id, page_number, image_url, caption, created_at')
+      .eq('story_id', storyId)
+      .order('page_number', { ascending: true });
+
+    if (error) throw error;
+
+    storyPagesPreview.innerHTML = '';
+
+    if (!pages || pages.length === 0) {
+      storyPagesPreview.innerHTML = '<p>No pages uploaded yet for this story.</p>';
+      return;
+    }
+
+    pages.forEach(page => {
+      const card = document.createElement('div');
+      card.className = 'story-page-card';
+      card.innerHTML = `
+        <img src="${page.image_url || ''}" alt="Story page ${page.page_number}">
+        <strong>Page ${page.page_number}</strong>
+        <div>${page.caption || 'No caption'}</div>
+        <div class="action-row">
+          <button
+            type="button"
+            class="danger-btn delete-story-page-btn"
+            data-page-id="${page.id}">
+            Delete Page
+          </button>
+        </div>
+      `;
+      storyPagesPreview.appendChild(card);
+    });
+
+    attachStoryPageDeleteListeners();
+  } catch (err) {
+    console.error('Error loading story pages:', err);
+    storyPagesPreview.innerHTML = '<p>Failed to load story pages.</p>';
   }
 }
 
@@ -429,7 +502,7 @@ async function handleCoverUpload() {
 
     if (editingStoryId) {
       const refreshedStory = allStories.find(story => story.id === editingStoryId);
-      if (refreshedStory) populateStoryForm(refreshedStory);
+      if (refreshedStory) await populateStoryForm(refreshedStory);
     }
   } catch (err) {
     console.error('Error uploading cover image:', err);
@@ -439,6 +512,113 @@ async function handleCoverUpload() {
     uploadCoverBtn.disabled = false;
     uploadCoverBtn.textContent = 'Upload Cover Image';
   }
+}
+
+async function handleStoryPageUpload(e) {
+  e.preventDefault();
+
+  try {
+    storyPageStatusMsg.textContent = '';
+    storyPageStatusMsg.style.color = '';
+
+    if (!editingStoryId) {
+      throw new Error('Select or create a story before uploading pages.');
+    }
+
+    const file = storyPageFile.files?.[0];
+    if (!file) {
+      throw new Error('Please choose a page image first.');
+    }
+
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
+
+    uploadStoryPageBtn.disabled = true;
+    uploadStoryPageBtn.textContent = 'Uploading Page...';
+
+    const file_base64 = await fileToBase64(file);
+    const caption = storyPageCaption.value.trim();
+
+    const res = await fetch('/.netlify/functions/upload-story-page', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        story_id: editingStoryId,
+        file_name: file.name,
+        file_type: file.type,
+        file_base64,
+        caption
+      })
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(result.error || 'Failed to upload story page');
+    }
+
+    storyPageStatusMsg.textContent = 'Story page uploaded successfully!';
+    storyPageStatusMsg.style.color = 'green';
+
+    storyPageFile.value = '';
+    storyPageCaption.value = '';
+
+    await loadStoryPages(editingStoryId);
+  } catch (err) {
+    console.error('Error uploading story page:', err);
+    storyPageStatusMsg.textContent = err.message || 'Failed to upload story page.';
+    storyPageStatusMsg.style.color = 'red';
+  } finally {
+    uploadStoryPageBtn.disabled = false;
+    uploadStoryPageBtn.textContent = 'Upload Story Page';
+  }
+}
+
+function attachStoryPageDeleteListeners() {
+  document.querySelectorAll('.delete-story-page-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      const pageId = button.dataset.pageId;
+      if (!pageId) return;
+
+      const confirmed = confirm('Are you sure you want to delete this story page?');
+      if (!confirmed) return;
+
+      try {
+        const token = await getAccessToken();
+        if (!token) throw new Error('No active session found.');
+
+        button.disabled = true;
+        button.textContent = 'Deleting...';
+
+        const res = await fetch('/.netlify/functions/delete-story-page', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ page_id: pageId })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(result.error || 'Failed to delete story page');
+        }
+
+        await loadStoryPages(editingStoryId);
+      } catch (err) {
+        console.error('Error deleting story page:', err);
+        alert(err.message || 'Failed to delete story page.');
+        button.disabled = false;
+        button.textContent = 'Delete Page';
+      }
+    });
+  });
 }
 
 async function handleDeleteStory() {
@@ -565,7 +745,7 @@ async function handleStorySubmit(e) {
       editingStoryId = returnedStoryId;
       storySelect.value = returnedStoryId;
       const createdStory = allStories.find(story => story.id === returnedStoryId);
-      if (createdStory) populateStoryForm(createdStory);
+      if (createdStory) await populateStoryForm(createdStory);
     }
   } catch (err) {
     console.error('Error saving story:', err);
@@ -577,7 +757,7 @@ async function handleStorySubmit(e) {
   }
 }
 
-function handleStorySelectChange() {
+async function handleStorySelectChange() {
   const selectedId = storySelect.value;
 
   if (!selectedId) {
@@ -587,7 +767,7 @@ function handleStorySelectChange() {
 
   const selectedStory = allStories.find(story => story.id === selectedId);
   if (selectedStory) {
-    populateStoryForm(selectedStory);
+    await populateStoryForm(selectedStory);
   }
 }
 
@@ -632,6 +812,7 @@ export async function initAdminPanel() {
 
   await loadVotingPeriod();
   await loadStoriesPreview();
+  clearStoryPagesUI();
 
   determineWinnerBtn?.addEventListener('click', determineWinner);
   votingForm?.addEventListener('submit', handleVotingPeriodSubmit);
@@ -640,6 +821,7 @@ export async function initAdminPanel() {
   uploadCoverBtn?.addEventListener('click', handleCoverUpload);
   deleteStoryBtn?.addEventListener('click', handleDeleteStory);
   storyForm?.addEventListener('submit', handleStorySubmit);
+  storyPageForm?.addEventListener('submit', handleStoryPageUpload);
 }
 
 document.addEventListener('DOMContentLoaded', initAdminPanel);
