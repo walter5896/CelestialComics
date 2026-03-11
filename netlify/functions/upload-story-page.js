@@ -1,4 +1,3 @@
-// /.netlify/functions/upload-story-page.js
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -7,26 +6,24 @@ const supabase = createClient(
 );
 
 export async function handler(event) {
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
+  const authHeader = event.headers.authorization || event.headers.Authorization;
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) {
+    return {
+      statusCode: 401,
+      body: JSON.stringify({ error: 'Missing auth token' })
+    };
+  }
+
   try {
-    if (event.httpMethod !== 'POST') {
-      return {
-        statusCode: 405,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Method not allowed' })
-      };
-    }
-
-    const authHeader = event.headers.authorization || event.headers.Authorization;
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (!token) {
-      return {
-        statusCode: 401,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Missing auth token' })
-      };
-    }
-
     const {
       data: { user },
       error: userError
@@ -35,7 +32,6 @@ export async function handler(event) {
     if (userError || !user) {
       return {
         statusCode: 401,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'Invalid user token' })
       };
     }
@@ -46,29 +42,16 @@ export async function handler(event) {
       .eq('id', user.id)
       .single();
 
-    if (profileError) {
-      throw new Error(`Profile lookup failed: ${profileError.message}`);
-    }
+    if (profileError) throw profileError;
 
     if (!profile || profile.role !== 'admin') {
       return {
         statusCode: 403,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'Admin access required' })
       };
     }
 
-    let body;
-    try {
-      body = JSON.parse(event.body || '{}');
-    } catch {
-      return {
-        statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Invalid JSON body' })
-      };
-    }
-
+    const body = JSON.parse(event.body || '{}');
     const {
       story_id,
       file_name,
@@ -80,7 +63,6 @@ export async function handler(event) {
     if (!story_id || !file_name || !file_type || !file_base64) {
       return {
         statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           error: 'Missing required fields: story_id, file_name, file_type, file_base64'
         })
@@ -96,7 +78,6 @@ export async function handler(event) {
     if (storyError || !story) {
       return {
         statusCode: 404,
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ error: 'Story not found' })
       };
     }
@@ -109,9 +90,7 @@ export async function handler(event) {
       .limit(1)
       .maybeSingle();
 
-    if (lastPageError) {
-      throw new Error(`Failed to determine next page number: ${lastPageError.message}`);
-    }
+    if (lastPageError) throw lastPageError;
 
     const nextPageNumber = lastPageRow ? Number(lastPageRow.page_number) + 1 : 1;
 
@@ -122,37 +101,22 @@ export async function handler(event) {
     const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'png';
     const storagePath = `${story_id}/page-${nextPageNumber}.${safeExtension}`;
 
-    let fileBuffer;
-    try {
-      fileBuffer = Buffer.from(file_base64, 'base64');
-    } catch {
-      return {
-        statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Invalid base64 file data' })
-      };
-    }
+    const buffer = Buffer.from(file_base64, 'base64');
 
     const { error: uploadError } = await supabase.storage
       .from('story-pages')
-      .upload(storagePath, fileBuffer, {
+      .upload(storagePath, buffer, {
         contentType: file_type,
         upsert: false
       });
 
-    if (uploadError) {
-      throw new Error(`Storage upload failed: ${uploadError.message}`);
-    }
+    if (uploadError) throw uploadError;
 
     const { data: publicUrlData } = supabase.storage
       .from('story-pages')
       .getPublicUrl(storagePath);
 
     const publicUrl = publicUrlData?.publicUrl || null;
-
-    if (!publicUrl) {
-      throw new Error('Failed to generate public URL for uploaded story page');
-    }
 
     const { data: pageRow, error: insertError } = await supabase
       .from('story_pages')
@@ -161,19 +125,16 @@ export async function handler(event) {
           story_id,
           page_number: nextPageNumber,
           image_url: publicUrl,
-          caption: caption?.trim() || null
+          caption
         }
       ])
       .select()
       .single();
 
-    if (insertError) {
-      throw new Error(`Database insert failed: ${insertError.message}`);
-    }
+    if (insertError) throw insertError;
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         success: true,
         page: pageRow
@@ -181,13 +142,9 @@ export async function handler(event) {
     };
   } catch (err) {
     console.error('upload-story-page error:', err);
-
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        error: err.message || 'Server error'
-      })
+      body: JSON.stringify({ error: err.message || 'Server error' })
     };
   }
 }

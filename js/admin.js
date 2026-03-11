@@ -66,41 +66,23 @@ async function getAccessToken() {
 async function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onload = () => {
-      try {
-        const result = reader.result;
-        const base64 = String(result).split(',')[1];
-        resolve(base64);
-      } catch (err) {
-        reject(err);
-      }
+      const result = reader.result;
+      const base64 = String(result).split(',')[1];
+      resolve(base64);
     };
-
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-async function parseJsonResponseSafely(res) {
-  const rawText = await res.text();
-
-  try {
-    return rawText ? JSON.parse(rawText) : {};
-  } catch {
-    throw new Error(rawText || 'Server returned an invalid response.');
-  }
-}
-
 function clearStoryPagesUI() {
   if (storyPageFile) storyPageFile.value = '';
   if (storyPageCaption) storyPageCaption.value = '';
-
   if (storyPageStatusMsg) {
     storyPageStatusMsg.textContent = '';
     storyPageStatusMsg.style.color = '';
   }
-
   if (storyPagesPreview) {
     storyPagesPreview.innerHTML = '<p>Select a story to manage pages.</p>';
   }
@@ -108,10 +90,8 @@ function clearStoryPagesUI() {
 
 function clearStoryForm() {
   editingStoryId = null;
-
   if (storySelect) storySelect.value = '';
   storyForm?.reset();
-
   if (storyActive) storyActive.checked = true;
   if (saveStoryBtn) saveStoryBtn.textContent = 'Create Story';
   if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
@@ -127,7 +107,6 @@ function clearStoryForm() {
   }
 
   if (storyCoverFile) storyCoverFile.value = '';
-
   if (coverPreview) {
     coverPreview.src = '';
     coverPreview.style.display = 'none';
@@ -172,11 +151,9 @@ async function determineWinner() {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
 
-    const result = await parseJsonResponseSafely(res);
+    const result = await res.json();
 
-    if (!res.ok) {
-      throw new Error(result.error || 'Unknown error');
-    }
+    if (!res.ok) throw new Error(result.error || 'Unknown error');
 
     if (result.success) {
       alert(`Winner determined!\n\nStory ID: ${result.winner_id}\nVotes: ${result.vote_count}`);
@@ -224,7 +201,7 @@ async function handleVotingPeriodSubmit(e) {
       body: JSON.stringify({ start_time, end_time })
     });
 
-    const result = await parseJsonResponseSafely(res);
+    const result = await res.json();
 
     if (result.success) {
       votingMsg.textContent = 'Voting period updated successfully!';
@@ -364,7 +341,7 @@ async function loadUsers() {
   try {
     const headers = currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {};
     const res = await fetch('/.netlify/functions/get-users', { headers });
-    const users = await parseJsonResponseSafely(res);
+    const users = await res.json();
 
     if (!res.ok) {
       throw new Error(users.error || 'Failed to load users');
@@ -399,7 +376,7 @@ function attachUserTableListeners() {
           body: JSON.stringify({ userId, role: newRole, requesterId: currentUser.id })
         });
 
-        const result = await parseJsonResponseSafely(res);
+        const result = await res.json();
 
         if (result.success) {
           row.querySelector('.role-cell').textContent = newRole;
@@ -445,7 +422,7 @@ function attachUserTableListeners() {
           })
         });
 
-        const result = await parseJsonResponseSafely(res);
+        const result = await res.json();
 
         if (!res.ok || !result.success) {
           throw new Error(result.error || 'Failed to update vote balance');
@@ -506,7 +483,7 @@ async function handleCoverUpload() {
       })
     });
 
-    const result = await parseJsonResponseSafely(res);
+    const result = await res.json();
 
     if (!res.ok) {
       throw new Error(result.error || 'Failed to upload cover image');
@@ -579,7 +556,7 @@ async function handleStoryPageUpload(e) {
       })
     });
 
-    const result = await parseJsonResponseSafely(res);
+    const result = await res.json();
 
     if (!res.ok) {
       throw new Error(result.error || 'Failed to upload story page');
@@ -627,7 +604,7 @@ function attachStoryPageDeleteListeners() {
           body: JSON.stringify({ page_id: pageId })
         });
 
-        const result = await parseJsonResponseSafely(res);
+        const result = await res.json();
 
         if (!res.ok) {
           throw new Error(result.error || 'Failed to delete story page');
@@ -666,7 +643,7 @@ async function handleDeleteStory() {
       body: JSON.stringify({ story_id: editingStoryId })
     });
 
-    const result = await parseJsonResponseSafely(res);
+    const result = await res.json();
 
     if (!res.ok) {
       throw new Error(result.error || 'Failed to delete story');
@@ -747,7 +724,7 @@ async function handleStorySubmit(e) {
       });
     }
 
-    const result = await parseJsonResponseSafely(res);
+    const result = await res.json();
 
     if (!res.ok) {
       throw new Error(result.error || (editingStoryId ? 'Failed to update story' : 'Failed to create story'));
@@ -807,7 +784,7 @@ export async function initAdminPanel() {
   try {
     const headers = currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {};
     const res = await fetch('/.netlify/functions/get-users', { headers });
-    users = await parseJsonResponseSafely(res);
+    users = await res.json();
 
     if (!res.ok) {
       throw new Error(users.error || 'Failed to load users');
