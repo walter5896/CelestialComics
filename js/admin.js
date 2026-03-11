@@ -63,26 +63,25 @@ async function getAccessToken() {
   return data?.session?.access_token || null;
 }
 
-async function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      const base64 = String(result).split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+async function parseJsonResponseSafely(res) {
+  const rawText = await res.text();
+
+  try {
+    return rawText ? JSON.parse(rawText) : {};
+  } catch {
+    throw new Error(rawText || 'Server returned an invalid response.');
+  }
 }
 
 function clearStoryPagesUI() {
   if (storyPageFile) storyPageFile.value = '';
   if (storyPageCaption) storyPageCaption.value = '';
+
   if (storyPageStatusMsg) {
     storyPageStatusMsg.textContent = '';
     storyPageStatusMsg.style.color = '';
   }
+
   if (storyPagesPreview) {
     storyPagesPreview.innerHTML = '<p>Select a story to manage pages.</p>';
   }
@@ -90,8 +89,10 @@ function clearStoryPagesUI() {
 
 function clearStoryForm() {
   editingStoryId = null;
+
   if (storySelect) storySelect.value = '';
   storyForm?.reset();
+
   if (storyActive) storyActive.checked = true;
   if (saveStoryBtn) saveStoryBtn.textContent = 'Create Story';
   if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
@@ -107,6 +108,7 @@ function clearStoryForm() {
   }
 
   if (storyCoverFile) storyCoverFile.value = '';
+
   if (coverPreview) {
     coverPreview.src = '';
     coverPreview.style.display = 'none';
@@ -151,9 +153,11 @@ async function determineWinner() {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
 
-    const result = await res.json();
+    const result = await parseJsonResponseSafely(res);
 
-    if (!res.ok) throw new Error(result.error || 'Unknown error');
+    if (!res.ok) {
+      throw new Error(result.error || 'Unknown error');
+    }
 
     if (result.success) {
       alert(`Winner determined!\n\nStory ID: ${result.winner_id}\nVotes: ${result.vote_count}`);
@@ -201,7 +205,7 @@ async function handleVotingPeriodSubmit(e) {
       body: JSON.stringify({ start_time, end_time })
     });
 
-    const result = await res.json();
+    const result = await parseJsonResponseSafely(res);
 
     if (result.success) {
       votingMsg.textContent = 'Voting period updated successfully!';
@@ -341,7 +345,7 @@ async function loadUsers() {
   try {
     const headers = currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {};
     const res = await fetch('/.netlify/functions/get-users', { headers });
-    const users = await res.json();
+    const users = await parseJsonResponseSafely(res);
 
     if (!res.ok) {
       throw new Error(users.error || 'Failed to load users');
@@ -376,7 +380,7 @@ function attachUserTableListeners() {
           body: JSON.stringify({ userId, role: newRole, requesterId: currentUser.id })
         });
 
-        const result = await res.json();
+        const result = await parseJsonResponseSafely(res);
 
         if (result.success) {
           row.querySelector('.role-cell').textContent = newRole;
@@ -422,7 +426,7 @@ function attachUserTableListeners() {
           })
         });
 
-        const result = await res.json();
+        const result = await parseJsonResponseSafely(res);
 
         if (!res.ok || !result.success) {
           throw new Error(result.error || 'Failed to update vote balance');
@@ -467,7 +471,19 @@ async function handleCoverUpload() {
     uploadCoverBtn.disabled = true;
     uploadCoverBtn.textContent = 'Uploading...';
 
-    const file_base64 = await fileToBase64(file);
+    const reader = new FileReader();
+    const file_base64 = await new Promise((resolve, reject) => {
+      reader.onload = () => {
+        try {
+          const result = reader.result;
+          resolve(String(result).split(',')[1]);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
     const res = await fetch('/.netlify/functions/upload-story-cover', {
       method: 'POST',
@@ -483,7 +499,7 @@ async function handleCoverUpload() {
       })
     });
 
-    const result = await res.json();
+    const result = await parseJsonResponseSafely(res);
 
     if (!res.ok) {
       throw new Error(result.error || 'Failed to upload cover image');
@@ -530,36 +546,75 @@ async function handleStoryPageUpload(e) {
       throw new Error('Please choose a page image first.');
     }
 
-    const token = await getAccessToken();
-    if (!token) {
-      throw new Error('No active session found.');
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new Error('You must be logged in as an admin.');
     }
 
     uploadStoryPageBtn.disabled = true;
     uploadStoryPageBtn.textContent = 'Uploading Page...';
 
-    const file_base64 = await fileToBase64(file);
-    const caption = storyPageCaption.value.trim();
+    const { data: lastPageRow, error: lastPageError } = await supabase
+      .from('story_pages')
+      .select('page_number')
+      .eq('story_id', editingStoryId)
+      .order('page_number', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    const res = await fetch('/.netlify/functions/upload-story-page', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        story_id: editingStoryId,
-        file_name: file.name,
-        file_type: file.type,
-        file_base64,
-        caption
-      })
-    });
+    if (lastPageError) {
+      throw lastPageError;
+    }
 
-    const result = await res.json();
+    const nextPageNumber = lastPageRow ? Number(lastPageRow.page_number) + 1 : 1;
 
-    if (!res.ok) {
-      throw new Error(result.error || 'Failed to upload story page');
+    const extension = file.name.includes('.')
+      ? file.name.split('.').pop().toLowerCase()
+      : 'png';
+
+    const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'png';
+    const storagePath = `${editingStoryId}/page-${nextPageNumber}-${Date.now()}.${safeExtension}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('story-pages')
+      .upload(storagePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('story-pages')
+      .getPublicUrl(storagePath);
+
+    const publicUrl = publicUrlData?.publicUrl;
+    if (!publicUrl) {
+      throw new Error('Failed to generate page URL.');
+    }
+
+    const caption = storyPageCaption.value.trim() || null;
+
+    const { error: insertError } = await supabase
+      .from('story_pages')
+      .insert([
+        {
+          story_id: editingStoryId,
+          page_number: nextPageNumber,
+          image_url: publicUrl,
+          caption
+        }
+      ]);
+
+    if (insertError) {
+      throw insertError;
     }
 
     storyPageStatusMsg.textContent = 'Story page uploaded successfully!';
@@ -604,7 +659,7 @@ function attachStoryPageDeleteListeners() {
           body: JSON.stringify({ page_id: pageId })
         });
 
-        const result = await res.json();
+        const result = await parseJsonResponseSafely(res);
 
         if (!res.ok) {
           throw new Error(result.error || 'Failed to delete story page');
@@ -643,7 +698,7 @@ async function handleDeleteStory() {
       body: JSON.stringify({ story_id: editingStoryId })
     });
 
-    const result = await res.json();
+    const result = await parseJsonResponseSafely(res);
 
     if (!res.ok) {
       throw new Error(result.error || 'Failed to delete story');
@@ -724,7 +779,7 @@ async function handleStorySubmit(e) {
       });
     }
 
-    const result = await res.json();
+    const result = await parseJsonResponseSafely(res);
 
     if (!res.ok) {
       throw new Error(result.error || (editingStoryId ? 'Failed to update story' : 'Failed to create story'));
@@ -784,7 +839,7 @@ export async function initAdminPanel() {
   try {
     const headers = currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {};
     const res = await fetch('/.netlify/functions/get-users', { headers });
-    users = await res.json();
+    users = await parseJsonResponseSafely(res);
 
     if (!res.ok) {
       throw new Error(users.error || 'Failed to load users');
