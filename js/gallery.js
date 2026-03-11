@@ -1,43 +1,37 @@
 // /js/gallery.js
-import { getCurrentUserAsync } from './auth.js';
-import { fetchStoriesWithVotes, renderStoriesForGallery, fetchUserVotes, updateVoteButtons, submitVote } from './vote.js';
+import { getCurrentUserAsync, updateUI, logout } from './auth.js';
+import { fetchStoriesWithVotes, renderStoriesForGallery } from './vote.js';
 
 async function initGallery() {
   try {
-    await getCurrentUserAsync(); // wait for auth
+    await getCurrentUserAsync(); // wait for auth state
+    updateUI();
+
+    document.querySelectorAll('.logout-link').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await logout();
+        location.reload();
+      });
+    });
 
     const stories = await fetchStoriesWithVotes();
 
     const grid = document.getElementById('story-grid');
+    if (!grid) return;
+
     if (!stories || stories.length === 0) {
       grid.innerHTML = '<p>No stories found.</p>';
       return;
     }
 
-    // <-- use the correct renderer
     renderStoriesForGallery(stories, 'story-grid');
-
-    const userVotes = await fetchUserVotes();
-    updateVoteButtons(userVotes, stories);
-
-    // Delegate vote button clicks
-    grid.addEventListener('click', async (e) => {
-      if (!e.target.matches('.vote-btn')) return;
-      const storyId = e.target.dataset.storyId;
-      const success = await submitVote(storyId);
-      if (!success) return;
-
-      const updatedStories = await fetchStoriesWithVotes();
-      renderStoriesForGallery(updatedStories, 'story-grid');
-
-      const updatedVotes = await fetchUserVotes();
-      updateVoteButtons(updatedVotes, updatedStories);
-    });
-
   } catch (err) {
     console.error('Gallery init error:', err);
     const grid = document.getElementById('story-grid');
-    if (grid) grid.innerHTML = '<p class="error">Failed to load stories.</p>';
+    if (grid) {
+      grid.innerHTML = '<p class="error">Failed to load stories.</p>';
+    }
   }
 }
 
