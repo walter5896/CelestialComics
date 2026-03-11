@@ -120,14 +120,30 @@ document.addEventListener('DOMContentLoaded', async () => {
   await restrictSingleStoryVoting(story, voteBtn);
 
   voteBtn.addEventListener('click', async () => {
-    const result = await submitVote(storyId, 1);
+    if (voteBtn.disabled) return;
 
-    if (result.success) {
-      story.vote_count = (story.vote_count || 0) + 1;
-      voteBtn.dataset.voteCount = story.vote_count;
-      voteBtn.textContent = `Add Vote (${story.vote_count})`;
-    } else if (result.reason === 'insufficient_balance') {
-      voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
+    const originalText = voteBtn.textContent;
+    voteBtn.disabled = true;
+    voteBtn.textContent = 'Submitting...';
+
+    try {
+      const result = await submitVote(storyId, 1);
+
+      if (result.success) {
+        story.vote_count = (story.vote_count || 0) + 1;
+        voteBtn.dataset.voteCount = story.vote_count;
+        voteBtn.disabled = false;
+        voteBtn.textContent = `Add Vote (${story.vote_count})`;
+      } else if (result.reason === 'insufficient_balance') {
+        voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
+      } else {
+        voteBtn.disabled = false;
+        voteBtn.textContent = originalText;
+      }
+    } catch (err) {
+      console.error('Single story vote error:', err);
+      voteBtn.disabled = false;
+      voteBtn.textContent = originalText;
     }
   });
 
@@ -141,14 +157,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   saveBtn.addEventListener('click', async () => {
-    const result = await saveStory(storyId);
-    if (result.success) {
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Saved';
-    } else if (result.reason === 'already_saved') {
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Already Saved';
-    } else {
+    if (saveBtn.disabled) return;
+
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+
+    try {
+      const result = await saveStory(storyId);
+
+      if (result.success) {
+        saveBtn.textContent = 'Saved';
+      } else if (result.reason === 'already_saved') {
+        saveBtn.textContent = 'Already Saved';
+      } else {
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
+        alert('Failed to save story.');
+      }
+    } catch (err) {
+      console.error('Save story error:', err);
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
       alert('Failed to save story.');
     }
   });

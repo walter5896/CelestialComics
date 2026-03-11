@@ -470,9 +470,28 @@ export function updateVoteButtons(userVotes, stories) {
 export function attachVoteListeners(containerId = 'story-grid') {
   document.querySelectorAll(`#${containerId} .vote-btn`).forEach(btn => {
     btn.addEventListener('click', async () => {
-      const storyId = btn.dataset.storyId;
-      const result = await submitVote(storyId, 1);
-      if (result.success) location.reload();
+      if (btn.disabled) return;
+
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      try {
+        const storyId = btn.dataset.storyId;
+        const result = await submitVote(storyId, 1);
+
+        if (result.success) {
+          location.reload();
+          return;
+        }
+
+        btn.disabled = false;
+        btn.textContent = originalText;
+      } catch (err) {
+        console.error('Vote click error:', err);
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     });
   });
 }
@@ -500,9 +519,30 @@ export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = 
 export function attachRecantListeners(containerId) {
   document.querySelectorAll(`#${containerId} .recant-btn`).forEach(btn => {
     btn.addEventListener('click', async () => {
-      const storyId = btn.dataset.storyId;
-      const res = await recantVote(storyId, 1);
-      if (res.success) location.reload();
+      if (btn.disabled) return;
+
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Recanting...';
+
+      try {
+        const storyId = btn.dataset.storyId;
+        const res = await recantVote(storyId, 1);
+
+        if (res.success) {
+          location.reload();
+          return;
+        }
+
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert('Could not recant vote.');
+      } catch (err) {
+        console.error('Recant click error:', err);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        alert('Could not recant vote.');
+      }
     });
   });
 }
