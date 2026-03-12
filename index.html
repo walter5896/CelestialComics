@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Project Name | Home</title>
+  <title>Celestial Comics | Home</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -11,20 +11,24 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
+
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
+
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/winner/">Winner</a></li>
+          <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -35,13 +39,23 @@
     <!-- HERO SECTION -->
     <section class="hero">
       <div class="container hero-container">
-        <h1 class="hero-title">Welcome to Project Name</h1>
+        <h1 class="hero-title">Welcome to Celestial Comics</h1>
         <p class="hero-subtitle">
-          Discover amazing stories and explore our shop.
+          Discover amazing stories, vote in active rounds, and follow the latest winners.
         </p>
         <div class="hero-cta">
           <a href="/vote/" class="btn btn-primary">Vote Now</a>
           <a href="/gallery/" class="btn btn-secondary">Explore Stories</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTINUE READING -->
+    <section class="featured-stories">
+      <div class="container">
+        <h2>Continue Reading</h2>
+        <div id="continue-reading-section" class="story-grid">
+          <p>Loading your reading progress...</p>
         </div>
       </div>
     </section>
@@ -51,6 +65,15 @@
       <div class="container">
         <h2>Featured Stories</h2>
         <div id="story-grid" class="story-grid"></div>
+      </div>
+    </section>
+
+    <!-- STANDINGS / HISTORY CTA -->
+    <section class="shop-preview">
+      <div class="container">
+        <h2>Current Standings & Past Winners</h2>
+        <p>Track the current round and revisit the stories that already won.</p>
+        <a href="/history/" class="btn btn-primary">View Standings & History</a>
       </div>
     </section>
 
@@ -67,10 +90,12 @@
   <!-- FOOTER -->
   <footer class="site-footer">
     <div class="container footer-container">
-      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
       <nav class="footer-nav">
         <a href="/gallery/">Gallery</a> |
         <a href="/vote/">Vote</a> |
+        <a href="/winner/">Winner</a> |
+        <a href="/history/">History</a> |
         <a href="/shop/">Shop</a> |
         <a href="/team/">Team</a>
       </nav>
@@ -79,25 +104,75 @@
 
   <!-- ENV -->
   <script src="/js/env.js"></script>
-  <script type="module" src="/js/utils.js"></script>
 
-  <!-- APP JS -->
+  <!-- SHARED UI / NAV -->
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/admin-nav.js"></script>
+
+  <!-- PAGE LOGIC -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
+    import { supabase } from '/js/supabase.js';
     import { fetchStoriesWithVotes, renderStoriesForHome } from '/js/vote.js';
+    import { fetchLatestReadingProgress } from '/js/reading-progress.js';
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      updateUI();
+    // =========================
+    // CONTINUE READING RENDERER
+    // =========================
+    // Loads the user's latest reading progress and renders a continue-reading card.
+    async function renderContinueReading() {
+      const continueReadingSection = document.getElementById('continue-reading-section');
+      if (!continueReadingSection) return;
 
-      document.querySelectorAll('.logout-link').forEach(el => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
-          await logout();
-          location.reload();
-        });
-      });
+      try {
+        const latestProgress = await fetchLatestReadingProgress();
 
+        if (!latestProgress) {
+          continueReadingSection.innerHTML = '<p>No reading progress yet. Start a story from the gallery.</p>';
+          return;
+        }
+
+        const { story_id, page_number } = latestProgress;
+
+        const { data: story, error } = await supabase
+          .from('stories')
+          .select('id, title, author, cover_image_url, image_url')
+          .eq('id', story_id)
+          .maybeSingle();
+
+        if (error || !story) {
+          continueReadingSection.innerHTML = '<p>No recent story progress found.</p>';
+          return;
+        }
+
+        const storyImage = story.cover_image_url || story.image_url || '';
+
+        continueReadingSection.innerHTML = `
+          <article class="story-card">
+            ${storyImage ? `<img src="${storyImage}" alt="${story.title}" />` : ''}
+            <h3>${story.title}</h3>
+            <p>${story.author ? `By ${story.author}` : 'Author not listed'}</p>
+            <p>Last saved page: ${page_number}</p>
+            <div class="story-actions">
+              <a class="btn btn-primary" href="/gallery/story.html?id=${story.id}&page=${page_number}">
+                Continue Reading
+              </a>
+            </div>
+          </article>
+        `;
+      } catch (err) {
+        console.error('Continue reading load error:', err);
+        continueReadingSection.innerHTML = '<p class="error">Failed to load reading progress.</p>';
+      }
+    }
+
+    // =========================
+    // FEATURED STORIES RENDERER
+    // =========================
+    // Loads and renders featured stories on the homepage.
+    async function renderFeaturedStories() {
       const storyGrid = document.getElementById('story-grid');
+      if (!storyGrid) return;
 
       try {
         const stories = await fetchStoriesWithVotes();
@@ -112,10 +187,27 @@
         console.error('Home page load error:', err);
         storyGrid.innerHTML = '<p class="error">Failed to load stories.</p>';
       }
+    }
+
+    // =========================
+    // HOME PAGE INITIALIZER
+    // =========================
+    // Updates auth-aware navigation, wires logout behavior,
+    // and loads homepage content.
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateUI();
+
+      document.querySelectorAll('.logout-link').forEach((el) => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+          window.location.href = '/';
+        });
+      });
+
+      await renderContinueReading();
+      await renderFeaturedStories();
     });
   </script>
-
-  <!-- ADMIN NAV LINK -->
-  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
