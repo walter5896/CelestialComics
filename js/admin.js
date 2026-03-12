@@ -3,19 +3,19 @@
 // =========================
 // IMPORTS
 // =========================
-// Import auth helpers and Supabase client for admin operations.
+// Import auth helpers and the shared Supabase client used across the admin panel.
 import { getCurrentUserAsync, logout } from './auth.js';
 import { supabase } from './supabase.js';
 
 // =========================
 // GLOBAL DOM REFERENCES
 // =========================
-// Grab top-level status elements and user management table nodes.
+// Top-level status / user table elements.
 const statusEl = document.getElementById('status-message');
 const table = document.getElementById('users-table');
 const tbody = table?.querySelector('tbody');
 
-// Grab voting section controls.
+// Voting controls.
 const votingSection = document.getElementById('voting-section');
 const determineWinnerBtn = document.getElementById('determine-winner-btn');
 const closeVotingBtn = document.getElementById('close-voting-btn');
@@ -24,11 +24,11 @@ const votingStart = document.getElementById('voting-start');
 const votingEnd = document.getElementById('voting-end');
 const votingMsg = document.getElementById('voting-status-message');
 
-// Grab voting summary UI.
+// Voting summary boxes.
 const currentRoundSummary = document.getElementById('current-round-summary');
 const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
 
-// Grab old legacy winner-preview UI elements so they can be hidden safely.
+// Legacy / hidden winner preview UI that still exists in the HTML.
 const winnerPreviewPanel = document.getElementById('winner-preview-panel');
 const winnerPreviewContent = document.getElementById('winner-preview-content');
 const winnerPreviewMessage = document.getElementById('winner-preview-message');
@@ -36,7 +36,7 @@ const nextRoundFields = document.getElementById('next-round-fields');
 const finalizeOnlyBtn = document.getElementById('finalize-only-btn');
 const finalizeAndCreateBtn = document.getElementById('finalize-and-create-btn');
 
-// Grab story management section elements.
+// Story management UI.
 const storySection = document.getElementById('story-management-section');
 const storySelect = document.getElementById('story-select');
 const storyForm = document.getElementById('story-form');
@@ -46,19 +46,19 @@ const deleteStoryBtn = document.getElementById('delete-story-btn');
 const storyMsg = document.getElementById('story-status-message');
 const storiesPreview = document.getElementById('stories-preview');
 
-// Grab story form field elements.
+// Story form fields.
 const storyTitle = document.getElementById('story-title');
 const storyAuthor = document.getElementById('story-author');
 const storyDescription = document.getElementById('story-description');
 const storyActive = document.getElementById('story-active');
 
-// Grab cover upload elements.
+// Cover image upload UI.
 const storyCoverFile = document.getElementById('story-cover-file');
 const uploadCoverBtn = document.getElementById('upload-cover-btn');
 const coverUploadMessage = document.getElementById('cover-upload-message');
 const coverPreview = document.getElementById('cover-preview');
 
-// Grab story page upload elements.
+// Story page upload UI.
 const storyPageForm = document.getElementById('story-page-form');
 const storyPageFile = document.getElementById('story-page-file');
 const storyPageCaption = document.getElementById('story-page-caption');
@@ -66,13 +66,13 @@ const uploadStoryPageBtn = document.getElementById('upload-story-page-btn');
 const storyPageStatusMsg = document.getElementById('story-page-status-message');
 const storyPagesPreview = document.getElementById('story-pages-preview');
 
-// Grab product section placeholder.
+// Placeholder product section.
 const productSection = document.getElementById('product-management-section');
 
 // =========================
 // SHARED STATE
 // =========================
-// Store current session/admin state for reuse throughout the page.
+// Shared page state reused across handlers and renderers.
 let currentUser = null;
 let currentAccessToken = null;
 let allStories = [];
@@ -83,7 +83,7 @@ let currentWorkingPeriod = null;
 // =========================
 // LOGOUT HANDLER
 // =========================
-// Allow admin to log out from the admin nav.
+// Logs the admin out and returns them to the homepage.
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
   await logout();
@@ -91,10 +91,10 @@ document.getElementById('logout-link')?.addEventListener('click', async (e) => {
 });
 
 // =========================
-// SESSION / RESPONSE HELPERS
+// ACCESS TOKEN HELPER
 // =========================
-
-// Fetch the current access token from the Supabase session.
+// Gets the current Supabase session access token for authenticated
+// Netlify function requests.
 async function getAccessToken() {
   const { data, error } = await supabase.auth.getSession();
 
@@ -106,7 +106,11 @@ async function getAccessToken() {
   return data?.session?.access_token || null;
 }
 
-// Parse JSON safely even when the backend returns plain text on error.
+// =========================
+// SAFE JSON RESPONSE PARSER
+// =========================
+// Safely parses serverless function responses, even when an error
+// response comes back as plain text instead of JSON.
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -117,7 +121,11 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-// Convert a date/time value into a friendly local display string.
+// =========================
+// DATE FORMATTER
+// =========================
+// Converts an ISO datetime value into a friendly local string
+// for display in the admin UI.
 function formatDateTime(value) {
   if (!value) return '—';
 
@@ -127,10 +135,34 @@ function formatDateTime(value) {
   return date.toLocaleString();
 }
 
-// Determine a round status from its dates / finalized state.
+// =========================
+// EFFECTIVE CLOSED CHECK
+// =========================
+// Determines whether a round should be treated as closed.
+// A round is effectively closed if:
+// - it has finalized_at
+// - it has closed_at
+// - or its scheduled end_time has passed
+function isEffectivelyClosed(period) {
+  if (!period) return false;
+  if (period.finalized_at) return true;
+  if (period.closed_at) return true;
+
+  const now = new Date();
+  const end = new Date(period.end_time);
+
+  return now > end;
+}
+
+// =========================
+// ROUND STATUS DERIVER
+// =========================
+// Returns the status that should be shown in the admin UI:
+// none / upcoming / open / closed / finalized
 function deriveRoundStatus(period) {
   if (!period) return 'none';
   if (period.finalized_at) return 'finalized';
+  if (period.closed_at) return 'closed';
 
   const now = new Date();
   const start = new Date(period.start_time);
@@ -142,11 +174,10 @@ function deriveRoundStatus(period) {
 }
 
 // =========================
-// VOTING UI HELPERS
+// LEGACY WINNER PREVIEW HIDER
 // =========================
-
-// Hide the old preview-based winner UI that is no longer used.
-// This function name intentionally matches the init call to avoid the earlier crash.
+// Hides the older winner preview UI that still exists in the DOM
+// but is no longer part of the active workflow.
 function hideWinnerPreviewUI() {
   if (winnerPreviewPanel) winnerPreviewPanel.style.display = 'none';
   if (winnerPreviewContent) winnerPreviewContent.innerHTML = '';
@@ -161,7 +192,10 @@ function hideWinnerPreviewUI() {
   if (finalizeAndCreateBtn) finalizeAndCreateBtn.style.display = 'none';
 }
 
-// Render the summary card for the currently active unfinalized round.
+// =========================
+// CURRENT ROUND SUMMARY RENDERER
+// =========================
+// Renders the current active unfinalized round into the summary box.
 function renderCurrentRoundSummary(period) {
   if (!currentRoundSummary) return;
 
@@ -175,12 +209,16 @@ function renderCurrentRoundSummary(period) {
   currentRoundSummary.innerHTML = `
     <p><strong>Current Round ID:</strong> ${period.id}</p>
     <p><strong>Status:</strong> ${computedStatus}</p>
-    <p><strong>Start:</strong> ${formatDateTime(period.start_time)}</p>
-    <p><strong>End:</strong> ${formatDateTime(period.end_time)}</p>
+    <p><strong>Scheduled Start:</strong> ${formatDateTime(period.start_time)}</p>
+    <p><strong>Scheduled End:</strong> ${formatDateTime(period.end_time)}</p>
+    <p><strong>Closed At:</strong> ${formatDateTime(period.closed_at)}</p>
   `;
 }
 
-// Render the summary card for the most recently finalized winner.
+// =========================
+// FINALIZED WINNER SUMMARY RENDERER
+// =========================
+// Renders the most recently finalized round and winner summary.
 function renderFinalizedWinnerSummary(period, winnerTitle = null) {
   if (!finalizedWinnerSummary) return;
 
@@ -193,26 +231,40 @@ function renderFinalizedWinnerSummary(period, winnerTitle = null) {
     <p><strong>Last Finalized Round:</strong> ${period.id}</p>
     <p><strong>Winner:</strong> ${winnerTitle || period.winner_title || 'Unknown'}</p>
     <p><strong>Winning Votes:</strong> ${period.winning_vote_count ?? '—'}</p>
+    <p><strong>Scheduled Start:</strong> ${formatDateTime(period.start_time)}</p>
+    <p><strong>Scheduled End:</strong> ${formatDateTime(period.end_time)}</p>
+    <p><strong>Closed At:</strong> ${formatDateTime(period.closed_at)}</p>
     <p><strong>Finalized At:</strong> ${formatDateTime(period.finalized_at)}</p>
   `;
 }
 
-// Load the current working round plus the latest finalized winner summary.
+// =========================
+// VOTING PERIOD LOADER
+// =========================
+// Loads the current unfinalized round plus the most recent finalized round,
+// then updates the summary cards and button states.
 async function loadVotingPeriod() {
   try {
-    // Fetch the latest unfinalized round.
     const { data: currentPeriods, error: currentError } = await supabase
       .from('voting_periods')
-      .select('id, start_time, end_time, status, finalized_at, winner_id, winning_vote_count')
+      .select(`
+        id,
+        start_time,
+        end_time,
+        status,
+        closed_at,
+        finalized_at,
+        winner_id,
+        winning_vote_count
+      `)
       .is('finalized_at', null)
-      .order('start_time', { ascending: false })
+      .order('id', { ascending: false })
       .limit(1);
 
     if (currentError) throw currentError;
 
     currentWorkingPeriod = currentPeriods?.[0] || null;
 
-    // Populate the main form with the current unfinalized round, if one exists.
     if (currentWorkingPeriod) {
       votingStart.value = new Date(currentWorkingPeriod.start_time).toISOString().slice(0, 16);
       votingEnd.value = new Date(currentWorkingPeriod.end_time).toISOString().slice(0, 16);
@@ -221,13 +273,20 @@ async function loadVotingPeriod() {
       votingEnd.value = '';
     }
 
-    // Render the current round summary box.
     renderCurrentRoundSummary(currentWorkingPeriod);
 
-    // Fetch the most recently finalized round.
     const { data: finalizedPeriods, error: finalizedError } = await supabase
       .from('voting_periods')
-      .select('id, start_time, end_time, status, finalized_at, winner_id, winning_vote_count')
+      .select(`
+        id,
+        start_time,
+        end_time,
+        status,
+        closed_at,
+        finalized_at,
+        winner_id,
+        winning_vote_count
+      `)
       .not('finalized_at', 'is', null)
       .order('finalized_at', { ascending: false })
       .limit(1);
@@ -236,7 +295,6 @@ async function loadVotingPeriod() {
 
     const latestFinalized = finalizedPeriods?.[0] || null;
 
-    // Resolve winner title for the finalized summary card.
     if (latestFinalized?.winner_id) {
       const { data: winnerStory } = await supabase
         .from('stories')
@@ -249,7 +307,6 @@ async function loadVotingPeriod() {
       renderFinalizedWinnerSummary(latestFinalized, null);
     }
 
-    // Update voting action button states based on current round status.
     const currentStatus = deriveRoundStatus(currentWorkingPeriod);
 
     if (closeVotingBtn) {
@@ -273,7 +330,9 @@ async function loadVotingPeriod() {
 
     if (determineWinnerBtn) {
       determineWinnerBtn.disabled =
-        !currentWorkingPeriod || currentStatus !== 'closed';
+        !currentWorkingPeriod ||
+        !isEffectivelyClosed(currentWorkingPeriod) ||
+        !!currentWorkingPeriod.finalized_at;
     }
   } catch (err) {
     console.error('Error loading voting period:', err);
@@ -281,10 +340,10 @@ async function loadVotingPeriod() {
 }
 
 // =========================
-// VOTING ACTIONS
+// VOTING PERIOD SUBMIT HANDLER
 // =========================
-
-// Save or create the current voting period from the main admin form.
+// Creates a new round or updates the current round using the main
+// voting period form.
 async function handleVotingPeriodSubmit(e) {
   e.preventDefault();
 
@@ -313,7 +372,6 @@ async function handleVotingPeriodSubmit(e) {
     votingMsg.textContent = 'Voting period updated successfully!';
     votingMsg.style.color = 'green';
 
-    // Refresh current round summaries and button states.
     await loadVotingPeriod();
   } catch (err) {
     votingMsg.textContent = `Error: ${err.message}`;
@@ -321,7 +379,11 @@ async function handleVotingPeriodSubmit(e) {
   }
 }
 
-// Close the currently active round immediately from the admin panel.
+// =========================
+// CLOSE VOTING HANDLER
+// =========================
+// Manually closes the current round without modifying its original
+// scheduled start/end times.
 async function handleCloseVoting() {
   try {
     const token = await getAccessToken();
@@ -350,20 +412,23 @@ async function handleCloseVoting() {
     votingMsg.textContent = result.message || 'Voting closed successfully.';
     votingMsg.style.color = 'green';
 
-    // Refresh summaries and button state after closing the round.
     await loadVotingPeriod();
   } catch (err) {
     console.error('Error closing voting:', err);
     votingMsg.textContent = `Error: ${err.message}`;
     votingMsg.style.color = 'red';
   } finally {
-    if (closeVotingBtn) {
+    if (closeVotingBtn && !closeVotingBtn.disabled) {
       closeVotingBtn.textContent = 'Close Voting Now';
     }
   }
 }
 
-// Finalize the winner for the currently closed round.
+// =========================
+// DETERMINE WINNER HANDLER
+// =========================
+// Finalizes the winner for the most recently closed round and shows
+// the round totals in an alert for admin confirmation.
 async function determineWinner() {
   try {
     const token = await getAccessToken();
@@ -386,7 +451,6 @@ async function determineWinner() {
       throw new Error(result.error || 'Unknown error');
     }
 
-    // Handle successful winner finalization.
     if (result.success) {
       const totalsText = (result.vote_totals || [])
         .map(item => `${item.title}: ${item.total_votes}`)
@@ -400,7 +464,6 @@ async function determineWinner() {
         `Totals:\n${totalsText}`
       );
 
-      // Immediately update the finalized winner summary card.
       if (finalizedWinnerSummary) {
         finalizedWinnerSummary.innerHTML = `
           <p><strong>Last Finalized Round:</strong> ${result.period_id}</p>
@@ -410,20 +473,15 @@ async function determineWinner() {
         `;
       }
 
-      // Clear the main voting form so admin can use the same UI to create the next round.
-      if (votingStart) votingStart.value = '';
-      if (votingEnd) votingEnd.value = '';
-
-      // Tell the admin exactly what to do next.
+      votingStart.value = '';
+      votingEnd.value = '';
       votingMsg.textContent = 'Winner finalized. Enter new dates above to create the next voting period.';
       votingMsg.style.color = 'green';
 
-      // Refresh all voting summaries afterward.
       await loadVotingPeriod();
       return;
     }
 
-    // Handle ties without finalizing.
     if (result.reason === 'tie_detected') {
       const totalsText = (result.vote_totals || [])
         .map(item => `${item.title}: ${item.total_votes}`)
@@ -436,7 +494,6 @@ async function determineWinner() {
       return;
     }
 
-    // Handle any normal non-success response.
     alert(result.message || 'No winner determined.');
   } catch (err) {
     console.error('Error determining winner:', err);
@@ -448,10 +505,9 @@ async function determineWinner() {
 }
 
 // =========================
-// STORY PAGE UI HELPERS
+// STORY PAGES UI RESETTER
 // =========================
-
-// Reset the story-pages sub-panel when no story is selected.
+// Clears the story page upload UI and resets the preview panel.
 function clearStoryPagesUI() {
   if (storyPageFile) storyPageFile.value = '';
   if (storyPageCaption) storyPageCaption.value = '';
@@ -467,10 +523,9 @@ function clearStoryPagesUI() {
 }
 
 // =========================
-// STORY FORM HELPERS
+// STORY FORM RESETTER
 // =========================
-
-// Reset the story form back to "create new story" mode.
+// Resets the story form back to "create story" mode.
 function clearStoryForm() {
   editingStoryId = null;
 
@@ -501,7 +556,10 @@ function clearStoryForm() {
   clearStoryPagesUI();
 }
 
-// Populate the story form for editing an existing story.
+// =========================
+// STORY FORM POPULATOR
+// =========================
+// Loads a selected story into the edit form.
 async function populateStoryForm(story) {
   editingStoryId = story.id;
   storyTitle.value = story.title || '';
@@ -530,10 +588,9 @@ async function populateStoryForm(story) {
 }
 
 // =========================
-// STORY DATA LOADERS
+// STORIES PREVIEW LOADER
 // =========================
-
-// Load story preview cards and populate the story selector.
+// Loads all stories into the dropdown and preview grid.
 async function loadStoriesPreview() {
   try {
     const { data: stories, error } = await supabase
@@ -574,7 +631,10 @@ async function loadStoriesPreview() {
   }
 }
 
-// Load all uploaded pages for the selected story.
+// =========================
+// STORY PAGES LOADER
+// =========================
+// Loads all page images and captions for the selected story.
 async function loadStoryPages(storyId) {
   if (!storyId) {
     clearStoryPagesUI();
@@ -626,10 +686,9 @@ async function loadStoryPages(storyId) {
 }
 
 // =========================
-// USER MANAGEMENT RENDERING
+// USERS TABLE RENDERER
 // =========================
-
-// Render the admin user table.
+// Renders the admin user management table.
 function renderUsersTable(users) {
   if (!tbody) return;
 
@@ -661,9 +720,12 @@ function renderUsersTable(users) {
   attachUserTableListeners();
 }
 
-// Attach listeners for role updates and vote-balance changes in the user table.
+// =========================
+// USERS TABLE LISTENER ATTACHER
+// =========================
+// Attaches role update and vote balance adjustment handlers
+// for the rendered user table.
 function attachUserTableListeners() {
-  // Role update buttons.
   tbody.querySelectorAll('.role-update-btn').forEach(button => {
     button.addEventListener('click', async () => {
       const userId = button.dataset.userId;
@@ -710,7 +772,6 @@ function attachUserTableListeners() {
     });
   });
 
-  // Vote balance adjustment buttons.
   tbody.querySelectorAll('.vote-adjust-btn').forEach(button => {
     button.addEventListener('click', async () => {
       const userId = button.dataset.userId;
@@ -759,10 +820,9 @@ function attachUserTableListeners() {
 }
 
 // =========================
-// STORY COVER UPLOAD
+// COVER IMAGE UPLOAD HANDLER
 // =========================
-
-// Upload a story cover through the serverless backend.
+// Uploads a story cover image through the backend.
 async function handleCoverUpload() {
   try {
     coverUploadMessage.textContent = '';
@@ -785,7 +845,6 @@ async function handleCoverUpload() {
     uploadCoverBtn.disabled = true;
     uploadCoverBtn.textContent = 'Uploading...';
 
-    // Convert the selected image to base64 for the serverless function payload.
     const reader = new FileReader();
     const file_base64 = await new Promise((resolve, reject) => {
       reader.onload = () => {
@@ -846,10 +905,9 @@ async function handleCoverUpload() {
 }
 
 // =========================
-// STORY PAGE UPLOAD
+// STORY PAGE UPLOAD HANDLER
 // =========================
-
-// Upload a story page image directly to storage and insert a story_pages row.
+// Uploads a story page image to storage and creates a story_pages record.
 async function handleStoryPageUpload(e) {
   e.preventDefault();
 
@@ -878,7 +936,6 @@ async function handleStoryPageUpload(e) {
     uploadStoryPageBtn.disabled = true;
     uploadStoryPageBtn.textContent = 'Uploading Page...';
 
-    // Look up the current highest page number for this story.
     const { data: lastPageRow, error: lastPageError } = await supabase
       .from('story_pages')
       .select('page_number')
@@ -893,7 +950,6 @@ async function handleStoryPageUpload(e) {
 
     const nextPageNumber = lastPageRow ? Number(lastPageRow.page_number) + 1 : 1;
 
-    // Generate a unique storage path for the page image.
     const extension = file.name.includes('.')
       ? file.name.split('.').pop().toLowerCase()
       : 'png';
@@ -901,7 +957,6 @@ async function handleStoryPageUpload(e) {
     const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'png';
     const storagePath = `${editingStoryId}/page-${nextPageNumber}-${Date.now()}.${safeExtension}`;
 
-    // Upload the page image file to the story-pages bucket.
     const { error: uploadError } = await supabase.storage
       .from('story-pages')
       .upload(storagePath, file, {
@@ -914,7 +969,6 @@ async function handleStoryPageUpload(e) {
       throw uploadError;
     }
 
-    // Resolve the public URL for the uploaded page image.
     const { data: publicUrlData } = supabase.storage
       .from('story-pages')
       .getPublicUrl(storagePath);
@@ -924,7 +978,6 @@ async function handleStoryPageUpload(e) {
       throw new Error('Failed to generate page URL.');
     }
 
-    // Insert the matching story_pages row.
     const caption = storyPageCaption.value.trim() || null;
 
     const { error: insertError } = await supabase
@@ -959,7 +1012,10 @@ async function handleStoryPageUpload(e) {
   }
 }
 
-// Attach delete handlers to all page delete buttons currently rendered.
+// =========================
+// STORY PAGE DELETE LISTENER ATTACHER
+// =========================
+// Attaches delete handlers to all currently rendered story page cards.
 function attachStoryPageDeleteListeners() {
   document.querySelectorAll('.delete-story-page-btn').forEach(button => {
     button.addEventListener('click', async () => {
@@ -1003,10 +1059,9 @@ function attachStoryPageDeleteListeners() {
 }
 
 // =========================
-// STORY CRUD ACTIONS
+// STORY DELETE HANDLER
 // =========================
-
-// Delete the currently selected story through the backend.
+// Deletes the currently selected story and its related pages.
 async function handleDeleteStory() {
   if (!editingStoryId) return;
 
@@ -1050,7 +1105,10 @@ async function handleDeleteStory() {
   }
 }
 
-// Create a new story or update the selected story.
+// =========================
+// STORY SAVE HANDLER
+// =========================
+// Creates a new story or updates the currently selected story.
 async function handleStorySubmit(e) {
   e.preventDefault();
 
@@ -1145,7 +1203,10 @@ async function handleStorySubmit(e) {
   }
 }
 
-// Switch the story form between create mode and edit mode when selector changes.
+// =========================
+// STORY SELECT CHANGE HANDLER
+// =========================
+// Switches between create mode and edit mode when the story selector changes.
 async function handleStorySelectChange() {
   const selectedId = storySelect.value;
 
@@ -1161,12 +1222,11 @@ async function handleStorySelectChange() {
 }
 
 // =========================
-// ADMIN PAGE INITIALIZATION
+// ADMIN PANEL INITIALIZER
 // =========================
-
-// Load admin data, verify admin permissions, and wire up all event listeners.
+// Verifies the current user is an admin, loads all initial data,
+// and wires up event listeners for the page.
 export async function initAdminPanel() {
-  // Resolve the currently logged-in user.
   currentUser = await getCurrentUserAsync();
 
   if (!currentUser) {
@@ -1174,10 +1234,8 @@ export async function initAdminPanel() {
     return;
   }
 
-  // Resolve the current access token for serverless admin requests.
   currentAccessToken = await getAccessToken();
 
-  // Load users from the backend so we can verify this user is an admin.
   let users = [];
 
   try {
@@ -1197,7 +1255,6 @@ export async function initAdminPanel() {
     return;
   }
 
-  // Deny access if the current logged-in profile is not an admin.
   const profile = users.find(u => u.id === currentUser.id);
 
   if (!profile || profile.role !== 'admin') {
@@ -1205,30 +1262,25 @@ export async function initAdminPanel() {
     return;
   }
 
-  // Reveal the admin sections now that access is verified.
   statusEl.style.display = 'none';
   table.style.display = 'table';
   votingSection.style.display = 'block';
   storySection.style.display = 'block';
   productSection.style.display = 'block';
 
-  // Render users and load initial admin data.
   allUsers = users;
   renderUsersTable(users);
 
   await loadVotingPeriod();
   await loadStoriesPreview();
 
-  // Reset view-only helper panels to safe defaults.
   clearStoryPagesUI();
   hideWinnerPreviewUI();
 
-  // Wire up voting controls.
   determineWinnerBtn?.addEventListener('click', determineWinner);
   closeVotingBtn?.addEventListener('click', handleCloseVoting);
   votingForm?.addEventListener('submit', handleVotingPeriodSubmit);
 
-  // Wire up story management controls.
   storySelect?.addEventListener('change', handleStorySelectChange);
   resetStoryBtn?.addEventListener('click', clearStoryForm);
   uploadCoverBtn?.addEventListener('click', handleCoverUpload);
@@ -1237,5 +1289,8 @@ export async function initAdminPanel() {
   storyPageForm?.addEventListener('submit', handleStoryPageUpload);
 }
 
-// Run admin initialization when the page is ready.
+// =========================
+// DOM READY BOOTSTRAP
+// =========================
+// Starts the admin panel once the page HTML has loaded.
 document.addEventListener('DOMContentLoaded', initAdminPanel);

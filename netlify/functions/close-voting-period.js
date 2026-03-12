@@ -57,9 +57,9 @@ export async function handler(event) {
     // Find latest unfinalized period
     const { data: periods, error: fetchError } = await supabase
       .from('voting_periods')
-      .select('id, start_time, end_time, status, finalized_at, winner_id, winning_vote_count')
+      .select('id, start_time, end_time, status, finalized_at, closed_at, winner_id, winning_vote_count')
       .is('finalized_at', null)
-      .order('start_time', { ascending: false })
+      .order('id', { ascending: false })
       .limit(1);
 
     if (fetchError) {
@@ -77,9 +77,9 @@ export async function handler(event) {
 
     const nowIso = new Date().toISOString();
 
-    // Already effectively closed
-    if (new Date(activePeriod.end_time) <= new Date(nowIso)) {
-      const { data: updatedAlreadyClosed, error: normalizeError } = await supabase
+    // If it was already manually closed, just normalize status and return.
+    if (activePeriod.closed_at) {
+      const { data: alreadyClosedPeriod, error: alreadyClosedError } = await supabase
         .from('voting_periods')
         .update({
           status: 'closed'
@@ -88,8 +88,8 @@ export async function handler(event) {
         .select()
         .single();
 
-      if (normalizeError) {
-        throw normalizeError;
+      if (alreadyClosedError) {
+        throw alreadyClosedError;
       }
 
       return {
@@ -97,16 +97,41 @@ export async function handler(event) {
         body: JSON.stringify({
           success: true,
           message: 'Voting period was already closed.',
-          period: updatedAlreadyClosed
+          period: alreadyClosedPeriod
         })
       };
     }
 
-    // Close it now
+    // If scheduled end time already passed, mark status closed but preserve original dates.
+    if (new Date(activePeriod.end_time) <= new Date(nowIso)) {
+      const { data: naturallyClosedPeriod, error: naturallyClosedError } = await supabase
+        .from('voting_periods')
+        .update({
+          status: 'closed'
+        })
+        .eq('id', activePeriod.id)
+        .select()
+        .single();
+
+      if (naturallyClosedError) {
+        throw naturallyClosedError;
+      }
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          message: 'Voting period was already closed by its scheduled end time.',
+          period: naturallyClosedPeriod
+        })
+      };
+    }
+
+    // Manually close the round now, without mutating start/end times.
     const { data: updatedPeriod, error: updateError } = await supabase
       .from('voting_periods')
       .update({
-        end_time: nowIso,
+        closed_at: nowIso,
         status: 'closed',
         winner_id: null,
         winning_vote_count: null

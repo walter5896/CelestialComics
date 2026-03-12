@@ -6,6 +6,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// =========================
+// STATUS DERIVATION HELPER
+// =========================
+// Determines the initial status of a round from its start/end window.
 function deriveStatus(startTime, endTime) {
   const now = new Date();
   const start = new Date(startTime);
@@ -16,6 +20,12 @@ function deriveStatus(startTime, endTime) {
   return 'closed';
 }
 
+// =========================
+// MAIN HANDLER
+// =========================
+// Creates a new voting period or updates the latest unfinalized one.
+// This preserves finalized history while letting admins reuse the main form
+// for the current working round.
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
     return {
@@ -25,6 +35,10 @@ export async function handler(event) {
   }
 
   try {
+    // =========================
+    // AUTH VALIDATION
+    // =========================
+    // Validate the admin bearer token.
     const authHeader = event.headers.authorization || event.headers.Authorization;
     const token = authHeader?.replace('Bearer ', '');
 
@@ -47,6 +61,10 @@ export async function handler(event) {
       };
     }
 
+    // =========================
+    // ADMIN ROLE CHECK
+    // =========================
+    // Ensure only admins can create or edit voting periods.
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -62,6 +80,10 @@ export async function handler(event) {
       };
     }
 
+    // =========================
+    // REQUEST BODY VALIDATION
+    // =========================
+    // Parse and validate the requested start and end times.
     const { start_time, end_time } = JSON.parse(event.body || '{}');
 
     if (!start_time || !end_time) {
@@ -90,42 +112,69 @@ export async function handler(event) {
 
     const status = deriveStatus(start_time, end_time);
 
-    // Find latest unfinalized period only
+    // =========================
+    // LOOK UP CURRENT WORKING ROUND
+    // =========================
+    // Only unfinalized rounds are candidates for update.
+    // Finalized rounds remain untouched as historical records.
     const { data: periods, error: fetchError } = await supabase
       .from('voting_periods')
-      .select('id, finalized_at')
+      .select(`
+        id,
+        finalized_at,
+        closed_at,
+        winner_id,
+        winning_vote_count
+      `)
       .is('finalized_at', null)
-      .order('start_time', { ascending: false })
+      .order('id', { ascending: false })
       .limit(1);
 
     if (fetchError) throw fetchError;
 
     let savedPeriod = null;
 
+    // =========================
+    // UPDATE EXISTING WORKING ROUND
+    // =========================
+    // If an unfinalized round exists, update it in place and reset any
+    // temporary close/winner state so it behaves like a fresh working round.
     if (periods && periods.length > 0) {
+      const existingPeriod = periods[0];
+
       const { data, error } = await supabase
         .from('voting_periods')
         .update({
           start_time,
           end_time,
           status,
+          closed_at: null,
           winner_id: null,
-          winning_vote_count: null
+          winning_vote_count: null,
+          finalized_at: null,
+          finalized_by: null
         })
-        .eq('id', periods[0].id)
+        .eq('id', existingPeriod.id)
         .select()
         .single();
 
       if (error) throw error;
       savedPeriod = data;
     } else {
+      // =========================
+      // CREATE NEW ROUND
+      // =========================
+      // If no unfinalized round exists, insert a brand new one.
       const { data, error } = await supabase
         .from('voting_periods')
         .insert([
           {
             start_time,
             end_time,
-            status
+            status,
+            closed_at: null,
+            winner_id: null,
+            winning_vote_count: null
           }
         ])
         .select()
@@ -135,6 +184,10 @@ export async function handler(event) {
       savedPeriod = data;
     }
 
+    // =========================
+    // SUCCESS RESPONSE
+    // =========================
+    // Return the saved round for the admin UI to refresh against.
     return {
       statusCode: 200,
       body: JSON.stringify({
@@ -144,9 +197,12 @@ export async function handler(event) {
     };
   } catch (err) {
     console.error('set-voting-period error:', err);
+
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message || 'Server error' })
+      body: JSON.stringify({
+        error: err.message || 'Server error'
+      })
     };
   }
 }

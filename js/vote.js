@@ -6,12 +6,54 @@ import { getCurrentUserAsync } from './auth.js';
    VOTING PERIOD HELPERS
 ======================= */
 
+// Determine whether a round is effectively closed.
+// A round is closed if:
+// - it has been finalized
+// - it has a manual closed_at timestamp
+// - or its scheduled end_time has already passed
+function isEffectivelyClosed(period) {
+  if (!period) return true;
+  if (period.finalized_at) return true;
+  if (period.closed_at) return true;
+
+  const now = new Date();
+  const end = new Date(period.end_time);
+
+  return now > end;
+}
+
+// Determine whether a round should be treated as open for public voting.
+// A round is open only if:
+// - it is not finalized
+// - it has not been manually closed
+// - the current time is between start_time and end_time
+function isEffectivelyOpen(period) {
+  if (!period) return false;
+  if (period.finalized_at) return false;
+  if (period.closed_at) return false;
+
+  const now = new Date();
+  const start = new Date(period.start_time);
+  const end = new Date(period.end_time);
+
+  return now >= start && now <= end;
+}
+
 // Fetch the latest unfinalized voting period.
 // This is the round the public voting UI should care about.
 async function fetchCurrentVotingPeriod() {
   const { data, error } = await supabase
     .from('voting_periods')
-    .select('id, start_time, end_time, status, winner_id, finalized_at, winning_vote_count')
+    .select(`
+      id,
+      start_time,
+      end_time,
+      status,
+      closed_at,
+      winner_id,
+      finalized_at,
+      winning_vote_count
+    `)
     .is('finalized_at', null)
     .order('id', { ascending: false })
     .limit(1);
@@ -26,34 +68,36 @@ async function fetchCurrentVotingPeriod() {
 
 // Fetch the currently open voting period for vote submission/recant logic.
 async function fetchOpenVotingPeriod() {
-  const nowIso = new Date().toISOString();
-
   const { data, error } = await supabase
     .from('voting_periods')
-    .select('id, start_time, end_time, status, finalized_at')
+    .select(`
+      id,
+      start_time,
+      end_time,
+      status,
+      closed_at,
+      finalized_at
+    `)
     .is('finalized_at', null)
-    .lte('start_time', nowIso)
-    .gte('end_time', nowIso)
+    .is('closed_at', null)
     .order('id', { ascending: false })
-    .limit(1);
+    .limit(5);
 
   if (error) {
     console.error('Error fetching open voting period:', error);
     return null;
   }
 
-  return data?.[0] || null;
+  const periods = data || [];
+  return periods.find(isEffectivelyOpen) || null;
 }
 
 // Derive the public voting state for the current round.
-// Prefer the stored DB status first, then fall back to date math if needed.
+// Respect finalized_at and closed_at first, then fall back to status/date math.
 function deriveVotingStatus(period) {
   if (!period) return 'closed';
   if (period.finalized_at) return 'closed';
-
-  if (period.status === 'open' || period.status === 'closed' || period.status === 'upcoming') {
-    return period.status;
-  }
+  if (period.closed_at) return 'closed';
 
   const now = new Date();
   const start = new Date(period.start_time);
