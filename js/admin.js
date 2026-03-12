@@ -1,12 +1,21 @@
 // /js/admin.js
+
+// =========================
+// IMPORTS
+// =========================
+// Import auth helpers and Supabase client for admin operations.
 import { getCurrentUserAsync, logout } from './auth.js';
 import { supabase } from './supabase.js';
 
+// =========================
+// GLOBAL DOM REFERENCES
+// =========================
+// Grab top-level status elements and user management table nodes.
 const statusEl = document.getElementById('status-message');
-
 const table = document.getElementById('users-table');
 const tbody = table?.querySelector('tbody');
 
+// Grab voting section controls.
 const votingSection = document.getElementById('voting-section');
 const determineWinnerBtn = document.getElementById('determine-winner-btn');
 const closeVotingBtn = document.getElementById('close-voting-btn');
@@ -15,14 +24,15 @@ const votingStart = document.getElementById('voting-start');
 const votingEnd = document.getElementById('voting-end');
 const votingMsg = document.getElementById('voting-status-message');
 
+// Grab voting summary / next-round UI.
 const currentRoundSummary = document.getElementById('current-round-summary');
 const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
-
 const nextRoundPanel = document.getElementById('next-round-panel');
 const nextRoundStart = document.getElementById('next-round-start');
 const nextRoundEnd = document.getElementById('next-round-end');
 const createNextRoundBtn = document.getElementById('create-next-round-btn');
 
+// Grab old legacy winner-preview UI elements so they can be hidden safely.
 const winnerPreviewPanel = document.getElementById('winner-preview-panel');
 const winnerPreviewContent = document.getElementById('winner-preview-content');
 const winnerPreviewMessage = document.getElementById('winner-preview-message');
@@ -30,6 +40,7 @@ const nextRoundFields = document.getElementById('next-round-fields');
 const finalizeOnlyBtn = document.getElementById('finalize-only-btn');
 const finalizeAndCreateBtn = document.getElementById('finalize-and-create-btn');
 
+// Grab story management section elements.
 const storySection = document.getElementById('story-management-section');
 const storySelect = document.getElementById('story-select');
 const storyForm = document.getElementById('story-form');
@@ -39,16 +50,19 @@ const deleteStoryBtn = document.getElementById('delete-story-btn');
 const storyMsg = document.getElementById('story-status-message');
 const storiesPreview = document.getElementById('stories-preview');
 
+// Grab story form field elements.
 const storyTitle = document.getElementById('story-title');
 const storyAuthor = document.getElementById('story-author');
 const storyDescription = document.getElementById('story-description');
 const storyActive = document.getElementById('story-active');
 
+// Grab cover upload elements.
 const storyCoverFile = document.getElementById('story-cover-file');
 const uploadCoverBtn = document.getElementById('upload-cover-btn');
 const coverUploadMessage = document.getElementById('cover-upload-message');
 const coverPreview = document.getElementById('cover-preview');
 
+// Grab story page upload elements.
 const storyPageForm = document.getElementById('story-page-form');
 const storyPageFile = document.getElementById('story-page-file');
 const storyPageCaption = document.getElementById('story-page-caption');
@@ -56,8 +70,13 @@ const uploadStoryPageBtn = document.getElementById('upload-story-page-btn');
 const storyPageStatusMsg = document.getElementById('story-page-status-message');
 const storyPagesPreview = document.getElementById('story-pages-preview');
 
+// Grab product section placeholder.
 const productSection = document.getElementById('product-management-section');
 
+// =========================
+// SHARED STATE
+// =========================
+// Store current session/admin state for reuse throughout the page.
 let currentUser = null;
 let currentAccessToken = null;
 let allStories = [];
@@ -65,21 +84,33 @@ let allUsers = [];
 let editingStoryId = null;
 let currentWorkingPeriod = null;
 
+// =========================
+// LOGOUT HANDLER
+// =========================
+// Allow admin to log out from the admin nav.
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
   await logout();
   window.location.href = '/';
 });
 
+// =========================
+// SESSION / RESPONSE HELPERS
+// =========================
+
+// Fetch the current access token from the Supabase session.
 async function getAccessToken() {
   const { data, error } = await supabase.auth.getSession();
+
   if (error) {
     console.error('Error getting session:', error);
     return null;
   }
+
   return data?.session?.access_token || null;
 }
 
+// Parse JSON safely even when the backend returns plain text on error.
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -90,16 +121,19 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
+// Convert a date/time value into a friendly local display string.
 function formatDateTime(value) {
   if (!value) return '—';
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
+
   return date.toLocaleString();
 }
 
+// Determine a round status from its dates / finalized state.
 function deriveRoundStatus(period) {
   if (!period) return 'none';
-
   if (period.finalized_at) return 'finalized';
 
   const now = new Date();
@@ -111,6 +145,7 @@ function deriveRoundStatus(period) {
   return 'closed';
 }
 
+// Suggest a convenient next round start/end after winner finalization.
 function setNextRoundSuggestion(referenceEnd = null) {
   if (!nextRoundStart || !nextRoundEnd) return;
 
@@ -122,28 +157,40 @@ function setNextRoundSuggestion(referenceEnd = null) {
   nextRoundEnd.value = suggestedEnd.toISOString().slice(0, 16);
 }
 
-function hideLegacyWinnerPreviewUI() {
+// =========================
+// VOTING UI HELPERS
+// =========================
+
+// Hide the old preview-based winner UI that is no longer used.
+// This function name intentionally matches the init call to avoid the earlier crash.
+function hideWinnerPreviewUI() {
   if (winnerPreviewPanel) winnerPreviewPanel.style.display = 'none';
   if (winnerPreviewContent) winnerPreviewContent.innerHTML = '';
+
   if (winnerPreviewMessage) {
     winnerPreviewMessage.textContent = '';
     winnerPreviewMessage.style.color = '';
   }
+
   if (nextRoundFields) nextRoundFields.style.display = 'none';
   if (finalizeOnlyBtn) finalizeOnlyBtn.style.display = 'none';
   if (finalizeAndCreateBtn) finalizeAndCreateBtn.style.display = 'none';
 }
 
+// Hide the "create next round" panel until it is needed.
 function hideNextRoundPanel() {
   if (nextRoundPanel) nextRoundPanel.style.display = 'none';
 }
 
+// Show the "create next round" panel and preload suggested dates.
 function showNextRoundPanel(referenceEnd = null) {
   if (!nextRoundPanel) return;
+
   nextRoundPanel.style.display = 'block';
   setNextRoundSuggestion(referenceEnd);
 }
 
+// Render the summary card for the currently active unfinalized round.
 function renderCurrentRoundSummary(period) {
   if (!currentRoundSummary) return;
 
@@ -162,6 +209,7 @@ function renderCurrentRoundSummary(period) {
   `;
 }
 
+// Render the summary card for the most recently finalized winner.
 function renderFinalizedWinnerSummary(period, winnerTitle = null) {
   if (!finalizedWinnerSummary) return;
 
@@ -178,8 +226,10 @@ function renderFinalizedWinnerSummary(period, winnerTitle = null) {
   `;
 }
 
+// Load the current working round plus the latest finalized winner summary.
 async function loadVotingPeriod() {
   try {
+    // Fetch the latest unfinalized round.
     const { data: currentPeriods, error: currentError } = await supabase
       .from('voting_periods')
       .select('id, start_time, end_time, status, finalized_at, winner_id, winning_vote_count')
@@ -191,6 +241,7 @@ async function loadVotingPeriod() {
 
     currentWorkingPeriod = currentPeriods?.[0] || null;
 
+    // Populate the form with the current unfinalized round, if one exists.
     if (currentWorkingPeriod) {
       votingStart.value = new Date(currentWorkingPeriod.start_time).toISOString().slice(0, 16);
       votingEnd.value = new Date(currentWorkingPeriod.end_time).toISOString().slice(0, 16);
@@ -199,8 +250,10 @@ async function loadVotingPeriod() {
       votingEnd.value = '';
     }
 
+    // Render the current round summary box.
     renderCurrentRoundSummary(currentWorkingPeriod);
 
+    // Fetch the most recently finalized round.
     const { data: finalizedPeriods, error: finalizedError } = await supabase
       .from('voting_periods')
       .select('id, start_time, end_time, status, finalized_at, winner_id, winning_vote_count')
@@ -212,6 +265,7 @@ async function loadVotingPeriod() {
 
     const latestFinalized = finalizedPeriods?.[0] || null;
 
+    // Resolve winner title for the finalized summary card.
     if (latestFinalized?.winner_id) {
       const { data: winnerStory } = await supabase
         .from('stories')
@@ -224,92 +278,42 @@ async function loadVotingPeriod() {
       renderFinalizedWinnerSummary(latestFinalized, null);
     }
 
+    // Update voting action button states based on current round status.
     const currentStatus = deriveRoundStatus(currentWorkingPeriod);
 
     if (closeVotingBtn) {
-      closeVotingBtn.disabled = !currentWorkingPeriod || currentStatus === 'closed';
-      closeVotingBtn.textContent = currentStatus === 'closed' ? 'Voting Already Closed' : 'Close Voting Now';
+      const closeDisabled =
+        !currentWorkingPeriod ||
+        currentStatus === 'closed' ||
+        currentStatus === 'finalized';
+
+      closeVotingBtn.disabled = closeDisabled;
+
+      if (!currentWorkingPeriod) {
+        closeVotingBtn.textContent = 'Close Voting Now';
+      } else if (currentStatus === 'closed') {
+        closeVotingBtn.textContent = 'Voting Already Closed';
+      } else if (currentStatus === 'finalized') {
+        closeVotingBtn.textContent = 'Round Finalized';
+      } else {
+        closeVotingBtn.textContent = 'Close Voting Now';
+      }
     }
 
     if (determineWinnerBtn) {
-      determineWinnerBtn.disabled = !currentWorkingPeriod || currentStatus !== 'closed';
+      determineWinnerBtn.disabled =
+        !currentWorkingPeriod || currentStatus !== 'closed';
     }
   } catch (err) {
     console.error('Error loading voting period:', err);
   }
 }
 
-function clearStoryPagesUI() {
-  if (storyPageFile) storyPageFile.value = '';
-  if (storyPageCaption) storyPageCaption.value = '';
+// =========================
+// VOTING ACTIONS
+// =========================
 
-  if (storyPageStatusMsg) {
-    storyPageStatusMsg.textContent = '';
-    storyPageStatusMsg.style.color = '';
-  }
-
-  if (storyPagesPreview) {
-    storyPagesPreview.innerHTML = '<p>Select a story to manage pages.</p>';
-  }
-}
-
-function clearStoryForm() {
-  editingStoryId = null;
-
-  if (storySelect) storySelect.value = '';
-  storyForm?.reset();
-
-  if (storyActive) storyActive.checked = true;
-  if (saveStoryBtn) saveStoryBtn.textContent = 'Create Story';
-  if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
-
-  if (storyMsg) {
-    storyMsg.textContent = '';
-    storyMsg.style.color = '';
-  }
-
-  if (coverUploadMessage) {
-    coverUploadMessage.textContent = '';
-    coverUploadMessage.style.color = '';
-  }
-
-  if (storyCoverFile) storyCoverFile.value = '';
-
-  if (coverPreview) {
-    coverPreview.src = '';
-    coverPreview.style.display = 'none';
-  }
-
-  clearStoryPagesUI();
-}
-
-async function populateStoryForm(story) {
-  editingStoryId = story.id;
-  storyTitle.value = story.title || '';
-  storyAuthor.value = story.author || '';
-  storyDescription.value = story.description || '';
-  storyActive.checked = !!story.active;
-
-  if (story.cover_image_url) {
-    coverPreview.src = story.cover_image_url;
-    coverPreview.style.display = 'block';
-  } else {
-    coverPreview.src = '';
-    coverPreview.style.display = 'none';
-  }
-
-  coverUploadMessage.textContent = '';
-  coverUploadMessage.style.color = '';
-  storyCoverFile.value = '';
-
-  saveStoryBtn.textContent = 'Update Story';
-  deleteStoryBtn.style.display = 'inline-block';
-  storyMsg.textContent = '';
-  storyMsg.style.color = '';
-
-  await loadStoryPages(story.id);
-}
-
+// Save or create the current voting period from the admin form.
 async function handleVotingPeriodSubmit(e) {
   e.preventDefault();
 
@@ -338,7 +342,10 @@ async function handleVotingPeriodSubmit(e) {
     votingMsg.textContent = 'Voting period updated successfully!';
     votingMsg.style.color = 'green';
 
+    // Hide the next-round creator once a fresh round is created or updated.
     hideNextRoundPanel();
+
+    // Refresh current round summaries and button states.
     await loadVotingPeriod();
   } catch (err) {
     votingMsg.textContent = `Error: ${err.message}`;
@@ -346,6 +353,7 @@ async function handleVotingPeriodSubmit(e) {
   }
 }
 
+// Close the currently active round immediately from the admin panel.
 async function handleCloseVoting() {
   try {
     const token = await getAccessToken();
@@ -374,6 +382,7 @@ async function handleCloseVoting() {
     votingMsg.textContent = result.message || 'Voting closed successfully.';
     votingMsg.style.color = 'green';
 
+    // Refresh summaries and button state after closing the round.
     await loadVotingPeriod();
   } catch (err) {
     console.error('Error closing voting:', err);
@@ -381,12 +390,12 @@ async function handleCloseVoting() {
     votingMsg.style.color = 'red';
   } finally {
     if (closeVotingBtn) {
-      closeVotingBtn.disabled = false;
       closeVotingBtn.textContent = 'Close Voting Now';
     }
   }
 }
 
+// Finalize the winner for the currently closed round.
 async function determineWinner() {
   try {
     const token = await getAccessToken();
@@ -409,6 +418,7 @@ async function determineWinner() {
       throw new Error(result.error || 'Unknown error');
     }
 
+    // Handle successful winner finalization.
     if (result.success) {
       const totalsText = (result.vote_totals || [])
         .map(item => `${item.title}: ${item.total_votes}`)
@@ -422,6 +432,7 @@ async function determineWinner() {
         `Totals:\n${totalsText}`
       );
 
+      // Immediately update the finalized winner summary card.
       if (finalizedWinnerSummary) {
         finalizedWinnerSummary.innerHTML = `
           <p><strong>Last Finalized Round:</strong> ${result.period_id}</p>
@@ -431,11 +442,15 @@ async function determineWinner() {
         `;
       }
 
+      // Show the next-round creation panel after a winner is finalized.
       showNextRoundPanel(new Date().toISOString());
+
+      // Refresh all voting summaries afterward.
       await loadVotingPeriod();
       return;
     }
 
+    // Handle ties without finalizing.
     if (result.reason === 'tie_detected') {
       const totalsText = (result.vote_totals || [])
         .map(item => `${item.title}: ${item.total_votes}`)
@@ -448,6 +463,7 @@ async function determineWinner() {
       return;
     }
 
+    // Handle any normal non-success response.
     alert(result.message || 'No winner determined.');
   } catch (err) {
     console.error('Error determining winner:', err);
@@ -458,6 +474,7 @@ async function determineWinner() {
   }
 }
 
+// Create the next voting period from the dedicated next-round panel.
 async function handleCreateNextRound() {
   try {
     const start_time = nextRoundStart?.value;
@@ -491,6 +508,7 @@ async function handleCreateNextRound() {
     votingMsg.textContent = 'Next voting period created successfully!';
     votingMsg.style.color = 'green';
 
+    // Hide next-round UI and reload the newly created working round.
     hideNextRoundPanel();
     await loadVotingPeriod();
   } catch (err) {
@@ -505,6 +523,93 @@ async function handleCreateNextRound() {
   }
 }
 
+// =========================
+// STORY PAGE UI HELPERS
+// =========================
+
+// Reset the story-pages sub-panel when no story is selected.
+function clearStoryPagesUI() {
+  if (storyPageFile) storyPageFile.value = '';
+  if (storyPageCaption) storyPageCaption.value = '';
+
+  if (storyPageStatusMsg) {
+    storyPageStatusMsg.textContent = '';
+    storyPageStatusMsg.style.color = '';
+  }
+
+  if (storyPagesPreview) {
+    storyPagesPreview.innerHTML = '<p>Select a story to manage pages.</p>';
+  }
+}
+
+// =========================
+// STORY FORM HELPERS
+// =========================
+
+// Reset the story form back to "create new story" mode.
+function clearStoryForm() {
+  editingStoryId = null;
+
+  if (storySelect) storySelect.value = '';
+  storyForm?.reset();
+
+  if (storyActive) storyActive.checked = true;
+  if (saveStoryBtn) saveStoryBtn.textContent = 'Create Story';
+  if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
+
+  if (storyMsg) {
+    storyMsg.textContent = '';
+    storyMsg.style.color = '';
+  }
+
+  if (coverUploadMessage) {
+    coverUploadMessage.textContent = '';
+    coverUploadMessage.style.color = '';
+  }
+
+  if (storyCoverFile) storyCoverFile.value = '';
+
+  if (coverPreview) {
+    coverPreview.src = '';
+    coverPreview.style.display = 'none';
+  }
+
+  clearStoryPagesUI();
+}
+
+// Populate the story form for editing an existing story.
+async function populateStoryForm(story) {
+  editingStoryId = story.id;
+  storyTitle.value = story.title || '';
+  storyAuthor.value = story.author || '';
+  storyDescription.value = story.description || '';
+  storyActive.checked = !!story.active;
+
+  if (story.cover_image_url) {
+    coverPreview.src = story.cover_image_url;
+    coverPreview.style.display = 'block';
+  } else {
+    coverPreview.src = '';
+    coverPreview.style.display = 'none';
+  }
+
+  coverUploadMessage.textContent = '';
+  coverUploadMessage.style.color = '';
+  storyCoverFile.value = '';
+
+  saveStoryBtn.textContent = 'Update Story';
+  deleteStoryBtn.style.display = 'inline-block';
+  storyMsg.textContent = '';
+  storyMsg.style.color = '';
+
+  await loadStoryPages(story.id);
+}
+
+// =========================
+// STORY DATA LOADERS
+// =========================
+
+// Load story preview cards and populate the story selector.
 async function loadStoriesPreview() {
   try {
     const { data: stories, error } = await supabase
@@ -545,6 +650,7 @@ async function loadStoriesPreview() {
   }
 }
 
+// Load all uploaded pages for the selected story.
 async function loadStoryPages(storyId) {
   if (!storyId) {
     clearStoryPagesUI();
@@ -595,6 +701,11 @@ async function loadStoryPages(storyId) {
   }
 }
 
+// =========================
+// USER MANAGEMENT RENDERING
+// =========================
+
+// Render the admin user table.
 function renderUsersTable(users) {
   if (!tbody) return;
 
@@ -626,7 +737,9 @@ function renderUsersTable(users) {
   attachUserTableListeners();
 }
 
+// Attach listeners for role updates and vote-balance changes in the user table.
 function attachUserTableListeners() {
+  // Role update buttons.
   tbody.querySelectorAll('.role-update-btn').forEach(button => {
     button.addEventListener('click', async () => {
       const userId = button.dataset.userId;
@@ -644,7 +757,11 @@ function attachUserTableListeners() {
             'Content-Type': 'application/json',
             ...(currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {})
           },
-          body: JSON.stringify({ userId, role: newRole, requesterId: currentUser.id })
+          body: JSON.stringify({
+            userId,
+            role: newRole,
+            requesterId: currentUser.id
+          })
         });
 
         const result = await parseJsonResponseSafely(res);
@@ -669,6 +786,7 @@ function attachUserTableListeners() {
     });
   });
 
+  // Vote balance adjustment buttons.
   tbody.querySelectorAll('.vote-adjust-btn').forEach(button => {
     button.addEventListener('click', async () => {
       const userId = button.dataset.userId;
@@ -716,6 +834,11 @@ function attachUserTableListeners() {
   });
 }
 
+// =========================
+// STORY COVER UPLOAD
+// =========================
+
+// Upload a story cover through the serverless backend.
 async function handleCoverUpload() {
   try {
     coverUploadMessage.textContent = '';
@@ -738,6 +861,7 @@ async function handleCoverUpload() {
     uploadCoverBtn.disabled = true;
     uploadCoverBtn.textContent = 'Uploading...';
 
+    // Convert the selected image to base64 for the serverless function payload.
     const reader = new FileReader();
     const file_base64 = await new Promise((resolve, reject) => {
       reader.onload = () => {
@@ -797,6 +921,11 @@ async function handleCoverUpload() {
   }
 }
 
+// =========================
+// STORY PAGE UPLOAD
+// =========================
+
+// Upload a story page image directly to storage and insert a story_pages row.
 async function handleStoryPageUpload(e) {
   e.preventDefault();
 
@@ -825,6 +954,7 @@ async function handleStoryPageUpload(e) {
     uploadStoryPageBtn.disabled = true;
     uploadStoryPageBtn.textContent = 'Uploading Page...';
 
+    // Look up the current highest page number for this story.
     const { data: lastPageRow, error: lastPageError } = await supabase
       .from('story_pages')
       .select('page_number')
@@ -839,6 +969,7 @@ async function handleStoryPageUpload(e) {
 
     const nextPageNumber = lastPageRow ? Number(lastPageRow.page_number) + 1 : 1;
 
+    // Generate a unique storage path for the page image.
     const extension = file.name.includes('.')
       ? file.name.split('.').pop().toLowerCase()
       : 'png';
@@ -846,6 +977,7 @@ async function handleStoryPageUpload(e) {
     const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'png';
     const storagePath = `${editingStoryId}/page-${nextPageNumber}-${Date.now()}.${safeExtension}`;
 
+    // Upload the page image file to the story-pages bucket.
     const { error: uploadError } = await supabase.storage
       .from('story-pages')
       .upload(storagePath, file, {
@@ -858,6 +990,7 @@ async function handleStoryPageUpload(e) {
       throw uploadError;
     }
 
+    // Resolve the public URL for the uploaded page image.
     const { data: publicUrlData } = supabase.storage
       .from('story-pages')
       .getPublicUrl(storagePath);
@@ -867,6 +1000,7 @@ async function handleStoryPageUpload(e) {
       throw new Error('Failed to generate page URL.');
     }
 
+    // Insert the matching story_pages row.
     const caption = storyPageCaption.value.trim() || null;
 
     const { error: insertError } = await supabase
@@ -901,6 +1035,7 @@ async function handleStoryPageUpload(e) {
   }
 }
 
+// Attach delete handlers to all page delete buttons currently rendered.
 function attachStoryPageDeleteListeners() {
   document.querySelectorAll('.delete-story-page-btn').forEach(button => {
     button.addEventListener('click', async () => {
@@ -943,6 +1078,11 @@ function attachStoryPageDeleteListeners() {
   });
 }
 
+// =========================
+// STORY CRUD ACTIONS
+// =========================
+
+// Delete the currently selected story through the backend.
 async function handleDeleteStory() {
   if (!editingStoryId) return;
 
@@ -986,6 +1126,7 @@ async function handleDeleteStory() {
   }
 }
 
+// Create a new story or update the selected story.
 async function handleStorySubmit(e) {
   e.preventDefault();
 
@@ -1066,6 +1207,7 @@ async function handleStorySubmit(e) {
     if (!wasEditing && returnedStoryId) {
       editingStoryId = returnedStoryId;
       storySelect.value = returnedStoryId;
+
       const createdStory = allStories.find(story => story.id === returnedStoryId);
       if (createdStory) await populateStoryForm(createdStory);
     }
@@ -1079,6 +1221,7 @@ async function handleStorySubmit(e) {
   }
 }
 
+// Switch the story form between create mode and edit mode when selector changes.
 async function handleStorySelectChange() {
   const selectedId = storySelect.value;
 
@@ -1093,18 +1236,31 @@ async function handleStorySelectChange() {
   }
 }
 
+// =========================
+// ADMIN PAGE INITIALIZATION
+// =========================
+
+// Load admin data, verify admin permissions, and wire up all event listeners.
 export async function initAdminPanel() {
+  // Resolve the currently logged-in user.
   currentUser = await getCurrentUserAsync();
+
   if (!currentUser) {
     statusEl.textContent = 'Not logged in.';
     return;
   }
 
+  // Resolve the current access token for serverless admin requests.
   currentAccessToken = await getAccessToken();
 
+  // Load users from the backend so we can verify this user is an admin.
   let users = [];
+
   try {
-    const headers = currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {};
+    const headers = currentAccessToken
+      ? { Authorization: `Bearer ${currentAccessToken}` }
+      : {};
+
     const res = await fetch('/.netlify/functions/get-users', { headers });
     users = await parseJsonResponseSafely(res);
 
@@ -1117,28 +1273,40 @@ export async function initAdminPanel() {
     return;
   }
 
+  // Deny access if the current logged-in profile is not an admin.
   const profile = users.find(u => u.id === currentUser.id);
+
   if (!profile || profile.role !== 'admin') {
     statusEl.textContent = 'Access denied: Admins only.';
     return;
   }
 
+  // Reveal the admin sections now that access is verified.
   statusEl.style.display = 'none';
   table.style.display = 'table';
   votingSection.style.display = 'block';
   storySection.style.display = 'block';
   productSection.style.display = 'block';
 
+  // Render users and load initial admin data.
   allUsers = users;
   renderUsersTable(users);
 
   await loadVotingPeriod();
   await loadStoriesPreview();
+
+  // Reset view-only helper panels to safe defaults.
   clearStoryPagesUI();
   hideWinnerPreviewUI();
+  hideNextRoundPanel();
 
+  // Wire up voting controls.
   determineWinnerBtn?.addEventListener('click', determineWinner);
+  closeVotingBtn?.addEventListener('click', handleCloseVoting);
+  createNextRoundBtn?.addEventListener('click', handleCreateNextRound);
   votingForm?.addEventListener('submit', handleVotingPeriodSubmit);
+
+  // Wire up story management controls.
   storySelect?.addEventListener('change', handleStorySelectChange);
   resetStoryBtn?.addEventListener('click', clearStoryForm);
   uploadCoverBtn?.addEventListener('click', handleCoverUpload);
@@ -1147,4 +1315,5 @@ export async function initAdminPanel() {
   storyPageForm?.addEventListener('submit', handleStoryPageUpload);
 }
 
+// Run admin initialization when the page is ready.
 document.addEventListener('DOMContentLoaded', initAdminPanel);
