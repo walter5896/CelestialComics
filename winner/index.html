@@ -19,12 +19,13 @@
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/winner/">Winner</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -32,25 +33,26 @@
 
   <!-- WINNER SECTION -->
   <main class="container winner-page">
-    <!-- Shown if no winner yet -->
-    <div id="winner-empty" style="display:none">
+    <!-- EMPTY STATE -->
+    <section id="winner-empty" style="display:none;">
       <h2>No Winner Yet 🏆</h2>
-      <p>The voting period is still ongoing or no winner has been set.</p>
-    </div>
+      <p>The latest round has not been finalized yet.</p>
+    </section>
 
-    <!-- Shown if a winner exists -->
-    <div id="winner-details" style="display:none">
-      <div class="story-card">
+    <!-- WINNER DETAILS -->
+    <section id="winner-details" style="display:none;">
+      <article class="story-card">
         <img id="winner-image" src="" alt="Winning Story" />
         <h2 id="winner-name">Winning Story Title</h2>
+        <p id="winner-meta"></p>
         <p id="winner-story"></p>
         <p>
           <a id="winner-link" href="#" class="btn btn-primary">Read Full Story</a>
         </p>
-      </div>
-    </div>
+      </article>
+    </section>
 
-    <!-- CTA buttons -->
+    <!-- CTA -->
     <section class="winner-cta">
       <a href="/vote/" class="btn btn-secondary">Back to Vote</a>
       <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
@@ -64,6 +66,7 @@
       <nav class="footer-nav">
         <a href="/gallery/">Gallery</a> |
         <a href="/vote/">Vote</a> |
+        <a href="/winner/">Winner</a> |
         <a href="/shop/">Shop</a> |
         <a href="/team/">Team</a>
       </nav>
@@ -73,12 +76,12 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- Winner JS -->
+  <!-- PAGE LOGIC -->
   <script type="module" src="/js/winner.js"></script>
-
   <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/admin-nav.js"></script>
 
-  <!-- Auth utils -->
+  <!-- AUTH / NAV STATE -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
@@ -94,8 +97,5 @@
       });
     });
   </script>
-
-  <!-- ADMIN NAV LINK -->
-  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
