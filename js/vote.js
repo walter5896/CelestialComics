@@ -3,20 +3,84 @@ import { supabase } from './supabase.js';
 import { getCurrentUserAsync } from './auth.js';
 
 /* =======================
+   VOTING PERIOD HELPERS
+======================= */
+
+async function fetchLatestVotingPeriod() {
+  const { data, error } = await supabase
+    .from('voting_periods')
+    .select('id, start_time, end_time, status, winner_id, finalized_at, winning_vote_count')
+    .order('start_time', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error('Error fetching latest voting period:', error);
+    return null;
+  }
+
+  return data?.[0] || null;
+}
+
+async function fetchOpenVotingPeriod() {
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('voting_periods')
+    .select('id, start_time, end_time, status')
+    .lte('start_time', nowIso)
+    .gte('end_time', nowIso)
+    .order('start_time', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error('Error fetching open voting period:', error);
+    return null;
+  }
+
+  return data?.[0] || null;
+}
+
+function deriveVotingStatus(period) {
+  if (!period) return 'upcoming';
+
+  if (period.status === 'finalized') return 'closed';
+  if (period.status === 'open') return 'open';
+  if (period.status === 'closed') return 'closed';
+  if (period.status === 'upcoming') return 'upcoming';
+
+  const now = new Date();
+  const start = new Date(period.start_time);
+  const end = new Date(period.end_time);
+
+  if (now < start) return 'upcoming';
+  if (now >= start && now <= end) return 'open';
+  return 'closed';
+}
+
+/* =======================
    FETCH FUNCTIONS
 ======================= */
 
 export async function fetchStoriesWithVotes() {
   try {
+    const latestPeriod = await fetchLatestVotingPeriod();
+    const currentVotingStatus = deriveVotingStatus(latestPeriod);
+    const latestVotingPeriodId = latestPeriod?.id || null;
+
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
-      .select('id, title, image_url, cover_image_url, author, description, active');
+      .select('id, title, image_url, cover_image_url, author, description, active')
+      .eq('active', true);
 
     if (storiesError) throw storiesError;
 
-    const { data: votesData, error: votesError } = await supabase
-      .from('votes')
-      .select('story_id, vote_count');
+    let votesQuery = supabase.from('votes').select('story_id, vote_count');
+
+    if (latestVotingPeriodId) {
+      votesQuery = votesQuery.eq('voting_period_id', latestVotingPeriodId);
+    }
+
+    const { data: votesData, error: votesError } = await votesQuery;
 
     if (votesError) throw votesError;
 
@@ -27,31 +91,10 @@ export async function fetchStoriesWithVotes() {
       return acc;
     }, {});
 
-    const { data: votingPeriods, error: votingError } = await supabase
-      .from('voting_periods')
-      .select('start_time, end_time')
-      .order('start_time', { ascending: false })
-      .limit(1);
-
-    if (votingError) throw votingError;
-
-    const now = new Date();
-    let globalStatus = 'upcoming';
-
-    if (votingPeriods && votingPeriods.length > 0) {
-      const { start_time, end_time } = votingPeriods[0];
-      const start = new Date(start_time);
-      const end = new Date(end_time);
-
-      if (now < start) globalStatus = 'upcoming';
-      else if (now >= start && now <= end) globalStatus = 'open';
-      else globalStatus = 'closed';
-    }
-
-    return stories.map(story => ({
+    return (stories || []).map(story => ({
       ...story,
       vote_count: voteCounts[String(story.id)] || 0,
-      voting_status: globalStatus
+      voting_status: currentVotingStatus
     }));
   } catch (err) {
     console.error('Error fetching stories with votes:', err);
@@ -63,20 +106,35 @@ export async function fetchUserVotes() {
   const user = await getCurrentUserAsync();
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from('votes')
-    .select('story_id, vote_count')
-    .eq('user_id', user.id);
+  const latestPeriod = await fetchLatestVotingPeriod();
+  const latestVotingPeriodId = latestPeriod?.id || null;
 
-  if (error) {
-    console.error('Error fetching user votes:', error);
+  try {
+    let query = supabase
+      .from('votes')
+      .select('story_id, vote_count, voting_period_id')
+      .eq('user_id', user.id);
+
+    if (latestVotingPeriodId) {
+      query = query.eq('voting_period_id', latestVotingPeriodId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching user votes:', error);
+      return [];
+    }
+
+    return (data || []).map(v => ({
+      story_id: String(v.story_id),
+      vote_count: Number(v.vote_count) || 0,
+      voting_period_id: v.voting_period_id
+    }));
+  } catch (err) {
+    console.error('Unexpected error fetching user votes:', err);
     return [];
   }
-
-  return (data || []).map(v => ({
-    story_id: String(v.story_id),
-    vote_count: Number(v.vote_count) || 0
-  }));
 }
 
 export async function fetchUserVoteBalance() {
@@ -112,7 +170,7 @@ export async function fetchSavedStories() {
     return { success: false, data: [] };
   }
 
-  const stories = data.map(item => item.stories);
+  const stories = (data || []).map(item => item.stories).filter(Boolean);
   return { success: true, data: stories };
 }
 
@@ -126,6 +184,13 @@ export async function submitVote(storyId, amount = 1) {
     alert('You must be logged in to vote!');
     return { success: false, reason: 'not_logged_in' };
   }
+
+  const openVotingPeriod = await fetchOpenVotingPeriod();
+  if (!openVotingPeriod) {
+    return { success: false, reason: 'voting_closed' };
+  }
+
+  const votingPeriodId = openVotingPeriod.id;
 
   const voteAmount = Number(amount);
   if (!Number.isInteger(voteAmount) || voteAmount <= 0) {
@@ -144,9 +209,10 @@ export async function submitVote(storyId, amount = 1) {
 
   const { data: existingVote, error: existingVoteError } = await supabase
     .from('votes')
-    .select('id, vote_count')
+    .select('id, vote_count, voting_period_id')
     .eq('user_id', user.id)
     .eq('story_id', storyId)
+    .eq('voting_period_id', votingPeriodId)
     .maybeSingle();
 
   if (existingVoteError) {
@@ -169,11 +235,14 @@ export async function submitVote(storyId, amount = 1) {
   } else {
     const { error: insertVoteError } = await supabase
       .from('votes')
-      .insert([{
-        user_id: user.id,
-        story_id: storyId,
-        vote_count: voteAmount
-      }]);
+      .insert([
+        {
+          user_id: user.id,
+          story_id: storyId,
+          vote_count: voteAmount,
+          voting_period_id: votingPeriodId
+        }
+      ]);
 
     if (insertVoteError) {
       console.error('Error inserting vote:', insertVoteError);
@@ -196,7 +265,8 @@ export async function submitVote(storyId, amount = 1) {
   return {
     success: true,
     amount: voteAmount,
-    balance: newBalance
+    balance: newBalance,
+    voting_period_id: votingPeriodId
   };
 }
 
@@ -206,6 +276,13 @@ export async function recantVote(storyId, amount = 1) {
     return { success: false, reason: 'not_logged_in' };
   }
 
+  const openVotingPeriod = await fetchOpenVotingPeriod();
+  if (!openVotingPeriod) {
+    return { success: false, reason: 'voting_closed' };
+  }
+
+  const votingPeriodId = openVotingPeriod.id;
+
   const recantAmount = Number(amount);
   if (!Number.isInteger(recantAmount) || recantAmount <= 0) {
     return { success: false, reason: 'invalid_amount' };
@@ -213,9 +290,10 @@ export async function recantVote(storyId, amount = 1) {
 
   const { data: existingVote, error: voteError } = await supabase
     .from('votes')
-    .select('id, vote_count')
+    .select('id, vote_count, voting_period_id')
     .eq('user_id', user.id)
     .eq('story_id', storyId)
+    .eq('voting_period_id', votingPeriodId)
     .maybeSingle();
 
   if (voteError) {
@@ -272,21 +350,26 @@ export async function recantVote(storyId, amount = 1) {
   return {
     success: true,
     amount: recantAmount,
-    balance: newBalance
+    balance: newBalance,
+    voting_period_id: votingPeriodId
   };
 }
 
 export async function saveStory(storyId) {
   const user = await getCurrentUserAsync();
-  if (!user) return { success: false };
+  if (!user) return { success: false, reason: 'not_logged_in' };
 
   const { error } = await supabase
     .from('saved_stories')
     .insert({ user_id: user.id, story_id: storyId });
 
-  if (error && error.code !== '23505') {
-    console.error(error);
-    return { success: false };
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, reason: 'already_saved' };
+    }
+
+    console.error('Error saving story:', error);
+    return { success: false, reason: 'save_failed' };
   }
 
   return { success: true };
@@ -294,7 +377,7 @@ export async function saveStory(storyId) {
 
 export async function unsaveStory(storyId) {
   const user = await getCurrentUserAsync();
-  if (!user) return { success: false };
+  if (!user) return { success: false, reason: 'not_logged_in' };
 
   const { error } = await supabase
     .from('saved_stories')
@@ -303,8 +386,8 @@ export async function unsaveStory(storyId) {
     .eq('story_id', storyId);
 
   if (error) {
-    console.error(error);
-    return { success: false };
+    console.error('Error unsaving story:', error);
+    return { success: false, reason: 'unsave_failed' };
   }
 
   return { success: true };
@@ -460,9 +543,11 @@ export function updateVoteButtons(userVotes, stories) {
     } else if (status === 'upcoming') {
       btn.disabled = true;
       btn.textContent = 'Voting starts soon';
+      btn.classList.remove('voted');
     } else if (status === 'closed') {
       btn.disabled = true;
       btn.textContent = `Voting Closed (${publicVoteCount})`;
+      btn.classList.remove('voted');
     }
   });
 }
@@ -485,8 +570,15 @@ export function attachVoteListeners(containerId = 'story-grid') {
           return;
         }
 
+        if (result.reason === 'voting_closed') {
+          btn.textContent = 'Voting Closed';
+        } else if (result.reason === 'insufficient_balance') {
+          btn.textContent = originalText;
+        } else {
+          btn.textContent = originalText;
+        }
+
         btn.disabled = false;
-        btn.textContent = originalText;
       } catch (err) {
         console.error('Vote click error:', err);
         btn.disabled = false;
@@ -503,14 +595,20 @@ export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = 
       const alreadySaved = savedStoryIds.includes(String(storyId));
 
       if (alreadySaved) {
-        await unsaveStory(storyId);
+        const unsaveResult = await unsaveStory(storyId);
+        if (!unsaveResult.success) return;
+
         btn.textContent = 'Save Story';
         const idx = savedStoryIds.indexOf(String(storyId));
         if (idx > -1) savedStoryIds.splice(idx, 1);
       } else {
-        await saveStory(storyId);
+        const saveResult = await saveStory(storyId);
+        if (!saveResult.success && saveResult.reason !== 'already_saved') return;
+
         btn.textContent = 'Saved';
-        savedStoryIds.push(String(storyId));
+        if (!savedStoryIds.includes(String(storyId))) {
+          savedStoryIds.push(String(storyId));
+        }
       }
     });
   });
@@ -536,7 +634,12 @@ export function attachRecantListeners(containerId) {
 
         btn.disabled = false;
         btn.textContent = originalText;
-        alert('Could not recant vote.');
+
+        if (res.reason === 'voting_closed') {
+          alert('Voting is closed. You can no longer recant votes for this round.');
+        } else {
+          alert('Could not recant vote.');
+        }
       } catch (err) {
         console.error('Recant click error:', err);
         btn.disabled = false;
