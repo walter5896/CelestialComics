@@ -177,6 +177,19 @@
       border-top: 1px solid #e5e7eb;
     }
 
+    .winner-preview-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      background: #f9fafb;
+    }
+
+    .winner-preview-box ul {
+      margin-left: 1.25rem;
+      margin-top: 0.5rem;
+    }
+
     @media (max-width: 768px) {
       nav ul { flex-direction: column; width: 100%; margin-top: 0.5rem; }
       table, th, td { font-size: 0.9rem; }
@@ -238,6 +251,31 @@
       <p id="voting-status-message" class="section-message"></p>
 
       <button id="determine-winner-btn" type="button">Determine Winner</button>
+
+      <div id="winner-preview-panel" class="winner-preview-box" style="display:none;">
+        <h3>Winner Preview</h3>
+        <div id="winner-preview-content"></div>
+        <p id="winner-preview-message" class="section-message"></p>
+
+        <div id="next-round-fields" style="display:none; margin-top: 1rem;">
+          <div class="field-group">
+            <label for="next-round-start">Next Round Start Time</label>
+            <input type="datetime-local" id="next-round-start">
+          </div>
+
+          <div class="field-group">
+            <label for="next-round-end">Next Round End Time</label>
+            <input type="datetime-local" id="next-round-end">
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button type="button" id="finalize-only-btn">Finalize Only</button>
+          <button type="button" id="finalize-and-create-btn" class="secondary-btn" style="display:none;">
+            Finalize + Create Next Round
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- STORY MANAGEMENT -->

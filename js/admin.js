@@ -14,6 +14,15 @@ const votingStart = document.getElementById('voting-start');
 const votingEnd = document.getElementById('voting-end');
 const votingMsg = document.getElementById('voting-status-message');
 
+const winnerPreviewPanel = document.getElementById('winner-preview-panel');
+const winnerPreviewContent = document.getElementById('winner-preview-content');
+const winnerPreviewMessage = document.getElementById('winner-preview-message');
+const nextRoundFields = document.getElementById('next-round-fields');
+const nextRoundStart = document.getElementById('next-round-start');
+const nextRoundEnd = document.getElementById('next-round-end');
+const finalizeOnlyBtn = document.getElementById('finalize-only-btn');
+const finalizeAndCreateBtn = document.getElementById('finalize-and-create-btn');
+
 const storySection = document.getElementById('story-management-section');
 const storySelect = document.getElementById('story-select');
 const storyForm = document.getElementById('story-form');
@@ -47,6 +56,7 @@ let currentAccessToken = null;
 let allStories = [];
 let allUsers = [];
 let editingStoryId = null;
+let currentWinnerPreview = null;
 
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
@@ -70,6 +80,222 @@ async function parseJsonResponseSafely(res) {
     return rawText ? JSON.parse(rawText) : {};
   } catch {
     throw new Error(rawText || 'Server returned an invalid response.');
+  }
+}
+
+function resetWinnerPreviewUI() {
+  currentWinnerPreview = null;
+
+  if (winnerPreviewPanel) winnerPreviewPanel.style.display = 'none';
+  if (winnerPreviewContent) winnerPreviewContent.innerHTML = '';
+  if (winnerPreviewMessage) {
+    winnerPreviewMessage.textContent = '';
+    winnerPreviewMessage.style.color = '';
+  }
+
+  if (nextRoundFields) nextRoundFields.style.display = 'none';
+  if (finalizeOnlyBtn) {
+    finalizeOnlyBtn.style.display = 'inline-block';
+    finalizeOnlyBtn.disabled = false;
+    finalizeOnlyBtn.textContent = 'Finalize Only';
+  }
+
+  if (finalizeAndCreateBtn) {
+    finalizeAndCreateBtn.style.display = 'none';
+    finalizeAndCreateBtn.disabled = false;
+    finalizeAndCreateBtn.textContent = 'Finalize + Create Next Round';
+  }
+
+  if (nextRoundStart) nextRoundStart.value = '';
+  if (nextRoundEnd) nextRoundEnd.value = '';
+}
+
+function setSuggestedNextRoundTimes(referencePeriod) {
+  if (!referencePeriod || !nextRoundStart || !nextRoundEnd) return;
+
+  const baseEnd = referencePeriod.end_time ? new Date(referencePeriod.end_time) : new Date();
+  const suggestedStart = new Date(baseEnd.getTime() + 5 * 60 * 1000);
+  const suggestedEnd = new Date(suggestedStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  nextRoundStart.value = suggestedStart.toISOString().slice(0, 16);
+  nextRoundEnd.value = suggestedEnd.toISOString().slice(0, 16);
+}
+
+function renderWinnerPreview(result) {
+  currentWinnerPreview = result;
+
+  if (!winnerPreviewPanel || !winnerPreviewContent) return;
+
+  winnerPreviewPanel.style.display = 'block';
+  winnerPreviewMessage.textContent = '';
+  winnerPreviewMessage.style.color = '';
+
+  const preview = result.preview;
+  const period = result.period;
+
+  if (!preview || !period) {
+    winnerPreviewContent.innerHTML = '<p>No preview data available.</p>';
+    return;
+  }
+
+  if (preview.tie_detected) {
+    winnerPreviewContent.innerHTML = `
+      <p><strong>Tie detected.</strong></p>
+      <p>The following stories are tied at ${preview.winning_vote_count} vote(s):</p>
+      <ul>
+        ${preview.tied_stories.map(item => `<li>${item.title} — ${item.total_votes} vote(s)</li>`).join('')}
+      </ul>
+    `;
+
+    finalizeOnlyBtn.style.display = 'none';
+    finalizeAndCreateBtn.style.display = 'none';
+    nextRoundFields.style.display = 'none';
+
+    winnerPreviewMessage.textContent = 'Resolve the tie before finalizing this round.';
+    winnerPreviewMessage.style.color = 'red';
+    return;
+  }
+
+  winnerPreviewContent.innerHTML = `
+    <p><strong>Voting Period:</strong> #${period.id}</p>
+    <p><strong>Winner:</strong> ${preview.winner_title}</p>
+    <p><strong>Winning Votes:</strong> ${preview.winning_vote_count}</p>
+  `;
+
+  finalizeOnlyBtn.style.display = 'inline-block';
+
+  if (result.can_create_next_round) {
+    nextRoundFields.style.display = 'block';
+    finalizeAndCreateBtn.style.display = 'inline-block';
+    setSuggestedNextRoundTimes(period);
+  } else {
+    nextRoundFields.style.display = 'none';
+    finalizeAndCreateBtn.style.display = 'none';
+
+    if (result.existing_future_period) {
+      winnerPreviewMessage.textContent = 'An open or upcoming voting period already exists, so creating the next round is disabled.';
+      winnerPreviewMessage.style.color = '#b45309';
+    }
+  }
+}
+
+async function previewWinner() {
+  try {
+    const token = await getAccessToken();
+    if (!token) throw new Error('No active session found.');
+
+    determineWinnerBtn.disabled = true;
+    determineWinnerBtn.textContent = 'Checking Winner...';
+    resetWinnerPreviewUI();
+
+    const res = await fetch('/.netlify/functions/determine-winner', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ action: 'preview' })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok) {
+      throw new Error(result.error || 'Failed to preview winner');
+    }
+
+    if (!result.success) {
+      alert(result.message || 'No eligible voting period found.');
+      return;
+    }
+
+    renderWinnerPreview(result);
+  } catch (err) {
+    console.error('Error previewing winner:', err);
+    alert(err.message || 'Failed to preview winner.');
+  } finally {
+    determineWinnerBtn.disabled = false;
+    determineWinnerBtn.textContent = 'Determine Winner';
+  }
+}
+
+async function finalizeWinner(createNextRound = false) {
+  try {
+    if (!currentWinnerPreview?.period?.id) {
+      throw new Error('No winner preview is available.');
+    }
+
+    const token = await getAccessToken();
+    if (!token) throw new Error('No active session found.');
+
+    const payload = {
+      action: 'finalize',
+      period_id: currentWinnerPreview.period.id,
+      create_next_round: createNextRound
+    };
+
+    if (createNextRound) {
+      const startVal = nextRoundStart.value;
+      const endVal = nextRoundEnd.value;
+
+      if (!startVal || !endVal) {
+        throw new Error('Please provide next round start and end times.');
+      }
+
+      payload.next_start_time = startVal;
+      payload.next_end_time = endVal;
+    }
+
+    finalizeOnlyBtn.disabled = true;
+    finalizeAndCreateBtn.disabled = true;
+    finalizeOnlyBtn.textContent = 'Finalizing...';
+    if (createNextRound) {
+      finalizeAndCreateBtn.textContent = 'Creating Next Round...';
+    }
+
+    const res = await fetch('/.netlify/functions/determine-winner', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok) {
+      throw new Error(result.error || 'Failed to finalize winner');
+    }
+
+    if (!result.success) {
+      throw new Error(result.message || 'Could not finalize winner');
+    }
+
+    winnerPreviewContent.innerHTML = `
+      <p><strong>Winner Finalized Successfully</strong></p>
+      <p><strong>Winner:</strong> ${result.winner_title}</p>
+      <p><strong>Winning Votes:</strong> ${result.winning_vote_count}</p>
+      ${result.next_round ? `<p><strong>Next Round Created:</strong> #${result.next_round.id}</p>` : ''}
+    `;
+
+    winnerPreviewMessage.textContent = result.next_round
+      ? 'This round has been finalized and the next round was created.'
+      : 'This round has been finalized.';
+    winnerPreviewMessage.style.color = 'green';
+
+    finalizeOnlyBtn.style.display = 'none';
+    finalizeAndCreateBtn.style.display = 'none';
+    nextRoundFields.style.display = 'none';
+
+    await loadVotingPeriod();
+  } catch (err) {
+    console.error('Error finalizing winner:', err);
+    alert(err.message || 'Failed to finalize winner.');
+  } finally {
+    finalizeOnlyBtn.disabled = false;
+    finalizeAndCreateBtn.disabled = false;
+    finalizeOnlyBtn.textContent = 'Finalize Only';
+    finalizeAndCreateBtn.textContent = 'Finalize + Create Next Round';
   }
 }
 
@@ -142,32 +368,6 @@ async function populateStoryForm(story) {
   storyMsg.style.color = '';
 
   await loadStoryPages(story.id);
-}
-
-async function determineWinner() {
-  try {
-    const token = await getAccessToken();
-
-    const res = await fetch('/.netlify/functions/determine-winner', {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-
-    const result = await parseJsonResponseSafely(res);
-
-    if (!res.ok) {
-      throw new Error(result.error || 'Unknown error');
-    }
-
-    if (result.success) {
-      alert(`Winner determined!\n\nStory ID: ${result.winner_id}\nVotes: ${result.vote_count}`);
-    } else {
-      alert(result.message || 'No winner determined.');
-    }
-  } catch (err) {
-    console.error('Error determining winner:', err);
-    alert('Failed to determine winner. Check console.');
-  }
 }
 
 async function loadVotingPeriod() {
@@ -339,24 +539,6 @@ function renderUsersTable(users) {
   });
 
   attachUserTableListeners();
-}
-
-async function loadUsers() {
-  try {
-    const headers = currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {};
-    const res = await fetch('/.netlify/functions/get-users', { headers });
-    const users = await parseJsonResponseSafely(res);
-
-    if (!res.ok) {
-      throw new Error(users.error || 'Failed to load users');
-    }
-
-    allUsers = users;
-    renderUsersTable(users);
-  } catch (err) {
-    console.error('Error loading users:', err);
-    statusEl.textContent = 'Error loading users.';
-  }
 }
 
 function attachUserTableListeners() {
@@ -868,8 +1050,11 @@ export async function initAdminPanel() {
   await loadVotingPeriod();
   await loadStoriesPreview();
   clearStoryPagesUI();
+  resetWinnerPreviewUI();
 
-  determineWinnerBtn?.addEventListener('click', determineWinner);
+  determineWinnerBtn?.addEventListener('click', previewWinner);
+  finalizeOnlyBtn?.addEventListener('click', () => finalizeWinner(false));
+  finalizeAndCreateBtn?.addEventListener('click', () => finalizeWinner(true));
   votingForm?.addEventListener('submit', handleVotingPeriodSubmit);
   storySelect?.addEventListener('change', handleStorySelectChange);
   resetStoryBtn?.addEventListener('click', clearStoryForm);
