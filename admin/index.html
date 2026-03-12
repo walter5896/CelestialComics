@@ -232,11 +232,6 @@
       background: #f9fafb;
     }
 
-    .winner-preview-box ul {
-      margin-left: 1.25rem;
-      margin-top: 0.5rem;
-    }
-
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -329,24 +324,6 @@
       <div class="action-row">
         <button id="close-voting-btn" type="button" class="danger-btn">Close Voting Now</button>
         <button id="determine-winner-btn" type="button">Determine Winner</button>
-      </div>
-
-      <div class="section-card" id="next-round-panel" style="display:none; margin-top:1rem; margin-bottom:0;">
-        <h3>Create Next Voting Period</h3>
-
-        <div class="field-group">
-          <label for="next-round-start">Next Round Start Time</label>
-          <input type="datetime-local" id="next-round-start">
-        </div>
-
-        <div class="field-group">
-          <label for="next-round-end">Next Round End Time</label>
-          <input type="datetime-local" id="next-round-end">
-        </div>
-
-        <div class="action-row">
-          <button id="create-next-round-btn" type="button">Create Next Voting Period</button>
-        </div>
       </div>
 
       <!-- legacy hidden preview block -->

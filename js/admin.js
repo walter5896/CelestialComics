@@ -24,13 +24,9 @@ const votingStart = document.getElementById('voting-start');
 const votingEnd = document.getElementById('voting-end');
 const votingMsg = document.getElementById('voting-status-message');
 
-// Grab voting summary / next-round UI.
+// Grab voting summary UI.
 const currentRoundSummary = document.getElementById('current-round-summary');
 const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
-const nextRoundPanel = document.getElementById('next-round-panel');
-const nextRoundStart = document.getElementById('next-round-start');
-const nextRoundEnd = document.getElementById('next-round-end');
-const createNextRoundBtn = document.getElementById('create-next-round-btn');
 
 // Grab old legacy winner-preview UI elements so they can be hidden safely.
 const winnerPreviewPanel = document.getElementById('winner-preview-panel');
@@ -145,18 +141,6 @@ function deriveRoundStatus(period) {
   return 'closed';
 }
 
-// Suggest a convenient next round start/end after winner finalization.
-function setNextRoundSuggestion(referenceEnd = null) {
-  if (!nextRoundStart || !nextRoundEnd) return;
-
-  const base = referenceEnd ? new Date(referenceEnd) : new Date();
-  const suggestedStart = new Date(base.getTime() + 5 * 60 * 1000);
-  const suggestedEnd = new Date(suggestedStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  nextRoundStart.value = suggestedStart.toISOString().slice(0, 16);
-  nextRoundEnd.value = suggestedEnd.toISOString().slice(0, 16);
-}
-
 // =========================
 // VOTING UI HELPERS
 // =========================
@@ -175,19 +159,6 @@ function hideWinnerPreviewUI() {
   if (nextRoundFields) nextRoundFields.style.display = 'none';
   if (finalizeOnlyBtn) finalizeOnlyBtn.style.display = 'none';
   if (finalizeAndCreateBtn) finalizeAndCreateBtn.style.display = 'none';
-}
-
-// Hide the "create next round" panel until it is needed.
-function hideNextRoundPanel() {
-  if (nextRoundPanel) nextRoundPanel.style.display = 'none';
-}
-
-// Show the "create next round" panel and preload suggested dates.
-function showNextRoundPanel(referenceEnd = null) {
-  if (!nextRoundPanel) return;
-
-  nextRoundPanel.style.display = 'block';
-  setNextRoundSuggestion(referenceEnd);
 }
 
 // Render the summary card for the currently active unfinalized round.
@@ -241,7 +212,7 @@ async function loadVotingPeriod() {
 
     currentWorkingPeriod = currentPeriods?.[0] || null;
 
-    // Populate the form with the current unfinalized round, if one exists.
+    // Populate the main form with the current unfinalized round, if one exists.
     if (currentWorkingPeriod) {
       votingStart.value = new Date(currentWorkingPeriod.start_time).toISOString().slice(0, 16);
       votingEnd.value = new Date(currentWorkingPeriod.end_time).toISOString().slice(0, 16);
@@ -313,7 +284,7 @@ async function loadVotingPeriod() {
 // VOTING ACTIONS
 // =========================
 
-// Save or create the current voting period from the admin form.
+// Save or create the current voting period from the main admin form.
 async function handleVotingPeriodSubmit(e) {
   e.preventDefault();
 
@@ -341,9 +312,6 @@ async function handleVotingPeriodSubmit(e) {
 
     votingMsg.textContent = 'Voting period updated successfully!';
     votingMsg.style.color = 'green';
-
-    // Hide the next-round creator once a fresh round is created or updated.
-    hideNextRoundPanel();
 
     // Refresh current round summaries and button states.
     await loadVotingPeriod();
@@ -442,8 +410,13 @@ async function determineWinner() {
         `;
       }
 
-      // Show the next-round creation panel after a winner is finalized.
-      showNextRoundPanel(new Date().toISOString());
+      // Clear the main voting form so admin can use the same UI to create the next round.
+      if (votingStart) votingStart.value = '';
+      if (votingEnd) votingEnd.value = '';
+
+      // Tell the admin exactly what to do next.
+      votingMsg.textContent = 'Winner finalized. Enter new dates above to create the next voting period.';
+      votingMsg.style.color = 'green';
 
       // Refresh all voting summaries afterward.
       await loadVotingPeriod();
@@ -471,55 +444,6 @@ async function determineWinner() {
   } finally {
     determineWinnerBtn.disabled = false;
     determineWinnerBtn.textContent = 'Determine Winner';
-  }
-}
-
-// Create the next voting period from the dedicated next-round panel.
-async function handleCreateNextRound() {
-  try {
-    const start_time = nextRoundStart?.value;
-    const end_time = nextRoundEnd?.value;
-
-    if (!start_time || !end_time) {
-      throw new Error('Please provide next round start and end times.');
-    }
-
-    const token = await getAccessToken();
-    if (!token) throw new Error('No active session found.');
-
-    createNextRoundBtn.disabled = true;
-    createNextRoundBtn.textContent = 'Creating...';
-
-    const res = await fetch('/.netlify/functions/set-voting-period', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ start_time, end_time })
-    });
-
-    const result = await parseJsonResponseSafely(res);
-
-    if (!res.ok || !result.success) {
-      throw new Error(result.error || 'Failed to create next round');
-    }
-
-    votingMsg.textContent = 'Next voting period created successfully!';
-    votingMsg.style.color = 'green';
-
-    // Hide next-round UI and reload the newly created working round.
-    hideNextRoundPanel();
-    await loadVotingPeriod();
-  } catch (err) {
-    console.error('Error creating next round:', err);
-    votingMsg.textContent = `Error: ${err.message}`;
-    votingMsg.style.color = 'red';
-  } finally {
-    if (createNextRoundBtn) {
-      createNextRoundBtn.disabled = false;
-      createNextRoundBtn.textContent = 'Create Next Voting Period';
-    }
   }
 }
 
@@ -1298,12 +1222,10 @@ export async function initAdminPanel() {
   // Reset view-only helper panels to safe defaults.
   clearStoryPagesUI();
   hideWinnerPreviewUI();
-  hideNextRoundPanel();
 
   // Wire up voting controls.
   determineWinnerBtn?.addEventListener('click', determineWinner);
   closeVotingBtn?.addEventListener('click', handleCloseVoting);
-  createNextRoundBtn?.addEventListener('click', handleCreateNextRound);
   votingForm?.addEventListener('submit', handleVotingPeriodSubmit);
 
   // Wire up story management controls.
