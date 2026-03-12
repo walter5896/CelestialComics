@@ -6,30 +6,35 @@ import { getCurrentUserAsync } from './auth.js';
    VOTING PERIOD HELPERS
 ======================= */
 
-async function fetchLatestVotingPeriod() {
+// Fetch the latest unfinalized voting period.
+// This is the round the public voting UI should care about.
+async function fetchCurrentVotingPeriod() {
   const { data, error } = await supabase
     .from('voting_periods')
     .select('id, start_time, end_time, status, winner_id, finalized_at, winning_vote_count')
-    .order('start_time', { ascending: false })
+    .is('finalized_at', null)
+    .order('id', { ascending: false })
     .limit(1);
 
   if (error) {
-    console.error('Error fetching latest voting period:', error);
+    console.error('Error fetching current voting period:', error);
     return null;
   }
 
   return data?.[0] || null;
 }
 
+// Fetch the currently open voting period for vote submission/recant logic.
 async function fetchOpenVotingPeriod() {
   const nowIso = new Date().toISOString();
 
   const { data, error } = await supabase
     .from('voting_periods')
-    .select('id, start_time, end_time, status')
+    .select('id, start_time, end_time, status, finalized_at')
+    .is('finalized_at', null)
     .lte('start_time', nowIso)
     .gte('end_time', nowIso)
-    .order('start_time', { ascending: false })
+    .order('id', { ascending: false })
     .limit(1);
 
   if (error) {
@@ -40,11 +45,15 @@ async function fetchOpenVotingPeriod() {
   return data?.[0] || null;
 }
 
+// Derive the public voting state for the current round.
+// Prefer the stored DB status first, then fall back to date math if needed.
 function deriveVotingStatus(period) {
-  if (!period) return 'upcoming';
+  if (!period) return 'closed';
+  if (period.finalized_at) return 'closed';
 
-  // Finalized rounds should always be treated as closed
-  if (period.status === 'finalized') return 'closed';
+  if (period.status === 'open' || period.status === 'closed' || period.status === 'upcoming') {
+    return period.status;
+  }
 
   const now = new Date();
   const start = new Date(period.start_time);
@@ -61,9 +70,10 @@ function deriveVotingStatus(period) {
 
 export async function fetchStoriesWithVotes() {
   try {
-    const latestPeriod = await fetchLatestVotingPeriod();
-    const currentVotingStatus = deriveVotingStatus(latestPeriod);
-    const latestVotingPeriodId = latestPeriod?.id || null;
+    // Use the latest UNFINALIZED round as the current round.
+    const currentPeriod = await fetchCurrentVotingPeriod();
+    const currentVotingStatus = deriveVotingStatus(currentPeriod);
+    const currentVotingPeriodId = currentPeriod?.id || null;
 
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
@@ -74,8 +84,15 @@ export async function fetchStoriesWithVotes() {
 
     let votesQuery = supabase.from('votes').select('story_id, vote_count');
 
-    if (latestVotingPeriodId) {
-      votesQuery = votesQuery.eq('voting_period_id', latestVotingPeriodId);
+    if (currentVotingPeriodId) {
+      votesQuery = votesQuery.eq('voting_period_id', currentVotingPeriodId);
+    } else {
+      // No active round means no visible current-round votes.
+      return (stories || []).map(story => ({
+        ...story,
+        vote_count: 0,
+        voting_status: 'closed'
+      }));
     }
 
     const { data: votesData, error: votesError } = await votesQuery;
@@ -104,8 +121,8 @@ export async function fetchUserVotes() {
   const user = await getCurrentUserAsync();
   if (!user) return [];
 
-  const latestPeriod = await fetchLatestVotingPeriod();
-  const latestVotingPeriodId = latestPeriod?.id || null;
+  const currentPeriod = await fetchCurrentVotingPeriod();
+  const currentVotingPeriodId = currentPeriod?.id || null;
 
   try {
     let query = supabase
@@ -113,8 +130,10 @@ export async function fetchUserVotes() {
       .select('story_id, vote_count, voting_period_id')
       .eq('user_id', user.id);
 
-    if (latestVotingPeriodId) {
-      query = query.eq('voting_period_id', latestVotingPeriodId);
+    if (currentVotingPeriodId) {
+      query = query.eq('voting_period_id', currentVotingPeriodId);
+    } else {
+      return [];
     }
 
     const { data, error } = await query;
