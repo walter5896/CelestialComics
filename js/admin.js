@@ -136,6 +136,27 @@ function formatDateTime(value) {
 }
 
 // =========================
+// DATETIME-LOCAL FORMATTER
+// =========================
+// Formats a datetime value for a datetime-local input without converting
+// it through UTC. This prevents the admin form from visually shifting times.
+function formatForDateTimeLocal(value) {
+  if (!value) return '';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// =========================
 // EFFECTIVE CLOSED CHECK
 // =========================
 // Determines whether a round should be treated as closed.
@@ -266,8 +287,8 @@ async function loadVotingPeriod() {
     currentWorkingPeriod = currentPeriods?.[0] || null;
 
     if (currentWorkingPeriod) {
-      votingStart.value = new Date(currentWorkingPeriod.start_time).toISOString().slice(0, 16);
-      votingEnd.value = new Date(currentWorkingPeriod.end_time).toISOString().slice(0, 16);
+      votingStart.value = formatForDateTimeLocal(currentWorkingPeriod.start_time);
+      votingEnd.value = formatForDateTimeLocal(currentWorkingPeriod.end_time);
     } else {
       votingStart.value = '';
       votingEnd.value = '';
