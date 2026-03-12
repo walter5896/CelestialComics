@@ -2,54 +2,158 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Past Winners | Project Name</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Standings & History</title>
   <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    .history-page {
+      padding: 2rem 1rem 4rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .history-page h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    .history-page p.page-intro {
+      margin-bottom: 2rem;
+      color: #4b5563;
+    }
+
+    .history-section {
+      margin-bottom: 2.5rem;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    }
+
+    .history-section h2 {
+      margin-bottom: 1rem;
+    }
+
+    .round-summary {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .standings-list,
+    .past-winners-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .standing-card,
+    .winner-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 1rem;
+      background: #f9fafb;
+    }
+
+    .standing-rank {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    .standing-title,
+    .winner-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+
+    .standing-meta,
+    .winner-meta {
+      color: #4b5563;
+      margin-bottom: 0.5rem;
+    }
+
+    .winner-actions a,
+    .standing-actions a {
+      display: inline-block;
+      margin-top: 0.25rem;
+    }
+
+    .history-empty {
+      color: #6b7280;
+      font-style: italic;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .status-pill.open {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-pill.upcoming {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .status-pill.closed {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .status-pill.finalized {
+      background: #f3e8ff;
+      color: #7e22ce;
+    }
+
+    @media (max-width: 640px) {
+      .history-page {
+        padding: 1.25rem 0.75rem 3rem;
+      }
+
+      .history-section {
+        padding: 1rem;
+      }
+    }
+  </style>
 </head>
-
 <body>
+  <main class="history-page">
+    <h1>Standings & History</h1>
+    <p class="page-intro">
+      See the current round standings and review past winning stories.
+    </p>
 
-<!-- HEADER -->
-<header class="site-header">
-  <div class="container header-container">
-    <a href="/" class="logo">PROJECT LOGO</a>
+    <section class="history-section">
+      <h2>Current Round</h2>
+      <div id="current-round-summary" class="round-summary">
+        <p>Loading current round...</p>
+      </div>
+    </section>
 
-    <nav class="main-nav">
-      <ul class="nav-list">
-        <li><a href="/">Home</a></li>
-        <li><a href="/gallery/">Gallery</a></li>
-        <li><a href="/vote/">Vote</a></li>
-        <li><a href="/winner/">Winner</a></li>
-        <li><a href="/history/">History</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
+    <section class="history-section">
+      <h2>Current Standings</h2>
+      <div id="current-standings-list" class="standings-list">
+        <p>Loading standings...</p>
+      </div>
+    </section>
 
-<!-- PAGE CONTENT -->
-<main class="container">
+    <section class="history-section">
+      <h2>Past Winners</h2>
+      <div id="past-winners-list" class="past-winners-list">
+        <p>Loading past winners...</p>
+      </div>
+    </section>
+  </main>
 
-<h1>Past Winners</h1>
-
-<div id="history-empty" style="display:none">
-  <p>No completed rounds yet.</p>
-</div>
-
-<div id="history-list" class="history-grid"></div>
-
-</main>
-
-<!-- FOOTER -->
-<footer class="site-footer">
-  <div class="container footer-container">
-    <p>&copy; 2025 Project Name</p>
-  </div>
-</footer>
-
-<script src="/js/env.js"></script>
-<script type="module" src="/js/history.js"></script>
-<script type="module" src="/js/utils.js"></script>
-<script type="module" src="/js/admin-nav.js"></script>
-
+  <script type="module" src="/js/history.js"></script>
 </body>
 </html>
