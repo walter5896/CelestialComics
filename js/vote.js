@@ -43,10 +43,8 @@ async function fetchOpenVotingPeriod() {
 function deriveVotingStatus(period) {
   if (!period) return 'upcoming';
 
+  // Finalized rounds should always be treated as closed
   if (period.status === 'finalized') return 'closed';
-  if (period.status === 'open') return 'open';
-  if (period.status === 'closed') return 'closed';
-  if (period.status === 'upcoming') return 'upcoming';
 
   const now = new Date();
   const start = new Date(period.start_time);
