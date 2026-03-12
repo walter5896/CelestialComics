@@ -170,7 +170,7 @@ export async function handler(event) {
     const { error: resetVotesError } = await supabase
       .from('profiles')
       .update({ vote_balance: 5 })
-      .neq('id', null);
+      .not('id', 'is', null);
 
     if (resetVotesError) {
       throw resetVotesError;
