@@ -28,6 +28,12 @@ const votingMsg = document.getElementById('voting-status-message');
 const currentRoundSummary = document.getElementById('current-round-summary');
 const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
 
+// Tie resolution UI.
+const tieResolutionPanel = document.getElementById('tie-resolution-panel');
+const tieResolutionMessage = document.getElementById('tie-resolution-message');
+const tieWinnerSelect = document.getElementById('tie-winner-select');
+const finalizeTieBtn = document.getElementById('finalize-tie-btn');
+
 // Legacy / hidden winner preview UI that still exists in the HTML.
 const winnerPreviewPanel = document.getElementById('winner-preview-panel');
 const winnerPreviewContent = document.getElementById('winner-preview-content');
@@ -79,6 +85,7 @@ let allStories = [];
 let allUsers = [];
 let editingStoryId = null;
 let currentWorkingPeriod = null;
+let currentTieStories = [];
 
 // =========================
 // LOGOUT HANDLER
@@ -211,6 +218,58 @@ function hideWinnerPreviewUI() {
   if (nextRoundFields) nextRoundFields.style.display = 'none';
   if (finalizeOnlyBtn) finalizeOnlyBtn.style.display = 'none';
   if (finalizeAndCreateBtn) finalizeAndCreateBtn.style.display = 'none';
+}
+
+// =========================
+// TIE RESOLUTION UI RESETTER
+// =========================
+// Hides and clears the tie-resolution panel so stale tie data
+// does not linger between rounds or attempts.
+function resetTieResolutionUI() {
+  currentTieStories = [];
+
+  if (tieResolutionPanel) tieResolutionPanel.style.display = 'none';
+
+  if (tieResolutionMessage) {
+    tieResolutionMessage.textContent = '';
+    tieResolutionMessage.style.color = '';
+  }
+
+  if (tieWinnerSelect) {
+    tieWinnerSelect.innerHTML = '<option value="">-- Select a Winner --</option>';
+  }
+
+  if (finalizeTieBtn) {
+    finalizeTieBtn.disabled = false;
+    finalizeTieBtn.textContent = 'Finalize Tie Winner';
+  }
+}
+
+// =========================
+// TIE RESOLUTION UI RENDERER
+// =========================
+// Displays the tie-resolution panel and fills the dropdown
+// with only the stories that are tied for first place.
+function renderTieResolutionUI(result) {
+  if (!tieResolutionPanel || !tieWinnerSelect) return;
+
+  currentTieStories = result.tied_stories || [];
+
+  tieWinnerSelect.innerHTML = '<option value="">-- Select a Winner --</option>';
+
+  currentTieStories.forEach(story => {
+    const option = document.createElement('option');
+    option.value = story.story_id;
+    option.textContent = `${story.title} (${story.total_votes} vote${story.total_votes === 1 ? '' : 's'})`;
+    tieWinnerSelect.appendChild(option);
+  });
+
+  if (tieResolutionMessage) {
+    tieResolutionMessage.textContent = `Tie detected in round ${result.period_id}. Choose one of the tied stories to finalize as winner.`;
+    tieResolutionMessage.style.color = '#b45309';
+  }
+
+  tieResolutionPanel.style.display = 'block';
 }
 
 // =========================
@@ -393,6 +452,7 @@ async function handleVotingPeriodSubmit(e) {
     votingMsg.textContent = 'Voting period updated successfully!';
     votingMsg.style.color = 'green';
 
+    resetTieResolutionUI();
     await loadVotingPeriod();
   } catch (err) {
     votingMsg.textContent = `Error: ${err.message}`;
@@ -433,6 +493,7 @@ async function handleCloseVoting() {
     votingMsg.textContent = result.message || 'Voting closed successfully.';
     votingMsg.style.color = 'green';
 
+    resetTieResolutionUI();
     await loadVotingPeriod();
   } catch (err) {
     console.error('Error closing voting:', err);
@@ -448,12 +509,14 @@ async function handleCloseVoting() {
 // =========================
 // DETERMINE WINNER HANDLER
 // =========================
-// Finalizes the winner for the most recently closed round and shows
-// the round totals in an alert for admin confirmation.
+// Finalizes the winner for the most recently closed round. If the backend
+// reports a tie, this displays the tie-resolution panel instead.
 async function determineWinner() {
   try {
     const token = await getAccessToken();
     if (!token) throw new Error('No active session found.');
+
+    resetTieResolutionUI();
 
     determineWinnerBtn.disabled = true;
     determineWinnerBtn.textContent = 'Determining...';
@@ -463,7 +526,8 @@ async function determineWinner() {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
-      }
+      },
+      body: JSON.stringify({})
     });
 
     const result = await parseJsonResponseSafely(res);
@@ -496,7 +560,9 @@ async function determineWinner() {
 
       votingStart.value = '';
       votingEnd.value = '';
-      votingMsg.textContent = 'Winner finalized. Enter new dates above to create the next voting period.';
+      votingMsg.textContent = result.tie_resolved
+        ? 'Tie resolved and winner finalized. Enter new dates above to create the next voting period.'
+        : 'Winner finalized. Enter new dates above to create the next voting period.';
       votingMsg.style.color = 'green';
 
       await loadVotingPeriod();
@@ -504,14 +570,20 @@ async function determineWinner() {
     }
 
     if (result.reason === 'tie_detected') {
+      renderTieResolutionUI(result);
+
       const totalsText = (result.vote_totals || [])
         .map(item => `${item.title}: ${item.total_votes}`)
         .join('\n');
 
       alert(
         `Tie detected for Voting Period ${result.period_id}.\n\n` +
-        `Totals:\n${totalsText}`
+        `Totals:\n${totalsText}\n\n` +
+        `Use the Tie Resolution panel to choose the winner.`
       );
+
+      votingMsg.textContent = 'Tie detected. Choose one of the tied stories below and finalize manually.';
+      votingMsg.style.color = '#b45309';
       return;
     }
 
@@ -522,6 +594,80 @@ async function determineWinner() {
   } finally {
     determineWinnerBtn.disabled = false;
     determineWinnerBtn.textContent = 'Determine Winner';
+  }
+}
+
+// =========================
+// TIE FINALIZATION HANDLER
+// =========================
+// Sends the admin-selected tied story back to the backend so the round
+// can be finalized manually.
+async function handleFinalizeTieWinner() {
+  try {
+    const selectedWinnerStoryId = tieWinnerSelect?.value || '';
+
+    if (!selectedWinnerStoryId) {
+      throw new Error('Please select one of the tied stories.');
+    }
+
+    const token = await getAccessToken();
+    if (!token) throw new Error('No active session found.');
+
+    finalizeTieBtn.disabled = true;
+    finalizeTieBtn.textContent = 'Finalizing...';
+
+    const res = await fetch('/.netlify/functions/determine-winner', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        winner_story_id: selectedWinnerStoryId
+      })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to finalize tie winner');
+    }
+
+    const totalsText = (result.vote_totals || [])
+      .map(item => `${item.title}: ${item.total_votes}`)
+      .join('\n');
+
+    alert(
+      `Tie resolved!\n\n` +
+      `Voting Period: ${result.period_id}\n` +
+      `Winner: ${result.winner_title}\n` +
+      `Votes: ${result.vote_count}\n\n` +
+      `Totals:\n${totalsText}`
+    );
+
+    resetTieResolutionUI();
+
+    votingStart.value = '';
+    votingEnd.value = '';
+    votingMsg.textContent = 'Tie resolved and winner finalized. Enter new dates above to create the next voting period.';
+    votingMsg.style.color = 'green';
+
+    await loadVotingPeriod();
+  } catch (err) {
+    console.error('Error finalizing tie winner:', err);
+
+    if (tieResolutionMessage) {
+      tieResolutionMessage.textContent = err.message || 'Failed to finalize tie winner.';
+      tieResolutionMessage.style.color = 'red';
+    }
+
+    votingMsg.textContent = `Error: ${err.message}`;
+    votingMsg.style.color = 'red';
+  } finally {
+    if (finalizeTieBtn) {
+      finalizeTieBtn.disabled = false;
+      finalizeTieBtn.textContent = 'Finalize Tie Winner';
+    }
   }
 }
 
@@ -1297,9 +1443,11 @@ export async function initAdminPanel() {
 
   clearStoryPagesUI();
   hideWinnerPreviewUI();
+  resetTieResolutionUI();
 
   determineWinnerBtn?.addEventListener('click', determineWinner);
   closeVotingBtn?.addEventListener('click', handleCloseVoting);
+  finalizeTieBtn?.addEventListener('click', handleFinalizeTieWinner);
   votingForm?.addEventListener('submit', handleVotingPeriodSubmit);
 
   storySelect?.addEventListener('change', handleStorySelectChange);

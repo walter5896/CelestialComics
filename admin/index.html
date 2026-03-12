@@ -326,7 +326,24 @@
         <button id="determine-winner-btn" type="button">Determine Winner</button>
       </div>
 
-      <!-- legacy hidden preview block -->
+      <!-- TIE RESOLUTION PANEL -->
+      <div class="section-card" id="tie-resolution-panel" style="display:none; margin-top:1rem; margin-bottom:0;">
+        <h3>Tie Resolution</h3>
+        <p id="tie-resolution-message" class="section-message"></p>
+
+        <div class="field-group">
+          <label for="tie-winner-select">Choose Winner</label>
+          <select id="tie-winner-select">
+            <option value="">-- Select a Winner --</option>
+          </select>
+        </div>
+
+        <div class="action-row">
+          <button id="finalize-tie-btn" type="button">Finalize Tie Winner</button>
+        </div>
+      </div>
+
+      <!-- LEGACY HIDDEN PREVIEW BLOCK -->
       <div id="winner-preview-panel" class="winner-preview-box" style="display:none;">
         <h3>Winner Preview</h3>
         <div id="winner-preview-content"></div>

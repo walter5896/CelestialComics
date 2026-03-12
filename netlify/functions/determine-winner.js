@@ -1,16 +1,24 @@
 // /.netlify/functions/determine-winner.js
+
+// =========================
+// IMPORTS
+// =========================
+// Import Supabase client creator for secure server-side admin operations.
 const { createClient } = require('@supabase/supabase-js');
 
+// =========================
+// SUPABASE CLIENT
+// =========================
+// Create the service-role Supabase client for privileged backend access.
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // =========================
-// AUTH / ADMIN HELPERS
+// ADMIN USER VALIDATOR
 // =========================
-
-// Validate the bearer token and ensure the requester is an admin.
+// Validates the bearer token and confirms the user is an admin.
 async function getAdminUser(token) {
   const {
     data: { user },
@@ -37,28 +45,9 @@ async function getAdminUser(token) {
 }
 
 // =========================
-// VOTING PERIOD HELPERS
+// CLOSED UNFINALIZED ROUND FETCHER
 // =========================
-
-// Determine whether a period should be treated as closed for winner finalization.
-// A period is eligible if:
-// - it is not finalized
-// - and it was manually closed with closed_at
-//   OR its scheduled end_time has already passed
-function isEffectivelyClosed(period) {
-  if (!period) return false;
-  if (period.finalized_at) return false;
-  if (period.closed_at) return true;
-
-  const now = new Date();
-  const end = new Date(period.end_time);
-
-  return now > end;
-}
-
-// Fetch the latest unfinalized period that is eligible for winner determination.
-// Prefer the highest id because rounds are now created sequentially and only one
-// unfinalized round should exist at a time.
+// Returns the latest round that is closed but not yet finalized.
 async function getLatestClosedUnfinalizedPeriod() {
   const { data, error } = await supabase
     .from('voting_periods')
@@ -69,26 +58,24 @@ async function getLatestClosedUnfinalizedPeriod() {
       status,
       closed_at,
       finalized_at,
-      finalized_by,
       winner_id,
       winning_vote_count
     `)
     .is('finalized_at', null)
+    .not('closed_at', 'is', null)
     .order('id', { ascending: false })
-    .limit(5);
+    .limit(1);
 
   if (error) throw error;
 
-  const periods = data || [];
-  return periods.find(isEffectivelyClosed) || null;
+  return data?.[0] || null;
 }
 
 // =========================
-// VOTE COUNTING HELPERS
+// ROUND VOTE TOTALS FETCHER
 // =========================
-
-// Fetch all votes for a specific round and roll them up by story.
-async function computeVoteTotalsForPeriod(periodId) {
+// Loads all votes for the specified round and aggregates totals by story.
+async function getVoteTotalsForPeriod(periodId) {
   const { data: votes, error: voteError } = await supabase
     .from('votes')
     .select('story_id, vote_count')
@@ -97,12 +84,7 @@ async function computeVoteTotalsForPeriod(periodId) {
   if (voteError) throw voteError;
 
   if (!votes || votes.length === 0) {
-    return {
-      hasVotes: false,
-      voteTotals: [],
-      topCount: 0,
-      topStories: []
-    };
+    return [];
   }
 
   const counts = {};
@@ -134,28 +116,45 @@ async function computeVoteTotalsForPeriod(periodId) {
     titleMap[String(story.id)] = story.title;
   });
 
-  const voteTotals = rawTotals.map(item => ({
+  return rawTotals.map(item => ({
     ...item,
     title: titleMap[item.story_id] || 'Untitled Story'
   }));
+}
 
-  const topCount = voteTotals[0]?.total_votes || 0;
-  const topStories = voteTotals.filter(item => item.total_votes === topCount);
+// =========================
+// ROUND FINALIZER
+// =========================
+// Finalizes the specified round with the provided winning story.
+async function finalizeRound({ periodId, winnerStoryId, winningVoteCount, adminUserId }) {
+  const { data: finalizedPeriod, error: finalizeError } = await supabase
+    .from('voting_periods')
+    .update({
+      winner_id: winnerStoryId,
+      winning_vote_count: winningVoteCount,
+      finalized_at: new Date().toISOString(),
+      finalized_by: adminUserId,
+      status: 'finalized'
+    })
+    .eq('id', periodId)
+    .is('finalized_at', null)
+    .select()
+    .single();
 
-  return {
-    hasVotes: true,
-    voteTotals,
-    topCount,
-    topStories
-  };
+  if (finalizeError) throw finalizeError;
+
+  return finalizedPeriod;
 }
 
 // =========================
 // MAIN HANDLER
 // =========================
-
+// Determines the winner automatically when possible, or allows an admin
+// to manually resolve a tie by choosing one of the tied stories.
 exports.handler = async (event) => {
-  // Reject non-POST requests.
+  // =========================
+  // METHOD VALIDATION
+  // =========================
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -163,7 +162,9 @@ exports.handler = async (event) => {
     };
   }
 
-  // Read bearer token from request headers.
+  // =========================
+  // AUTH HEADER PARSING
+  // =========================
   const authHeader = event.headers.authorization || event.headers.Authorization;
   const token = authHeader?.replace('Bearer ', '');
 
@@ -175,10 +176,20 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Validate requester and ensure they are an admin.
+    // =========================
+    // ADMIN VALIDATION
+    // =========================
     const adminUser = await getAdminUser(token);
 
-    // Find the latest round that is closed but not yet finalized.
+    // =========================
+    // REQUEST BODY PARSING
+    // =========================
+    const body = JSON.parse(event.body || '{}');
+    const selectedWinnerStoryId = body.winner_story_id ? String(body.winner_story_id) : null;
+
+    // =========================
+    // TARGET ROUND LOOKUP
+    // =========================
     const period = await getLatestClosedUnfinalizedPeriod();
 
     if (!period) {
@@ -191,26 +202,12 @@ exports.handler = async (event) => {
       };
     }
 
-    // Double-check effective status for clarity in the response.
-    const effectiveStatus = isEffectivelyClosed(period) ? 'closed' : 'not_closed';
+    // =========================
+    // VOTE TOTALS LOOKUP
+    // =========================
+    const voteTotals = await getVoteTotalsForPeriod(period.id);
 
-    if (effectiveStatus !== 'closed') {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: false,
-          message: 'This voting period is not closed yet.',
-          period_id: period.id
-        })
-      };
-    }
-
-    // Compute vote totals for the selected round.
-    const { hasVotes, voteTotals, topCount, topStories } =
-      await computeVoteTotalsForPeriod(period.id);
-
-    // If nobody voted in this round, do not finalize a winner.
-    if (!hasVotes) {
+    if (!voteTotals.length) {
       return {
         statusCode: 200,
         body: JSON.stringify({
@@ -221,64 +218,108 @@ exports.handler = async (event) => {
       };
     }
 
-    // If there is a tie for first place, do not finalize automatically.
+    // =========================
+    // TIE DETECTION
+    // =========================
+    const topCount = voteTotals[0]?.total_votes || 0;
+    const topStories = voteTotals.filter(item => item.total_votes === topCount);
+
+    // =========================
+    // MANUAL TIE RESOLUTION
+    // =========================
+    // If the admin provided a winner_story_id, only allow it if that story
+    // is one of the tied top-vote stories.
+    if (selectedWinnerStoryId) {
+      const selectedTiedStory = topStories.find(
+        item => String(item.story_id) === selectedWinnerStoryId
+      );
+
+      if (!selectedTiedStory) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({
+            error: 'Selected winner must be one of the tied top-vote stories.',
+            period_id: period.id,
+            tied_stories: topStories
+          })
+        };
+      }
+
+      const finalizedPeriod = await finalizeRound({
+        periodId: period.id,
+        winnerStoryId: selectedTiedStory.story_id,
+        winningVoteCount: selectedTiedStory.total_votes,
+        adminUserId: adminUser.id
+      });
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          success: true,
+          tie_resolved: true,
+          period_id: period.id,
+          winner_id: selectedTiedStory.story_id,
+          winner_title: selectedTiedStory.title,
+          vote_count: selectedTiedStory.total_votes,
+          vote_totals: voteTotals,
+          finalized_period: finalizedPeriod
+        })
+      };
+    }
+
+    // =========================
+    // AUTO TIE RESPONSE
+    // =========================
+    // If there is a tie and no manual winner was provided, return tie data
+    // to the admin UI instead of finalizing.
     if (topStories.length > 1) {
       return {
         statusCode: 200,
         body: JSON.stringify({
           success: false,
           reason: 'tie_detected',
-          message: 'Tie detected. No winner finalized.',
+          message: 'Tie detected. Please choose a winner manually.',
           period_id: period.id,
-          vote_totals: voteTotals
+          vote_totals: voteTotals,
+          tied_stories: topStories
         })
       };
     }
 
-    // Resolve the winning story from the computed totals.
-    const winnerStoryId = voteTotals[0].story_id;
-    const winnerTitle = voteTotals[0].title;
-    const winningVoteCount = voteTotals[0].total_votes;
+    // =========================
+    // AUTO FINALIZATION
+    // =========================
+    // If there is a clear winner, finalize the round automatically.
+    const winner = voteTotals[0];
 
-    // Finalize the period while preserving original start/end times.
-    // Also normalize status to finalized and stamp finalized_by / finalized_at.
-    const { data: finalizedPeriod, error: finalizeError } = await supabase
-      .from('voting_periods')
-      .update({
-        winner_id: winnerStoryId,
-        winning_vote_count: winningVoteCount,
-        finalized_at: new Date().toISOString(),
-        finalized_by: adminUser.id,
-        status: 'finalized'
-      })
-      .eq('id', period.id)
-      .is('finalized_at', null)
-      .select()
-      .single();
+    const finalizedPeriod = await finalizeRound({
+      periodId: period.id,
+      winnerStoryId: winner.story_id,
+      winningVoteCount: winner.total_votes,
+      adminUserId: adminUser.id
+    });
 
-    if (finalizeError) throw finalizeError;
-
-    // Return the finalized winner details plus round totals for UI display.
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
         period_id: period.id,
-        winner_id: winnerStoryId,
-        winner_title: winnerTitle,
-        vote_count: winningVoteCount,
+        winner_id: winner.story_id,
+        winner_title: winner.title,
+        vote_count: winner.total_votes,
         vote_totals: voteTotals,
         finalized_period: finalizedPeriod
       })
     };
   } catch (err) {
+    // =========================
+    // ERROR RESPONSE
+    // =========================
     console.error('determine-winner error:', err);
 
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: err.message || 'Server error'
-      })
+      body: JSON.stringify({ error: err.message || 'Server error' })
     };
   }
 };
