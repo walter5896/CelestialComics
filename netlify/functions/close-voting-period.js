@@ -1,12 +1,31 @@
 // /.netlify/functions/close-voting-period.js
+
+// =========================
+// IMPORTS
+// =========================
+// Import Supabase client creator for secure server-side admin operations.
 import { createClient } from '@supabase/supabase-js';
 
+// =========================
+// SUPABASE CLIENT
+// =========================
+// Create the service-role Supabase client for privileged backend access.
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// =========================
+// MAIN HANDLER
+// =========================
+// Closes the latest unfinalized voting period without changing its original
+// scheduled start/end times. This ensures the round can move cleanly into
+// the "determine winner" state.
 export async function handler(event) {
+  // =========================
+  // METHOD VALIDATION
+  // =========================
+  // Only POST requests are allowed for this admin action.
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -15,6 +34,10 @@ export async function handler(event) {
   }
 
   try {
+    // =========================
+    // AUTH HEADER PARSING
+    // =========================
+    // Read the bearer token from the incoming request headers.
     const authHeader = event.headers.authorization || event.headers.Authorization;
     const token = authHeader?.replace('Bearer ', '');
 
@@ -25,6 +48,10 @@ export async function handler(event) {
       };
     }
 
+    // =========================
+    // USER VALIDATION
+    // =========================
+    // Validate the Supabase auth token and load the authenticated user.
     const {
       data: { user },
       error: userError
@@ -37,6 +64,10 @@ export async function handler(event) {
       };
     }
 
+    // =========================
+    // ADMIN ROLE CHECK
+    // =========================
+    // Confirm the authenticated user has the admin role.
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -54,10 +85,23 @@ export async function handler(event) {
       };
     }
 
-    // Find latest unfinalized period
+    // =========================
+    // CURRENT ROUND LOOKUP
+    // =========================
+    // Find the latest unfinalized round. This is the only round that should
+    // ever be closable in the current one-round-at-a-time workflow.
     const { data: periods, error: fetchError } = await supabase
       .from('voting_periods')
-      .select('id, start_time, end_time, status, finalized_at, closed_at, winner_id, winning_vote_count')
+      .select(`
+        id,
+        start_time,
+        end_time,
+        status,
+        finalized_at,
+        closed_at,
+        winner_id,
+        winning_vote_count
+      `)
       .is('finalized_at', null)
       .order('id', { ascending: false })
       .limit(1);
@@ -75,9 +119,17 @@ export async function handler(event) {
       };
     }
 
+    // =========================
+    // CURRENT TIME SNAPSHOT
+    // =========================
+    // Capture the exact close time once so the row uses a single consistent value.
     const nowIso = new Date().toISOString();
 
-    // If it was already manually closed, just normalize status and return.
+    // =========================
+    // ALREADY CLOSED NORMALIZATION
+    // =========================
+    // If this round was already manually closed earlier, normalize its status
+    // and return it without changing the original close timestamp.
     if (activePeriod.closed_at) {
       const { data: alreadyClosedPeriod, error: alreadyClosedError } = await supabase
         .from('voting_periods')
@@ -102,14 +154,20 @@ export async function handler(event) {
       };
     }
 
-    // If scheduled end time already passed, mark status closed but preserve original dates.
+    // =========================
+    // SCHEDULED-END NORMALIZATION
+    // =========================
+    // If the scheduled end time has already passed, treat the round as closed
+    // and stamp closed_at now so downstream logic can finalize it properly.
     if (new Date(activePeriod.end_time) <= new Date(nowIso)) {
       const { data: naturallyClosedPeriod, error: naturallyClosedError } = await supabase
         .from('voting_periods')
         .update({
+          closed_at: nowIso,
           status: 'closed'
         })
         .eq('id', activePeriod.id)
+        .is('finalized_at', null)
         .select()
         .single();
 
@@ -121,13 +179,17 @@ export async function handler(event) {
         statusCode: 200,
         body: JSON.stringify({
           success: true,
-          message: 'Voting period was already closed by its scheduled end time.',
+          message: 'Voting period was closed because its scheduled end time had already passed.',
           period: naturallyClosedPeriod
         })
       };
     }
 
-    // Manually close the round now, without mutating start/end times.
+    // =========================
+    // MANUAL CLOSE ACTION
+    // =========================
+    // Manually close the current round right now while preserving the
+    // original scheduled start/end times for historical accuracy.
     const { data: updatedPeriod, error: updateError } = await supabase
       .from('voting_periods')
       .update({
@@ -145,6 +207,10 @@ export async function handler(event) {
       throw updateError;
     }
 
+    // =========================
+    // SUCCESS RESPONSE
+    // =========================
+    // Return the newly closed period so the admin UI can refresh cleanly.
     return {
       statusCode: 200,
       body: JSON.stringify({
@@ -154,6 +220,10 @@ export async function handler(event) {
       })
     };
   } catch (err) {
+    // =========================
+    // ERROR RESPONSE
+    // =========================
+    // Log the backend error and return a safe message to the frontend.
     console.error('close-voting-period error:', err);
 
     return {
