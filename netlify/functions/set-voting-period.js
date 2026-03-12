@@ -23,9 +23,8 @@ function deriveStatus(startTime, endTime) {
 // =========================
 // MAIN HANDLER
 // =========================
-// Creates a new voting period or updates the latest unfinalized one.
-// This preserves finalized history while letting admins reuse the main form
-// for the current working round.
+// Creates a brand new voting period only when no other unfinalized round exists.
+// This guarantees each round gets its own unique row and unique voting_period_id.
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
     return {
@@ -38,7 +37,6 @@ export async function handler(event) {
     // =========================
     // AUTH VALIDATION
     // =========================
-    // Validate the admin bearer token.
     const authHeader = event.headers.authorization || event.headers.Authorization;
     const token = authHeader?.replace('Bearer ', '');
 
@@ -64,7 +62,6 @@ export async function handler(event) {
     // =========================
     // ADMIN ROLE CHECK
     // =========================
-    // Ensure only admins can create or edit voting periods.
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -83,7 +80,6 @@ export async function handler(event) {
     // =========================
     // REQUEST BODY VALIDATION
     // =========================
-    // Parse and validate the requested start and end times.
     const { start_time, end_time } = JSON.parse(event.body || '{}');
 
     if (!start_time || !end_time) {
@@ -113,38 +109,34 @@ export async function handler(event) {
     const status = deriveStatus(start_time, end_time);
 
     // =========================
-    // LOOK UP CURRENT WORKING ROUND
+    // CHECK FOR EXISTING WORKING ROUND
     // =========================
-    // Only unfinalized rounds are candidates for update.
-    // Finalized rounds remain untouched as historical records.
-    const { data: periods, error: fetchError } = await supabase
+    // Only one unfinalized round is allowed at a time.
+    const { data: existingRounds, error: existingError } = await supabase
       .from('voting_periods')
-      .select(`
-        id,
-        finalized_at,
-        closed_at,
-        winner_id,
-        winning_vote_count
-      `)
+      .select('id')
       .is('finalized_at', null)
       .order('id', { ascending: false })
       .limit(1);
 
-    if (fetchError) throw fetchError;
+    if (existingError) throw existingError;
 
-    let savedPeriod = null;
+    if (existingRounds && existingRounds.length > 0) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: 'An unfinalized voting round already exists. Close and finalize it before creating a new round.'
+        })
+      };
+    }
 
     // =========================
-    // UPDATE EXISTING WORKING ROUND
+    // CREATE NEW ROUND
     // =========================
-    // If an unfinalized round exists, update it in place and reset any
-    // temporary close/winner state so it behaves like a fresh working round.
-    if (periods && periods.length > 0) {
-      const existingPeriod = periods[0];
-
-      const { data, error } = await supabase
-        .from('voting_periods')
-        .update({
+    const { data: savedPeriod, error: insertError } = await supabase
+      .from('voting_periods')
+      .insert([
+        {
           start_time,
           end_time,
           status,
@@ -153,41 +145,16 @@ export async function handler(event) {
           winning_vote_count: null,
           finalized_at: null,
           finalized_by: null
-        })
-        .eq('id', existingPeriod.id)
-        .select()
-        .single();
+        }
+      ])
+      .select()
+      .single();
 
-      if (error) throw error;
-      savedPeriod = data;
-    } else {
-      // =========================
-      // CREATE NEW ROUND
-      // =========================
-      // If no unfinalized round exists, insert a brand new one.
-      const { data, error } = await supabase
-        .from('voting_periods')
-        .insert([
-          {
-            start_time,
-            end_time,
-            status,
-            closed_at: null,
-            winner_id: null,
-            winning_vote_count: null
-          }
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-      savedPeriod = data;
-    }
+    if (insertError) throw insertError;
 
     // =========================
     // SUCCESS RESPONSE
     // =========================
-    // Return the saved round for the admin UI to refresh against.
     return {
       statusCode: 200,
       body: JSON.stringify({
