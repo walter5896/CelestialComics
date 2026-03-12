@@ -56,7 +56,6 @@ let currentAccessToken = null;
 let allStories = [];
 let allUsers = [];
 let editingStoryId = null;
-let currentWinnerPreview = null;
 
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
@@ -83,220 +82,18 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-function resetWinnerPreviewUI() {
-  currentWinnerPreview = null;
-
+function hideWinnerPreviewUI() {
   if (winnerPreviewPanel) winnerPreviewPanel.style.display = 'none';
   if (winnerPreviewContent) winnerPreviewContent.innerHTML = '';
   if (winnerPreviewMessage) {
     winnerPreviewMessage.textContent = '';
     winnerPreviewMessage.style.color = '';
   }
-
   if (nextRoundFields) nextRoundFields.style.display = 'none';
-  if (finalizeOnlyBtn) {
-    finalizeOnlyBtn.style.display = 'inline-block';
-    finalizeOnlyBtn.disabled = false;
-    finalizeOnlyBtn.textContent = 'Finalize Only';
-  }
-
-  if (finalizeAndCreateBtn) {
-    finalizeAndCreateBtn.style.display = 'none';
-    finalizeAndCreateBtn.disabled = false;
-    finalizeAndCreateBtn.textContent = 'Finalize + Create Next Round';
-  }
-
   if (nextRoundStart) nextRoundStart.value = '';
   if (nextRoundEnd) nextRoundEnd.value = '';
-}
-
-function setSuggestedNextRoundTimes(referencePeriod) {
-  if (!referencePeriod || !nextRoundStart || !nextRoundEnd) return;
-
-  const baseEnd = referencePeriod.end_time ? new Date(referencePeriod.end_time) : new Date();
-  const suggestedStart = new Date(baseEnd.getTime() + 5 * 60 * 1000);
-  const suggestedEnd = new Date(suggestedStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-
-  nextRoundStart.value = suggestedStart.toISOString().slice(0, 16);
-  nextRoundEnd.value = suggestedEnd.toISOString().slice(0, 16);
-}
-
-function renderWinnerPreview(result) {
-  currentWinnerPreview = result;
-
-  if (!winnerPreviewPanel || !winnerPreviewContent) return;
-
-  winnerPreviewPanel.style.display = 'block';
-  winnerPreviewMessage.textContent = '';
-  winnerPreviewMessage.style.color = '';
-
-  const preview = result.preview;
-  const period = result.period;
-
-  if (!preview || !period) {
-    winnerPreviewContent.innerHTML = '<p>No preview data available.</p>';
-    return;
-  }
-
-  if (preview.tie_detected) {
-    winnerPreviewContent.innerHTML = `
-      <p><strong>Tie detected.</strong></p>
-      <p>The following stories are tied at ${preview.winning_vote_count} vote(s):</p>
-      <ul>
-        ${preview.tied_stories.map(item => `<li>${item.title} — ${item.total_votes} vote(s)</li>`).join('')}
-      </ul>
-    `;
-
-    finalizeOnlyBtn.style.display = 'none';
-    finalizeAndCreateBtn.style.display = 'none';
-    nextRoundFields.style.display = 'none';
-
-    winnerPreviewMessage.textContent = 'Resolve the tie before finalizing this round.';
-    winnerPreviewMessage.style.color = 'red';
-    return;
-  }
-
-  winnerPreviewContent.innerHTML = `
-    <p><strong>Voting Period:</strong> #${period.id}</p>
-    <p><strong>Winner:</strong> ${preview.winner_title}</p>
-    <p><strong>Winning Votes:</strong> ${preview.winning_vote_count}</p>
-  `;
-
-  finalizeOnlyBtn.style.display = 'inline-block';
-
-  if (result.can_create_next_round) {
-    nextRoundFields.style.display = 'block';
-    finalizeAndCreateBtn.style.display = 'inline-block';
-    setSuggestedNextRoundTimes(period);
-  } else {
-    nextRoundFields.style.display = 'none';
-    finalizeAndCreateBtn.style.display = 'none';
-
-    if (result.existing_future_period) {
-      winnerPreviewMessage.textContent = 'An open or upcoming voting period already exists, so creating the next round is disabled.';
-      winnerPreviewMessage.style.color = '#b45309';
-    }
-  }
-}
-
-async function previewWinner() {
-  try {
-    const token = await getAccessToken();
-    if (!token) throw new Error('No active session found.');
-
-    determineWinnerBtn.disabled = true;
-    determineWinnerBtn.textContent = 'Checking Winner...';
-    resetWinnerPreviewUI();
-
-    const res = await fetch('/.netlify/functions/determine-winner', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({ action: 'preview' })
-    });
-
-    const result = await parseJsonResponseSafely(res);
-
-    if (!res.ok) {
-      throw new Error(result.error || 'Failed to preview winner');
-    }
-
-    if (!result.success) {
-      alert(result.message || 'No eligible voting period found.');
-      return;
-    }
-
-    renderWinnerPreview(result);
-  } catch (err) {
-    console.error('Error previewing winner:', err);
-    alert(err.message || 'Failed to preview winner.');
-  } finally {
-    determineWinnerBtn.disabled = false;
-    determineWinnerBtn.textContent = 'Determine Winner';
-  }
-}
-
-async function finalizeWinner(createNextRound = false) {
-  try {
-    if (!currentWinnerPreview?.period?.id) {
-      throw new Error('No winner preview is available.');
-    }
-
-    const token = await getAccessToken();
-    if (!token) throw new Error('No active session found.');
-
-    const payload = {
-      action: 'finalize',
-      period_id: currentWinnerPreview.period.id,
-      create_next_round: createNextRound
-    };
-
-    if (createNextRound) {
-      const startVal = nextRoundStart.value;
-      const endVal = nextRoundEnd.value;
-
-      if (!startVal || !endVal) {
-        throw new Error('Please provide next round start and end times.');
-      }
-
-      payload.next_start_time = startVal;
-      payload.next_end_time = endVal;
-    }
-
-    finalizeOnlyBtn.disabled = true;
-    finalizeAndCreateBtn.disabled = true;
-    finalizeOnlyBtn.textContent = 'Finalizing...';
-    if (createNextRound) {
-      finalizeAndCreateBtn.textContent = 'Creating Next Round...';
-    }
-
-    const res = await fetch('/.netlify/functions/determine-winner', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const result = await parseJsonResponseSafely(res);
-
-    if (!res.ok) {
-      throw new Error(result.error || 'Failed to finalize winner');
-    }
-
-    if (!result.success) {
-      throw new Error(result.message || 'Could not finalize winner');
-    }
-
-    winnerPreviewContent.innerHTML = `
-      <p><strong>Winner Finalized Successfully</strong></p>
-      <p><strong>Winner:</strong> ${result.winner_title}</p>
-      <p><strong>Winning Votes:</strong> ${result.winning_vote_count}</p>
-      ${result.next_round ? `<p><strong>Next Round Created:</strong> #${result.next_round.id}</p>` : ''}
-    `;
-
-    winnerPreviewMessage.textContent = result.next_round
-      ? 'This round has been finalized and the next round was created.'
-      : 'This round has been finalized.';
-    winnerPreviewMessage.style.color = 'green';
-
-    finalizeOnlyBtn.style.display = 'none';
-    finalizeAndCreateBtn.style.display = 'none';
-    nextRoundFields.style.display = 'none';
-
-    await loadVotingPeriod();
-  } catch (err) {
-    console.error('Error finalizing winner:', err);
-    alert(err.message || 'Failed to finalize winner.');
-  } finally {
-    finalizeOnlyBtn.disabled = false;
-    finalizeAndCreateBtn.disabled = false;
-    finalizeOnlyBtn.textContent = 'Finalize Only';
-    finalizeAndCreateBtn.textContent = 'Finalize + Create Next Round';
-  }
+  if (finalizeOnlyBtn) finalizeOnlyBtn.style.display = 'none';
+  if (finalizeAndCreateBtn) finalizeAndCreateBtn.style.display = 'none';
 }
 
 function clearStoryPagesUI() {
@@ -370,18 +167,86 @@ async function populateStoryForm(story) {
   await loadStoryPages(story.id);
 }
 
+async function determineWinner() {
+  try {
+    const token = await getAccessToken();
+    if (!token) throw new Error('No active session found.');
+
+    determineWinnerBtn.disabled = true;
+    determineWinnerBtn.textContent = 'Determining...';
+
+    const res = await fetch('/.netlify/functions/determine-winner', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok) {
+      throw new Error(result.error || 'Unknown error');
+    }
+
+    if (result.success) {
+      const totalsText = (result.vote_totals || [])
+        .map(item => `${item.title}: ${item.total_votes}`)
+        .join('\n');
+
+      alert(
+        `Winner determined!\n\n` +
+        `Voting Period: ${result.period_id}\n` +
+        `Winner: ${result.winner_title}\n` +
+        `Votes: ${result.vote_count}\n\n` +
+        `Totals:\n${totalsText}`
+      );
+
+      await loadVotingPeriod();
+      return;
+    }
+
+    if (result.reason === 'tie_detected') {
+      const totalsText = (result.vote_totals || [])
+        .map(item => `${item.title}: ${item.total_votes}`)
+        .join('\n');
+
+      alert(
+        `Tie detected for Voting Period ${result.period_id}.\n\n` +
+        `Totals:\n${totalsText}`
+      );
+      return;
+    }
+
+    alert(result.message || 'No winner determined.');
+  } catch (err) {
+    console.error('Error determining winner:', err);
+    alert(err.message || 'Failed to determine winner.');
+  } finally {
+    determineWinnerBtn.disabled = false;
+    determineWinnerBtn.textContent = 'Determine Winner';
+  }
+}
+
 async function loadVotingPeriod() {
   try {
     const { data: periods, error } = await supabase
       .from('voting_periods')
-      .select('start_time, end_time')
+      .select('id, start_time, end_time, status, finalized_at')
+      .is('finalized_at', null)
       .order('start_time', { ascending: false })
       .limit(1);
 
-    if (!error && periods && periods.length > 0) {
+    if (error) throw error;
+
+    if (periods && periods.length > 0) {
       votingStart.value = new Date(periods[0].start_time).toISOString().slice(0, 16);
       votingEnd.value = new Date(periods[0].end_time).toISOString().slice(0, 16);
+      return;
     }
+
+    votingStart.value = '';
+    votingEnd.value = '';
   } catch (err) {
     console.error('Error loading voting period:', err);
   }
@@ -395,25 +260,27 @@ async function handleVotingPeriodSubmit(e) {
 
   try {
     const token = await getAccessToken();
+    if (!token) throw new Error('No active session found.');
 
     const res = await fetch('/.netlify/functions/set-voting-period', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
+        Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({ start_time, end_time })
     });
 
     const result = await parseJsonResponseSafely(res);
 
-    if (result.success) {
-      votingMsg.textContent = 'Voting period updated successfully!';
-      votingMsg.style.color = 'green';
-    } else {
-      votingMsg.textContent = `Error: ${result.error}`;
-      votingMsg.style.color = 'red';
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to update voting period');
     }
+
+    votingMsg.textContent = 'Voting period updated successfully!';
+    votingMsg.style.color = 'green';
+
+    await loadVotingPeriod();
   } catch (err) {
     votingMsg.textContent = `Error: ${err.message}`;
     votingMsg.style.color = 'red';
@@ -1050,11 +917,9 @@ export async function initAdminPanel() {
   await loadVotingPeriod();
   await loadStoriesPreview();
   clearStoryPagesUI();
-  resetWinnerPreviewUI();
+  hideWinnerPreviewUI();
 
-  determineWinnerBtn?.addEventListener('click', previewWinner);
-  finalizeOnlyBtn?.addEventListener('click', () => finalizeWinner(false));
-  finalizeAndCreateBtn?.addEventListener('click', () => finalizeWinner(true));
+  determineWinnerBtn?.addEventListener('click', determineWinner);
   votingForm?.addEventListener('submit', handleVotingPeriodSubmit);
   storySelect?.addEventListener('change', handleStorySelectChange);
   resetStoryBtn?.addEventListener('click', clearStoryForm);
