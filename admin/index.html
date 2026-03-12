@@ -11,19 +11,65 @@
     body { font-family: 'Inter', sans-serif; background: #f9fafb; color: #111827; line-height: 1.6; }
     a { text-decoration: none; color: inherit; }
 
-    nav { background: #1f2937; color: #f9fafb; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    nav {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
     nav h1 { font-size: 1.25rem; font-weight: 600; }
-    nav ul { list-style: none; display: flex; gap: 1rem; }
-    nav ul li a { padding: 0.5rem 0.75rem; border-radius: 0.375rem; transition: background 0.2s; }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 1rem;
+    }
+
+    nav ul li a {
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.375rem;
+      transition: background 0.2s;
+    }
+
     nav ul li a:hover { background: #374151; }
 
-    .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
 
-    #status-message { margin-bottom: 1rem; font-size: 1rem; text-align: center; }
+    #status-message {
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      text-align: center;
+    }
 
-    table { width: 100%; border-collapse: collapse; background: #ffffff; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem; }
-    th, td { padding: 0.75rem 1rem; text-align: left; vertical-align: top; }
-    th { background: #e5e7eb; font-weight: 600; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #e5e7eb;
+      font-weight: 600;
+    }
+
     tr:nth-child(even) { background: #f9fafb; }
     tr:hover { background: #f3f4f6; }
 
@@ -114,7 +160,8 @@
     }
 
     .story-chip,
-    .story-page-card {
+    .story-page-card,
+    .summary-box {
       background: #f3f4f6;
       border: 1px solid #e5e7eb;
       border-radius: 0.5rem;
@@ -190,8 +237,21 @@
       margin-top: 0.5rem;
     }
 
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
+
     @media (max-width: 768px) {
-      nav ul { flex-direction: column; width: 100%; margin-top: 0.5rem; }
+      nav ul {
+        flex-direction: column;
+        width: 100%;
+        margin-top: 0.5rem;
+      }
+
       table, th, td { font-size: 0.9rem; }
       button, select, input, textarea { font-size: 0.9rem; }
     }
@@ -250,8 +310,46 @@
 
       <p id="voting-status-message" class="section-message"></p>
 
-      <button id="determine-winner-btn" type="button">Determine Winner</button>
+      <div class="summary-grid">
+        <div class="summary-box">
+          <h3>Current Round</h3>
+          <div id="current-round-summary">
+            <p>Loading current round...</p>
+          </div>
+        </div>
 
+        <div class="summary-box">
+          <h3>Last Finalized Winner</h3>
+          <div id="finalized-winner-summary">
+            <p>No finalized winner yet.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button id="close-voting-btn" type="button" class="danger-btn">Close Voting Now</button>
+        <button id="determine-winner-btn" type="button">Determine Winner</button>
+      </div>
+
+      <div class="section-card" id="next-round-panel" style="display:none; margin-top:1rem; margin-bottom:0;">
+        <h3>Create Next Voting Period</h3>
+
+        <div class="field-group">
+          <label for="next-round-start">Next Round Start Time</label>
+          <input type="datetime-local" id="next-round-start">
+        </div>
+
+        <div class="field-group">
+          <label for="next-round-end">Next Round End Time</label>
+          <input type="datetime-local" id="next-round-end">
+        </div>
+
+        <div class="action-row">
+          <button id="create-next-round-btn" type="button">Create Next Voting Period</button>
+        </div>
+      </div>
+
+      <!-- legacy hidden preview block -->
       <div id="winner-preview-panel" class="winner-preview-box" style="display:none;">
         <h3>Winner Preview</h3>
         <div id="winner-preview-content"></div>
@@ -259,13 +357,13 @@
 
         <div id="next-round-fields" style="display:none; margin-top: 1rem;">
           <div class="field-group">
-            <label for="next-round-start">Next Round Start Time</label>
-            <input type="datetime-local" id="next-round-start">
+            <label for="legacy-next-round-start">Next Round Start Time</label>
+            <input type="datetime-local" id="legacy-next-round-start">
           </div>
 
           <div class="field-group">
-            <label for="next-round-end">Next Round End Time</label>
-            <input type="datetime-local" id="next-round-end">
+            <label for="legacy-next-round-end">Next Round End Time</label>
+            <input type="datetime-local" id="legacy-next-round-end">
           </div>
         </div>
 

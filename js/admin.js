@@ -9,17 +9,24 @@ const tbody = table?.querySelector('tbody');
 
 const votingSection = document.getElementById('voting-section');
 const determineWinnerBtn = document.getElementById('determine-winner-btn');
+const closeVotingBtn = document.getElementById('close-voting-btn');
 const votingForm = document.getElementById('voting-period-form');
 const votingStart = document.getElementById('voting-start');
 const votingEnd = document.getElementById('voting-end');
 const votingMsg = document.getElementById('voting-status-message');
 
+const currentRoundSummary = document.getElementById('current-round-summary');
+const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
+
+const nextRoundPanel = document.getElementById('next-round-panel');
+const nextRoundStart = document.getElementById('next-round-start');
+const nextRoundEnd = document.getElementById('next-round-end');
+const createNextRoundBtn = document.getElementById('create-next-round-btn');
+
 const winnerPreviewPanel = document.getElementById('winner-preview-panel');
 const winnerPreviewContent = document.getElementById('winner-preview-content');
 const winnerPreviewMessage = document.getElementById('winner-preview-message');
 const nextRoundFields = document.getElementById('next-round-fields');
-const nextRoundStart = document.getElementById('next-round-start');
-const nextRoundEnd = document.getElementById('next-round-end');
 const finalizeOnlyBtn = document.getElementById('finalize-only-btn');
 const finalizeAndCreateBtn = document.getElementById('finalize-and-create-btn');
 
@@ -56,6 +63,7 @@ let currentAccessToken = null;
 let allStories = [];
 let allUsers = [];
 let editingStoryId = null;
+let currentWorkingPeriod = null;
 
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
@@ -82,7 +90,39 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-function hideWinnerPreviewUI() {
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString();
+}
+
+function deriveRoundStatus(period) {
+  if (!period) return 'none';
+
+  if (period.finalized_at) return 'finalized';
+
+  const now = new Date();
+  const start = new Date(period.start_time);
+  const end = new Date(period.end_time);
+
+  if (now < start) return 'upcoming';
+  if (now >= start && now <= end) return 'open';
+  return 'closed';
+}
+
+function setNextRoundSuggestion(referenceEnd = null) {
+  if (!nextRoundStart || !nextRoundEnd) return;
+
+  const base = referenceEnd ? new Date(referenceEnd) : new Date();
+  const suggestedStart = new Date(base.getTime() + 5 * 60 * 1000);
+  const suggestedEnd = new Date(suggestedStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  nextRoundStart.value = suggestedStart.toISOString().slice(0, 16);
+  nextRoundEnd.value = suggestedEnd.toISOString().slice(0, 16);
+}
+
+function hideLegacyWinnerPreviewUI() {
   if (winnerPreviewPanel) winnerPreviewPanel.style.display = 'none';
   if (winnerPreviewContent) winnerPreviewContent.innerHTML = '';
   if (winnerPreviewMessage) {
@@ -90,10 +130,113 @@ function hideWinnerPreviewUI() {
     winnerPreviewMessage.style.color = '';
   }
   if (nextRoundFields) nextRoundFields.style.display = 'none';
-  if (nextRoundStart) nextRoundStart.value = '';
-  if (nextRoundEnd) nextRoundEnd.value = '';
   if (finalizeOnlyBtn) finalizeOnlyBtn.style.display = 'none';
   if (finalizeAndCreateBtn) finalizeAndCreateBtn.style.display = 'none';
+}
+
+function hideNextRoundPanel() {
+  if (nextRoundPanel) nextRoundPanel.style.display = 'none';
+}
+
+function showNextRoundPanel(referenceEnd = null) {
+  if (!nextRoundPanel) return;
+  nextRoundPanel.style.display = 'block';
+  setNextRoundSuggestion(referenceEnd);
+}
+
+function renderCurrentRoundSummary(period) {
+  if (!currentRoundSummary) return;
+
+  if (!period) {
+    currentRoundSummary.innerHTML = '<p>No active unfinalized voting period found.</p>';
+    return;
+  }
+
+  const computedStatus = deriveRoundStatus(period);
+
+  currentRoundSummary.innerHTML = `
+    <p><strong>Current Round ID:</strong> ${period.id}</p>
+    <p><strong>Status:</strong> ${computedStatus}</p>
+    <p><strong>Start:</strong> ${formatDateTime(period.start_time)}</p>
+    <p><strong>End:</strong> ${formatDateTime(period.end_time)}</p>
+  `;
+}
+
+function renderFinalizedWinnerSummary(period, winnerTitle = null) {
+  if (!finalizedWinnerSummary) return;
+
+  if (!period || !period.finalized_at) {
+    finalizedWinnerSummary.innerHTML = '<p>No finalized winner yet.</p>';
+    return;
+  }
+
+  finalizedWinnerSummary.innerHTML = `
+    <p><strong>Last Finalized Round:</strong> ${period.id}</p>
+    <p><strong>Winner:</strong> ${winnerTitle || period.winner_title || 'Unknown'}</p>
+    <p><strong>Winning Votes:</strong> ${period.winning_vote_count ?? '—'}</p>
+    <p><strong>Finalized At:</strong> ${formatDateTime(period.finalized_at)}</p>
+  `;
+}
+
+async function loadVotingPeriod() {
+  try {
+    const { data: currentPeriods, error: currentError } = await supabase
+      .from('voting_periods')
+      .select('id, start_time, end_time, status, finalized_at, winner_id, winning_vote_count')
+      .is('finalized_at', null)
+      .order('start_time', { ascending: false })
+      .limit(1);
+
+    if (currentError) throw currentError;
+
+    currentWorkingPeriod = currentPeriods?.[0] || null;
+
+    if (currentWorkingPeriod) {
+      votingStart.value = new Date(currentWorkingPeriod.start_time).toISOString().slice(0, 16);
+      votingEnd.value = new Date(currentWorkingPeriod.end_time).toISOString().slice(0, 16);
+    } else {
+      votingStart.value = '';
+      votingEnd.value = '';
+    }
+
+    renderCurrentRoundSummary(currentWorkingPeriod);
+
+    const { data: finalizedPeriods, error: finalizedError } = await supabase
+      .from('voting_periods')
+      .select('id, start_time, end_time, status, finalized_at, winner_id, winning_vote_count')
+      .not('finalized_at', 'is', null)
+      .order('finalized_at', { ascending: false })
+      .limit(1);
+
+    if (finalizedError) throw finalizedError;
+
+    const latestFinalized = finalizedPeriods?.[0] || null;
+
+    if (latestFinalized?.winner_id) {
+      const { data: winnerStory } = await supabase
+        .from('stories')
+        .select('title')
+        .eq('id', latestFinalized.winner_id)
+        .maybeSingle();
+
+      renderFinalizedWinnerSummary(latestFinalized, winnerStory?.title || null);
+    } else {
+      renderFinalizedWinnerSummary(latestFinalized, null);
+    }
+
+    const currentStatus = deriveRoundStatus(currentWorkingPeriod);
+
+    if (closeVotingBtn) {
+      closeVotingBtn.disabled = !currentWorkingPeriod || currentStatus === 'closed';
+      closeVotingBtn.textContent = currentStatus === 'closed' ? 'Voting Already Closed' : 'Close Voting Now';
+    }
+
+    if (determineWinnerBtn) {
+      determineWinnerBtn.disabled = !currentWorkingPeriod || currentStatus !== 'closed';
+    }
+  } catch (err) {
+    console.error('Error loading voting period:', err);
+  }
 }
 
 function clearStoryPagesUI() {
@@ -167,6 +310,83 @@ async function populateStoryForm(story) {
   await loadStoryPages(story.id);
 }
 
+async function handleVotingPeriodSubmit(e) {
+  e.preventDefault();
+
+  const start_time = votingStart.value;
+  const end_time = votingEnd.value;
+
+  try {
+    const token = await getAccessToken();
+    if (!token) throw new Error('No active session found.');
+
+    const res = await fetch('/.netlify/functions/set-voting-period', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ start_time, end_time })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to update voting period');
+    }
+
+    votingMsg.textContent = 'Voting period updated successfully!';
+    votingMsg.style.color = 'green';
+
+    hideNextRoundPanel();
+    await loadVotingPeriod();
+  } catch (err) {
+    votingMsg.textContent = `Error: ${err.message}`;
+    votingMsg.style.color = 'red';
+  }
+}
+
+async function handleCloseVoting() {
+  try {
+    const token = await getAccessToken();
+    if (!token) throw new Error('No active session found.');
+
+    const confirmed = confirm('Close voting for the current round now?');
+    if (!confirmed) return;
+
+    closeVotingBtn.disabled = true;
+    closeVotingBtn.textContent = 'Closing...';
+
+    const res = await fetch('/.netlify/functions/close-voting-period', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to close voting');
+    }
+
+    votingMsg.textContent = result.message || 'Voting closed successfully.';
+    votingMsg.style.color = 'green';
+
+    await loadVotingPeriod();
+  } catch (err) {
+    console.error('Error closing voting:', err);
+    votingMsg.textContent = `Error: ${err.message}`;
+    votingMsg.style.color = 'red';
+  } finally {
+    if (closeVotingBtn) {
+      closeVotingBtn.disabled = false;
+      closeVotingBtn.textContent = 'Close Voting Now';
+    }
+  }
+}
+
 async function determineWinner() {
   try {
     const token = await getAccessToken();
@@ -202,6 +422,16 @@ async function determineWinner() {
         `Totals:\n${totalsText}`
       );
 
+      if (finalizedWinnerSummary) {
+        finalizedWinnerSummary.innerHTML = `
+          <p><strong>Last Finalized Round:</strong> ${result.period_id}</p>
+          <p><strong>Winner:</strong> ${result.winner_title}</p>
+          <p><strong>Winning Votes:</strong> ${result.vote_count}</p>
+          <p><strong>Finalized:</strong> just now</p>
+        `;
+      }
+
+      showNextRoundPanel(new Date().toISOString());
       await loadVotingPeriod();
       return;
     }
@@ -228,39 +458,20 @@ async function determineWinner() {
   }
 }
 
-async function loadVotingPeriod() {
+async function handleCreateNextRound() {
   try {
-    const { data: periods, error } = await supabase
-      .from('voting_periods')
-      .select('id, start_time, end_time, status, finalized_at')
-      .is('finalized_at', null)
-      .order('start_time', { ascending: false })
-      .limit(1);
+    const start_time = nextRoundStart?.value;
+    const end_time = nextRoundEnd?.value;
 
-    if (error) throw error;
-
-    if (periods && periods.length > 0) {
-      votingStart.value = new Date(periods[0].start_time).toISOString().slice(0, 16);
-      votingEnd.value = new Date(periods[0].end_time).toISOString().slice(0, 16);
-      return;
+    if (!start_time || !end_time) {
+      throw new Error('Please provide next round start and end times.');
     }
 
-    votingStart.value = '';
-    votingEnd.value = '';
-  } catch (err) {
-    console.error('Error loading voting period:', err);
-  }
-}
-
-async function handleVotingPeriodSubmit(e) {
-  e.preventDefault();
-
-  const start_time = votingStart.value;
-  const end_time = votingEnd.value;
-
-  try {
     const token = await getAccessToken();
     if (!token) throw new Error('No active session found.');
+
+    createNextRoundBtn.disabled = true;
+    createNextRoundBtn.textContent = 'Creating...';
 
     const res = await fetch('/.netlify/functions/set-voting-period', {
       method: 'POST',
@@ -274,16 +485,23 @@ async function handleVotingPeriodSubmit(e) {
     const result = await parseJsonResponseSafely(res);
 
     if (!res.ok || !result.success) {
-      throw new Error(result.error || 'Failed to update voting period');
+      throw new Error(result.error || 'Failed to create next round');
     }
 
-    votingMsg.textContent = 'Voting period updated successfully!';
+    votingMsg.textContent = 'Next voting period created successfully!';
     votingMsg.style.color = 'green';
 
+    hideNextRoundPanel();
     await loadVotingPeriod();
   } catch (err) {
+    console.error('Error creating next round:', err);
     votingMsg.textContent = `Error: ${err.message}`;
     votingMsg.style.color = 'red';
+  } finally {
+    if (createNextRoundBtn) {
+      createNextRoundBtn.disabled = false;
+      createNextRoundBtn.textContent = 'Create Next Voting Period';
+    }
   }
 }
 
