@@ -307,9 +307,14 @@ function renderFinalizedWinnerSummary(period, winnerTitle = null) {
     return;
   }
 
+  const resolvedWinnerTitle =
+    winnerTitle ||
+    period.winner_title ||
+    (period.winner_id ? 'Unknown' : 'No winner');
+
   finalizedWinnerSummary.innerHTML = `
     <p><strong>Last Finalized Round:</strong> ${period.id}</p>
-    <p><strong>Winner:</strong> ${winnerTitle || period.winner_title || 'Unknown'}</p>
+    <p><strong>Winner:</strong> ${resolvedWinnerTitle}</p>
     <p><strong>Winning Votes:</strong> ${period.winning_vote_count ?? '—'}</p>
     <p><strong>Scheduled Start:</strong> ${formatDateTime(period.start_time)}</p>
     <p><strong>Scheduled End:</strong> ${formatDateTime(period.end_time)}</p>
@@ -511,6 +516,7 @@ async function handleCloseVoting() {
 // =========================
 // Finalizes the winner for the most recently closed round. If the backend
 // reports a tie, this displays the tie-resolution panel instead.
+// If no votes were cast, this finalizes the round with no winner.
 async function determineWinner() {
   try {
     const token = await getAccessToken();
@@ -534,6 +540,34 @@ async function determineWinner() {
 
     if (!res.ok) {
       throw new Error(result.error || 'Unknown error');
+    }
+
+    // =========================
+    // NO-VOTES FINALIZATION UI
+    // =========================
+    // If the backend finalized the round with no winner because nobody voted,
+    // show a special message and let the admin move on to the next round.
+    if (result.success && result.no_votes) {
+      alert(
+        `Voting Period ${result.period_id} was finalized with no winner because no votes were cast.`
+      );
+
+      if (finalizedWinnerSummary) {
+        finalizedWinnerSummary.innerHTML = `
+          <p><strong>Last Finalized Round:</strong> ${result.period_id}</p>
+          <p><strong>Winner:</strong> No winner</p>
+          <p><strong>Winning Votes:</strong> —</p>
+          <p><strong>Finalized:</strong> just now</p>
+        `;
+      }
+
+      votingStart.value = '';
+      votingEnd.value = '';
+      votingMsg.textContent = 'Round finalized with no winner. Enter new dates above to create the next voting period.';
+      votingMsg.style.color = 'green';
+
+      await loadVotingPeriod();
+      return;
     }
 
     if (result.success) {

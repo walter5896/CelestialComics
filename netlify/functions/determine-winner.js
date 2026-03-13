@@ -89,7 +89,7 @@ async function getVoteTotalsForPeriod(periodId) {
 
   const counts = {};
 
-  votes.forEach(vote => {
+  votes.forEach((vote) => {
     const storyId = String(vote.story_id);
     const count = Number(vote.vote_count) || 0;
     counts[storyId] = (counts[storyId] || 0) + count;
@@ -102,7 +102,7 @@ async function getVoteTotalsForPeriod(periodId) {
     }))
     .sort((a, b) => b.total_votes - a.total_votes);
 
-  const storyIds = rawTotals.map(item => item.story_id);
+  const storyIds = rawTotals.map((item) => item.story_id);
 
   const { data: stories, error: storyError } = await supabase
     .from('stories')
@@ -112,11 +112,11 @@ async function getVoteTotalsForPeriod(periodId) {
   if (storyError) throw storyError;
 
   const titleMap = {};
-  (stories || []).forEach(story => {
+  (stories || []).forEach((story) => {
     titleMap[String(story.id)] = story.title;
   });
 
-  return rawTotals.map(item => ({
+  return rawTotals.map((item) => ({
     ...item,
     title: titleMap[item.story_id] || 'Untitled Story'
   }));
@@ -125,8 +125,14 @@ async function getVoteTotalsForPeriod(periodId) {
 // =========================
 // ROUND FINALIZER
 // =========================
-// Finalizes the specified round with the provided winning story.
-async function finalizeRound({ periodId, winnerStoryId, winningVoteCount, adminUserId }) {
+// Finalizes the specified round with the provided winning story data.
+// This also supports "no winner" finalization when winnerStoryId is null.
+async function finalizeRound({
+  periodId,
+  winnerStoryId = null,
+  winningVoteCount = null,
+  adminUserId
+}) {
   const { data: finalizedPeriod, error: finalizeError } = await supabase
     .from('voting_periods')
     .update({
@@ -149,8 +155,8 @@ async function finalizeRound({ periodId, winnerStoryId, winningVoteCount, adminU
 // =========================
 // MAIN HANDLER
 // =========================
-// Determines the winner automatically when possible, or allows an admin
-// to manually resolve a tie by choosing one of the tied stories.
+// Determines the winner automatically when possible, allows an admin
+// to manually resolve a tie, and finalizes no-vote rounds with no winner.
 exports.handler = async (event) => {
   // =========================
   // METHOD VALIDATION
@@ -185,7 +191,9 @@ exports.handler = async (event) => {
     // REQUEST BODY PARSING
     // =========================
     const body = JSON.parse(event.body || '{}');
-    const selectedWinnerStoryId = body.winner_story_id ? String(body.winner_story_id) : null;
+    const selectedWinnerStoryId = body.winner_story_id
+      ? String(body.winner_story_id)
+      : null;
 
     // =========================
     // TARGET ROUND LOOKUP
@@ -207,13 +215,31 @@ exports.handler = async (event) => {
     // =========================
     const voteTotals = await getVoteTotalsForPeriod(period.id);
 
+    // =========================
+    // NO-VOTES FINALIZATION
+    // =========================
+    // If nobody voted, finalize the round with no winner so the system
+    // can move forward and a new round can be created.
     if (!voteTotals.length) {
+      const finalizedPeriod = await finalizeRound({
+        periodId: period.id,
+        winnerStoryId: null,
+        winningVoteCount: null,
+        adminUserId: adminUser.id
+      });
+
       return {
         statusCode: 200,
         body: JSON.stringify({
-          success: false,
-          message: 'No votes were cast in this voting period.',
-          period_id: period.id
+          success: true,
+          no_votes: true,
+          period_id: period.id,
+          winner_id: null,
+          winner_title: null,
+          vote_count: null,
+          vote_totals: [],
+          message: 'Round finalized with no winner because no votes were cast.',
+          finalized_period: finalizedPeriod
         })
       };
     }
@@ -222,7 +248,7 @@ exports.handler = async (event) => {
     // TIE DETECTION
     // =========================
     const topCount = voteTotals[0]?.total_votes || 0;
-    const topStories = voteTotals.filter(item => item.total_votes === topCount);
+    const topStories = voteTotals.filter((item) => item.total_votes === topCount);
 
     // =========================
     // MANUAL TIE RESOLUTION
@@ -231,7 +257,7 @@ exports.handler = async (event) => {
     // is one of the tied top-vote stories.
     if (selectedWinnerStoryId) {
       const selectedTiedStory = topStories.find(
-        item => String(item.story_id) === selectedWinnerStoryId
+        (item) => String(item.story_id) === selectedWinnerStoryId
       );
 
       if (!selectedTiedStory) {
