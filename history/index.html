@@ -140,7 +140,6 @@
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/winner/">Winner</a></li>
           <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
@@ -189,7 +188,6 @@
       <nav class="footer-nav">
         <a href="/gallery/">Gallery</a> |
         <a href="/vote/">Vote</a> |
-        <a href="/winner/">Winner</a> |
         <a href="/history/">History</a> |
         <a href="/shop/">Shop</a> |
         <a href="/team/">Team</a>
@@ -200,10 +198,11 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
+  <!-- SHARED UI / NAV -->
+  <script type="module" src="/js/utils.js"></script>
+
   <!-- PAGE LOGIC -->
   <script type="module" src="/js/history.js"></script>
-  <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/admin-nav.js"></script>
 
   <!-- AUTH / NAV STATE -->
   <script type="module">
@@ -221,5 +220,8 @@
       });
     });
   </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>

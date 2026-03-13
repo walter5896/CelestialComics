@@ -3,198 +3,272 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Project Name | Story</title>
+  <title>Story | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
 
-<header class="site-header">
-  <div class="container header-container">
-    <a href="/" class="logo">PROJECT LOGO</a>
-    <button class="nav-toggle" aria-label="Toggle navigation">
-      <span class="hamburger"></span>
-    </button>
-    <nav class="main-nav">
-      <ul class="nav-list">
-        <li><a href="/">Home</a></li>
-        <li><a href="/gallery/">Gallery</a></li>
-        <li><a href="/vote/">Vote</a></li>
-        <li><a href="/shop/">Shop</a></li>
-        <li><a href="/team/">Team</a></li>
-        <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
-        <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
-        <li><a href="/login/" class="login-link">Login</a></li>
-        <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
-      </ul>
-    </nav>
-  </div>
-</header>
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
 
-<main class="content-wrapper">
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
 
-  <div class="story-back">
-    <a href="/gallery/" class="btn btn-secondary">← Back to Gallery</a>
-  </div>
-
-  <section class="story-hero">
-    <div class="container">
-      <h1 class="story-title">Loading...</h1>
-      <p class="story-meta"></p>
-      <img src="" alt="" class="story-hero-img" />
+      <nav class="main-nav">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
+        </ul>
+      </nav>
     </div>
-  </section>
+  </header>
 
-  <section class="story-body">
-    <div class="container">
-      <div class="story-content"><p>Loading story content...</p></div>
+  <!-- MAIN CONTENT -->
+  <main class="content-wrapper">
 
-      <div class="story-cta">
-        <a id="read-full-story-btn" href="#" class="btn btn-primary">Read Full Story</a>
-        <button class="btn btn-primary vote-btn" data-story-id="">Vote for this story</button>
-        <button class="btn btn-secondary save-btn" data-story-id="">Save Story</button>
+    <div class="story-back">
+      <a href="/gallery/" class="btn btn-secondary">← Back to Gallery</a>
+    </div>
+
+    <section class="story-hero">
+      <div class="container">
+        <h1 class="story-title">Loading...</h1>
+        <p class="story-meta"></p>
+        <img src="" alt="" class="story-hero-img" />
       </div>
+    </section>
+
+    <section class="story-body">
+      <div class="container">
+        <div class="story-content">
+          <p>Loading story content...</p>
+        </div>
+
+        <div class="story-cta">
+          <a id="read-full-story-btn" href="#" class="btn btn-primary">Read Full Story</a>
+          <button type="button" class="btn btn-primary vote-btn" data-story-id="">Vote for this story</button>
+          <button type="button" class="btn btn-secondary save-btn" data-story-id="">Save Story</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="related-stories">
+      <div class="container">
+        <h2>Other Stories You Might Like</h2>
+        <div id="related-stories-grid" class="story-grid"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
     </div>
-  </section>
+  </footer>
 
-  <section class="related-stories">
-    <div class="container">
-      <h2>Other Stories You Might Like</h2>
-      <div id="related-stories-grid" class="story-grid"></div>
-    </div>
-  </section>
+  <!-- ENV -->
+  <script src="/js/env.js"></script>
 
-</main>
+  <!-- SHARED UI / NAV -->
+  <script type="module" src="/js/utils.js"></script>
 
-<footer class="site-footer">
-  <div class="container footer-container">
-    <p>&copy; 2025 Project Name. All rights reserved.</p>
-  </div>
-</footer>
+  <!-- STORY PAGE LOGIC -->
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+    import { loadStory } from '/js/story.js';
+    import {
+      fetchStoriesWithVotes,
+      renderStoriesForHome,
+      fetchSavedStories,
+      submitVote,
+      saveStory
+    } from '/js/vote.js';
+    import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
 
-<script src="/js/env.js"></script>
-<script type="module" src="/js/utils.js"></script>
+    // =========================
+    // STORY PAGE INITIALIZER
+    // =========================
+    // Loads the story detail page, wires vote/save behavior,
+    // and renders related stories.
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateUI();
 
-<script type="module">
-import { updateUI, logout } from '/js/auth.js';
-import { loadStory } from '/js/story.js';
-import { fetchStoriesWithVotes, renderStoriesForHome, fetchSavedStories, submitVote, saveStory } from '/js/vote.js';
-import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
+      document.querySelectorAll('.logout-link').forEach((el) => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+          window.location.href = '/';
+        });
+      });
 
-document.addEventListener('DOMContentLoaded', async () => {
-  updateUI();
+      const story = await loadStory();
+      if (!story) return;
 
-  document.querySelectorAll('.logout-link').forEach(el => {
-    el.addEventListener('click', async (e) => {
-      e.preventDefault();
-      await logout();
-      location.reload();
-    });
-  });
+      const storyId = story.id;
 
-  const story = await loadStory();
-  if (!story) return;
-  const storyId = story.id;
+      // =========================
+      // STORY + VOTE METADATA LOAD
+      // =========================
+      // Load vote-related story data so the detail page reflects
+      // the current round status and visible vote totals.
+      const storiesWithVotes = await fetchStoriesWithVotes();
+      const fullStory = storiesWithVotes.find(
+        (item) => String(item.id) === String(storyId)
+      );
 
-  const storiesWithVotes = await fetchStoriesWithVotes();
-  const fullStory = storiesWithVotes.find(s => String(s.id) === String(storyId));
-  if (fullStory) {
-    story.voting_status = fullStory.voting_status;
-    story.vote_count = fullStory.vote_count;
-  }
-
-  document.querySelector('.story-title').textContent = story.title || 'Untitled Story';
-  document.querySelector('.story-meta').textContent = story.author || '';
-
-  const heroImg = document.querySelector('.story-hero-img');
-  heroImg.src = story.cover_image_url || story.image_url || '';
-  heroImg.alt = story.title || 'Story cover';
-
-  const storyContent = document.querySelector('.story-content');
-  storyContent.innerHTML = `<p>${story.description || 'No story description available yet.'}</p>`;
-
-  const readFullStoryBtn = document.getElementById('read-full-story-btn');
-  readFullStoryBtn.href = `/gallery/read.html?id=${storyId}`;
-
-  const voteBtn = document.querySelector('.vote-btn');
-  voteBtn.dataset.storyId = storyId;
-  voteBtn.dataset.voteCount = story.vote_count || 0;
-
-  const saveBtn = document.querySelector('.save-btn');
-  saveBtn.dataset.storyId = storyId;
-
-  await restrictSingleStoryVoting(story, voteBtn);
-
-  voteBtn.addEventListener('click', async () => {
-    if (voteBtn.disabled) return;
-
-    const originalText = voteBtn.textContent;
-    voteBtn.disabled = true;
-    voteBtn.textContent = 'Submitting...';
-
-    try {
-      const result = await submitVote(storyId, 1);
-
-      if (result.success) {
-        story.vote_count = (story.vote_count || 0) + 1;
-        voteBtn.dataset.voteCount = story.vote_count;
-        voteBtn.disabled = false;
-        voteBtn.textContent = `Add Vote (${story.vote_count})`;
-      } else if (result.reason === 'insufficient_balance') {
-        voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
-      } else {
-        voteBtn.disabled = false;
-        voteBtn.textContent = originalText;
+      if (fullStory) {
+        story.voting_status = fullStory.voting_status;
+        story.vote_count = fullStory.vote_count;
       }
-    } catch (err) {
-      console.error('Single story vote error:', err);
-      voteBtn.disabled = false;
-      voteBtn.textContent = originalText;
-    }
-  });
 
-  const savedResult = await fetchSavedStories();
-  const savedStories = savedResult.success ? savedResult.data : [];
-  const alreadySaved = savedStories.some(s => String(s.id) === String(storyId));
+      // =========================
+      // STORY DETAIL RENDER
+      // =========================
+      // Populate the story title, author, cover image, and description.
+      document.querySelector('.story-title').textContent = story.title || 'Untitled Story';
+      document.querySelector('.story-meta').textContent = story.author || '';
 
-  if (alreadySaved) {
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Already Saved';
-  }
+      const heroImg = document.querySelector('.story-hero-img');
+      heroImg.src = story.cover_image_url || story.image_url || '';
+      heroImg.alt = story.title || 'Story cover';
 
-  saveBtn.addEventListener('click', async () => {
-    if (saveBtn.disabled) return;
+      const storyContent = document.querySelector('.story-content');
+      storyContent.innerHTML = `<p>${story.description || 'No story description available yet.'}</p>`;
 
-    const originalText = saveBtn.textContent;
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+      // =========================
+      // CTA SETUP
+      // =========================
+      // Wire the read button plus story-specific vote/save button metadata.
+      const readFullStoryBtn = document.getElementById('read-full-story-btn');
+      readFullStoryBtn.href = `/gallery/read.html?id=${storyId}`;
 
-    try {
-      const result = await saveStory(storyId);
+      const voteBtn = document.querySelector('.vote-btn');
+      voteBtn.dataset.storyId = storyId;
+      voteBtn.dataset.voteCount = story.vote_count || 0;
 
-      if (result.success) {
-        saveBtn.textContent = 'Saved';
-      } else if (result.reason === 'already_saved') {
+      const saveBtn = document.querySelector('.save-btn');
+      saveBtn.dataset.storyId = storyId;
+
+      // =========================
+      // SINGLE STORY VOTING RULES
+      // =========================
+      // Apply the same round-state restrictions used elsewhere so
+      // users cannot vote from this page when the round is not open.
+      await restrictSingleStoryVoting(story, voteBtn);
+
+      // =========================
+      // SINGLE STORY VOTE HANDLER
+      // =========================
+      // Allows the user to cast a vote directly from the story page.
+      voteBtn.addEventListener('click', async () => {
+        if (voteBtn.disabled) return;
+
+        const originalText = voteBtn.textContent;
+        voteBtn.disabled = true;
+        voteBtn.textContent = 'Submitting...';
+
+        try {
+          const result = await submitVote(storyId, 1);
+
+          if (result.success) {
+            story.vote_count = (story.vote_count || 0) + 1;
+            voteBtn.dataset.voteCount = story.vote_count;
+            voteBtn.disabled = false;
+            voteBtn.textContent = `Add Vote (${story.vote_count})`;
+          } else if (result.reason === 'insufficient_balance') {
+            voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
+          } else {
+            voteBtn.disabled = false;
+            voteBtn.textContent = originalText;
+          }
+        } catch (err) {
+          console.error('Single story vote error:', err);
+          voteBtn.disabled = false;
+          voteBtn.textContent = originalText;
+        }
+      });
+
+      // =========================
+      // SAVED STORY STATE LOAD
+      // =========================
+      // Check whether this story is already saved for the current user.
+      const savedResult = await fetchSavedStories();
+      const savedStories = savedResult.success ? savedResult.data : [];
+      const alreadySaved = savedStories.some(
+        (savedStory) => String(savedStory.id) === String(storyId)
+      );
+
+      if (alreadySaved) {
+        saveBtn.disabled = true;
         saveBtn.textContent = 'Already Saved';
-      } else {
-        saveBtn.disabled = false;
-        saveBtn.textContent = originalText;
-        alert('Failed to save story.');
       }
-    } catch (err) {
-      console.error('Save story error:', err);
-      saveBtn.disabled = false;
-      saveBtn.textContent = originalText;
-      alert('Failed to save story.');
-    }
-  });
 
-  const stories = await fetchStoriesWithVotes();
-  const relatedStories = stories.filter(s => s.id !== storyId);
-  renderStoriesForHome(relatedStories, 'related-stories-grid');
-});
-</script>
+      // =========================
+      // SAVE STORY HANDLER
+      // =========================
+      // Allows the user to save the story from the detail page.
+      saveBtn.addEventListener('click', async () => {
+        if (saveBtn.disabled) return;
 
-<script type="module" src="/js/admin-nav.js"></script>
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+          const result = await saveStory(storyId);
+
+          if (result.success) {
+            saveBtn.textContent = 'Saved';
+          } else if (result.reason === 'already_saved') {
+            saveBtn.textContent = 'Already Saved';
+          } else {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            alert('Failed to save story.');
+          }
+        } catch (err) {
+          console.error('Save story error:', err);
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          alert('Failed to save story.');
+        }
+      });
+
+      // =========================
+      // RELATED STORIES RENDER
+      // =========================
+      // Render all other stories as related content beneath this one.
+      const stories = await fetchStoriesWithVotes();
+      const relatedStories = stories.filter(
+        (item) => String(item.id) !== String(storyId)
+      );
+
+      renderStoriesForHome(relatedStories, 'related-stories-grid');
+    });
+  </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
 
 </body>
 </html>

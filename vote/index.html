@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Vote | Project Name</title>
+  <title>Vote | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -11,20 +11,23 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
+
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
+
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -35,12 +38,15 @@
     <div id="voting-closed" class="voting-state" style="display:none;">
       <h2>Voting is Closed</h2>
       <p>Voting is currently closed. Thank you for participating!</p>
-      <a href="/winner/" class="btn btn-primary">View Winner</a>
+      <div class="story-actions">
+        <a href="/winner/" class="btn btn-primary">View Winner</a>
+        <a href="/history/" class="btn btn-secondary">View Standings & History</a>
+      </div>
     </div>
 
     <div id="voting-open" class="voting-state" style="display:none;">
       <h2>Voting is Open!</h2>
-      <p>Select your favorite story below and cast your vote:</p>
+      <p>Select your favorite story below and cast your vote.</p>
       <div id="story-grid" class="story-grid"></div>
     </div>
 
@@ -54,21 +60,24 @@
   <!-- FOOTER -->
   <footer class="site-footer">
     <div class="container footer-container">
-      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
       <nav class="footer-nav">
         <a href="/gallery/">Gallery</a> |
         <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
         <a href="/shop/">Shop</a> |
         <a href="/team/">Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV (Supabase keys, etc.) -->
+  <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- JS MODULES -->
+  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
+
+  <!-- PAGE LOGIC -->
   <script type="module" src="/js/vote.js"></script>
 
   <!-- AUTH + VOTING INIT -->
@@ -76,33 +85,46 @@
     import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
     import { initVoting, fetchStoriesWithVotes } from '/js/vote.js';
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    // =========================
+    // VOTE PAGE STATE RENDERER
+    // =========================
+    // Shows the correct vote-page state depending on whether the user
+    // is logged in and whether the current round is open.
+    async function initVotePage() {
+      const loginPrompt = document.getElementById('login-prompt');
+      const votingOpen = document.getElementById('voting-open');
+      const votingClosed = document.getElementById('voting-closed');
+
       const user = await getCurrentUserAsync();
 
       updateUI();
 
-      document.querySelectorAll('.logout-link').forEach(el => {
+      document.querySelectorAll('.logout-link').forEach((el) => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
+          window.location.href = '/';
         });
       });
 
       if (!user) {
-        document.getElementById('login-prompt').style.display = 'block';
-        document.getElementById('voting-open').style.display = 'none';
-        document.getElementById('voting-closed').style.display = 'none';
+        if (loginPrompt) loginPrompt.style.display = 'block';
+        if (votingOpen) votingOpen.style.display = 'none';
+        if (votingClosed) votingClosed.style.display = 'none';
         return;
       }
 
       await initVoting('story-grid');
 
       const stories = await fetchStoriesWithVotes();
-      const anyOpen = stories.some(s => s.voting_status === 'open');
+      const anyOpen = (stories || []).some((story) => story.voting_status === 'open');
 
-      document.getElementById('voting-open').style.display = anyOpen ? 'block' : 'none';
-      document.getElementById('voting-closed').style.display = anyOpen ? 'none' : 'block';
-    });
+      if (loginPrompt) loginPrompt.style.display = 'none';
+      if (votingOpen) votingOpen.style.display = anyOpen ? 'block' : 'none';
+      if (votingClosed) votingClosed.style.display = anyOpen ? 'none' : 'block';
+    }
+
+    document.addEventListener('DOMContentLoaded', initVotePage);
   </script>
 
   <!-- ADMIN NAV LINK -->

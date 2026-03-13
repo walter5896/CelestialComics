@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Profile | Project Name</title>
+  <title>My Profile | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -11,20 +11,23 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
+
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
+
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -53,10 +56,11 @@
   <!-- FOOTER -->
   <footer class="site-footer">
     <div class="container footer-container">
-      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
       <nav class="footer-nav">
         <a href="/gallery/">Gallery</a> |
         <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
         <a href="/shop/">Shop</a> |
         <a href="/team/">Team</a>
       </nav>
@@ -66,12 +70,13 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- JS MODULES -->
+  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/auth.js"></script>
-  <script type="module" src="/js/vote.js"></script>
+
+  <!-- PAGE MODULES -->
   <script type="module" src="/js/votingStateControl.js"></script>
 
+  <!-- PROFILE PAGE LOGIC -->
   <script type="module">
     import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
     import {
@@ -85,63 +90,107 @@
     } from '/js/vote.js';
     import { enforceVotingRules } from '/js/votingStateControl.js';
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    // =========================
+    // PROFILE PAGE INITIALIZER
+    // =========================
+    // Loads the current user's profile dashboard, including
+    // vote balance, voted stories, and saved stories.
+    async function initProfilePage() {
       updateUI();
 
-      document.querySelectorAll('.logout-link').forEach(el => {
-        el.addEventListener('click', async e => {
+      document.querySelectorAll('.logout-link').forEach((el) => {
+        el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
-          location.reload();
+          window.location.href = '/';
         });
       });
 
       const user = await getCurrentUserAsync();
+
       if (!user) {
         alert('Please log in to view your profile.');
         window.location.href = '/login/';
         return;
       }
 
-      // Show current vote balance
+      // =========================
+      // VOTE BALANCE LOADER
+      // =========================
+      // Fetch and display the user's current remaining vote balance.
       const voteBalance = await fetchUserVoteBalance();
       document.getElementById('vote-balance').textContent = `${voteBalance} vote(s) remaining`;
 
-      // Fetch all stories and user vote rows
+      // =========================
+      // USER VOTE DATA LOADER
+      // =========================
+      // Load all stories plus the current user's vote rows so we can
+      // build the voted-stories section with per-story vote counts.
       const allStories = await fetchStoriesWithVotes();
       const userVotes = await fetchUserVotes();
 
-      // Build voted stories list with per-story vote counts
       const votedStories = allStories
-        .filter(story =>
-          userVotes.some(v => String(v.story_id) === String(story.id) && Number(v.vote_count) > 0)
+        .filter((story) =>
+          userVotes.some(
+            (vote) => String(vote.story_id) === String(story.id) && Number(vote.vote_count) > 0
+          )
         )
-        .map(story => {
-          const voteRow = userVotes.find(v => String(v.story_id) === String(story.id));
+        .map((story) => {
+          const voteRow = userVotes.find(
+            (vote) => String(vote.story_id) === String(story.id)
+          );
+
           return {
             ...story,
             user_vote_count: voteRow ? Number(voteRow.vote_count) || 0 : 0
           };
         });
 
-      // Fetch saved stories
+      // =========================
+      // SAVED STORIES LOADER
+      // =========================
+      // Load the stories the current user has saved.
       const savedData = await fetchSavedStories();
       const savedStories = savedData.success ? savedData.data : [];
 
-      // Render sections
-      renderStoriesForProfile(votedStories, savedStories, 'voted-stories', 'saved-stories');
+      // =========================
+      // PROFILE SECTION RENDERER
+      // =========================
+      // Render both voted stories and saved stories into their
+      // respective profile dashboard grids.
+      renderStoriesForProfile(
+        votedStories,
+        savedStories,
+        'voted-stories',
+        'saved-stories'
+      );
 
-      // Empty states
-      document.getElementById('no-votes').style.display = votedStories.length === 0 ? 'block' : 'none';
-      document.getElementById('no-saved').style.display = savedStories.length === 0 ? 'block' : 'none';
+      // =========================
+      // EMPTY STATE TOGGLER
+      // =========================
+      // Show or hide the fallback messages for each section.
+      document.getElementById('no-votes').style.display =
+        votedStories.length === 0 ? 'block' : 'none';
 
-      // Attach listeners
+      document.getElementById('no-saved').style.display =
+        savedStories.length === 0 ? 'block' : 'none';
+
+      // =========================
+      // PROFILE ACTION LISTENERS
+      // =========================
+      // Wire the recant and unsave controls for the rendered cards.
       attachRecantListeners('voted-stories');
       attachUnsaveListeners('saved-stories');
 
-      // Enforce voting rules for recant buttons
+      // =========================
+      // VOTING RULE ENFORCER
+      // =========================
+      // Apply current-round voting rules to recant controls so they
+      // respect whether the round is still open.
       await enforceVotingRules('voted-stories');
-    });
+    }
+
+    document.addEventListener('DOMContentLoaded', initProfilePage);
   </script>
 
   <!-- ADMIN NAV LINK -->

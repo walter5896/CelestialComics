@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign Up | Project Name</title>
+  <title>Sign Up | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -21,6 +21,7 @@
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;">
@@ -30,7 +31,7 @@
             <a href="/admin/index.html">Admin Panel</a>
           </li>
           <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -39,12 +40,13 @@
   <!-- MAIN CONTENT -->
   <main class="container auth-page">
     <h1>Create an Account</h1>
+
     <form id="signup-form">
       <label for="email">Email</label>
-      <input type="email" id="email" placeholder="Your email" required>
+      <input type="email" id="email" placeholder="Your email" required />
 
       <label for="password">Password</label>
-      <input type="password" id="password" placeholder="Your password" required>
+      <input type="password" id="password" placeholder="Your password" required />
 
       <button type="submit" class="btn btn-primary">Sign Up</button>
     </form>
@@ -52,40 +54,59 @@
     <p>Already have an account? <a href="/login/">Login here</a></p>
   </main>
 
+  <!-- FOOTER -->
   <footer class="site-footer">
     <div class="container footer-container">
-      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
     </div>
   </footer>
 
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- Utils -->
+  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- Signup/Auth UI -->
+  <!-- SIGNUP / AUTH UI -->
   <script type="module">
     import { signup } from '/js/auth-signup.js';
     import { updateUI, logout } from '/js/auth.js';
 
+    // =========================
+    // SIGNUP PAGE INITIALIZER
+    // =========================
+    // Updates auth-aware navigation, wires logout behavior,
+    // and handles signup form submission.
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
       const form = document.getElementById('signup-form');
-      form.addEventListener('submit', async (e) => {
+
+      form?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+
+        const email = document.getElementById('email')?.value || '';
+        const password = document.getElementById('password')?.value || '';
 
         const success = await signup(email, password);
-        if (success) window.location.href = '/';
+
+        if (success) {
+          window.location.href = '/';
+        }
       });
 
-      document.querySelectorAll('.logout-link').forEach(el => {
+      document.querySelectorAll('.logout-link').forEach((el) => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
+          window.location.href = '/';
         });
       });
     });

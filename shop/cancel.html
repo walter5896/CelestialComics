@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Checkout Cancelled | Project Name</title>
+  <title>Checkout Cancelled | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -13,7 +13,6 @@
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
 
-      <!-- Hamburger for mobile -->
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
@@ -23,6 +22,7 @@
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
 
@@ -35,7 +35,7 @@
           </li>
 
           <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -45,6 +45,7 @@
   <main class="container cancel-page">
     <h1>Checkout Cancelled</h1>
     <p>Your checkout was not completed. No charges have been made.</p>
+
     <div class="cancel-cta">
       <a href="/shop/" class="btn btn-primary">Return to Shop</a>
       <a href="/" class="btn btn-secondary">Go to Home</a>
@@ -54,10 +55,11 @@
   <!-- FOOTER -->
   <footer class="site-footer">
     <div class="container footer-container">
-      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
       <nav class="footer-nav">
         <a href="/gallery/">Gallery</a> |
         <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
         <a href="/shop/">Shop</a> |
         <a href="/team/">Team</a>
       </nav>
@@ -67,20 +69,21 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- Utils -->
+  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- Auth UI -->
+  <!-- AUTH UI -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
-      document.querySelectorAll('.logout-link').forEach(el => {
+      document.querySelectorAll('.logout-link').forEach((el) => {
         el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
+          window.location.href = '/';
         });
       });
     });
@@ -88,5 +91,6 @@
 
   <!-- ADMIN NAV LINK -->
   <script type="module" src="/js/admin-nav.js"></script>
+
 </body>
 </html>

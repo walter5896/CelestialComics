@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Project Name | Team</title>
+  <title>Team | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -11,20 +11,23 @@
   <header class="site-header">
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
+
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
+
       <nav class="main-nav">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
           <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
           <li><a href="/team/">Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
           <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
-          <li><a href="#" class="logout-link" style="display:none">Logout</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
       </nav>
     </div>
@@ -37,7 +40,7 @@
       <div class="container hero-container">
         <h1 class="hero-title">Meet Our Team</h1>
         <p class="hero-subtitle">
-          These are the amazing people behind Project Name, making it all happen.
+          These are the people helping bring Celestial Comics to life.
         </p>
       </div>
     </section>
@@ -56,10 +59,11 @@
   <!-- FOOTER -->
   <footer class="site-footer">
     <div class="container footer-container">
-      <p>&copy; 2025 Project Name. All rights reserved.</p>
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
       <nav class="footer-nav">
         <a href="/gallery/">Gallery</a> |
         <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
         <a href="/shop/">Shop</a> |
         <a href="/team/">Team</a>
       </nav>
@@ -69,65 +73,81 @@
   <!-- ENV -->
   <script src="/js/env.js"></script>
 
-  <!-- Utils -->
+  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- TEAM JS -->
+  <!-- TEAM PAGE LOGIC -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
+    // =========================
+    // TEAM MEMBER DATA
+    // =========================
+    // Static placeholder team data for the team page.
     const teamMembers = [
       {
-        name: "Alice Johnson",
-        role: "Project Lead",
-        image: "/images/team/alice.jpg",
-        bio: "Alice leads the project with vision and precision.",
-        social: { twitter: "#", linkedin: "#" }
+        name: 'Alice Johnson',
+        role: 'Project Lead',
+        image: '/images/team/alice.jpg',
+        bio: 'Alice leads the project with vision and precision.',
+        social: { twitter: '#', linkedin: '#' }
       },
       {
-        name: "Bob Smith",
-        role: "Lead Developer",
-        image: "/images/team/bob.jpg",
-        bio: "Bob builds the magic behind the scenes.",
-        social: { twitter: "#", linkedin: "#" }
+        name: 'Bob Smith',
+        role: 'Lead Developer',
+        image: '/images/team/bob.jpg',
+        bio: 'Bob builds the magic behind the scenes.',
+        social: { twitter: '#', linkedin: '#' }
       },
       {
-        name: "Carla Reyes",
-        role: "Designer",
-        image: "/images/team/carla.jpg",
-        bio: "Carla crafts beautiful and intuitive designs.",
-        social: { twitter: "#", linkedin: "#" }
+        name: 'Carla Reyes',
+        role: 'Designer',
+        image: '/images/team/carla.jpg',
+        bio: 'Carla crafts beautiful and intuitive designs.',
+        social: { twitter: '#', linkedin: '#' }
       }
     ];
 
+    // =========================
+    // TEAM MEMBER RENDERER
+    // =========================
+    // Renders the team member cards into the team grid container.
     function renderTeamMembers(containerId = 'team-grid') {
       const container = document.getElementById(containerId);
       if (!container) return;
+
       container.innerHTML = '';
-      teamMembers.forEach(member => {
+
+      teamMembers.forEach((member) => {
         const card = document.createElement('article');
         card.className = 'team-card';
         card.innerHTML = `
-          <img src="${member.image}" alt="${member.name}" class="team-photo"/>
+          <img src="${member.image}" alt="${member.name}" class="team-photo" />
           <h3 class="team-name">${member.name}</h3>
           <p class="team-role">${member.role}</p>
           <p class="team-bio">${member.bio}</p>
           <div class="team-social">
-            ${member.social.twitter ? `<a href="${member.social.twitter}" target="_blank">Twitter</a>` : ''}
-            ${member.social.linkedin ? `<a href="${member.social.linkedin}" target="_blank">LinkedIn</a>` : ''}
+            ${member.social.twitter ? `<a href="${member.social.twitter}" target="_blank" rel="noopener noreferrer">Twitter</a>` : ''}
+            ${member.social.linkedin ? `<a href="${member.social.linkedin}" target="_blank" rel="noopener noreferrer">LinkedIn</a>` : ''}
           </div>
         `;
         container.appendChild(card);
       });
     }
 
+    // =========================
+    // TEAM PAGE INITIALIZER
+    // =========================
+    // Updates auth-aware navigation, wires logout behavior,
+    // and renders the team member cards.
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
-      document.querySelectorAll('.logout-link').forEach(el => {
-        el.addEventListener('click', async e => {
+      document.querySelectorAll('.logout-link').forEach((el) => {
+        el.addEventListener('click', async (e) => {
           e.preventDefault();
           await logout();
+          window.location.href = '/';
         });
       });
 
