@@ -1,97 +1,325 @@
-// create-checkout-session.js
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const { createClient } = require("@supabase/supabase-js");
+// /.netlify/functions/create-checkout-session.js
+
+const Stripe = require('stripe');
+const { createClient } = require('@supabase/supabase-js');
+
+// =========================
+// ENVIRONMENT
+// =========================
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const siteUrl = process.env.SITE_URL;
+
+if (!stripeSecretKey) {
+  throw new Error('Missing STRIPE_SECRET_KEY');
+}
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+if (!siteUrl) {
+  throw new Error('Missing SITE_URL');
+}
+
+const stripe = new Stripe(stripeSecretKey);
 
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  supabaseUrl,
+  supabaseServiceRoleKey
 );
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: "Method Not Allowed" }),
-    };
+// =========================
+// HELPERS
+// =========================
+function jsonResponse(statusCode, payload) {
+  return {
+    statusCode,
+    body: JSON.stringify(payload)
+  };
+}
+
+function parseRequestBody(body) {
+  try {
+    return JSON.parse(body || '{}');
+  } catch {
+    throw new Error('Invalid JSON body');
+  }
+}
+
+function normalizeQuantity(value) {
+  const quantity = Number(value);
+
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new Error('Each cart item must have a positive integer quantity.');
   }
 
-  try {
-    const { user_id, cart } = JSON.parse(event.body);
+  return quantity;
+}
 
-    if (!cart || !cart.length) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Cart is empty" }) };
+function mergeCartItems(cart) {
+  const merged = new Map();
+
+  for (const item of cart) {
+    const productId = String(item.product_id || '').trim();
+    if (!productId) {
+      throw new Error('Each cart item must include a product_id.');
     }
 
-    // 1️⃣ Create Order
+    const quantity = normalizeQuantity(item.quantity);
+    const current = merged.get(productId) || 0;
+    merged.set(productId, current + quantity);
+  }
+
+  return Array.from(merged.entries()).map(([product_id, quantity]) => ({
+    product_id,
+    quantity
+  }));
+}
+
+async function getAuthenticatedUser(token) {
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    throw new Error('Unauthorized');
+  }
+
+  return user;
+}
+
+async function markOrderFailed(orderId) {
+  if (!orderId) return;
+
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      status: 'failed',
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', orderId);
+
+  if (error) {
+    console.error('Failed to mark order as failed:', error);
+  }
+}
+
+// =========================
+// MAIN HANDLER
+// =========================
+exports.handler = async (event) => {
+  if (event.httpMethod !== 'POST') {
+    return jsonResponse(405, { error: 'Method not allowed' });
+  }
+
+  const authHeader = event.headers.authorization || event.headers.Authorization;
+  const token = authHeader?.replace(/^Bearer\s+/i, '');
+
+  if (!token) {
+    return jsonResponse(401, { error: 'Missing auth token' });
+  }
+
+  let createdOrderId = null;
+
+  try {
+    // =========================
+    // AUTHENTICATE USER
+    // =========================
+    const user = await getAuthenticatedUser(token);
+
+    // =========================
+    // PARSE AND VALIDATE CART
+    // =========================
+    const body = parseRequestBody(event.body);
+    const rawCart = Array.isArray(body.cart) ? body.cart : [];
+
+    if (!rawCart.length) {
+      return jsonResponse(400, { error: 'Cart is empty' });
+    }
+
+    const cart = mergeCartItems(rawCart);
+    const productIds = cart.map((item) => item.product_id);
+
+    // =========================
+    // LOAD PRODUCTS FROM DB
+    // =========================
+    // Never trust Stripe IDs or pricing from the client.
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select(`
+        id,
+        name,
+        description,
+        price_cents,
+        stripe_product_id,
+        stripe_price_id,
+        active,
+        votes_granted
+      `)
+      .in('id', productIds);
+
+    if (productsError) {
+      throw productsError;
+    }
+
+    const productMap = new Map(
+      (products || []).map((product) => [String(product.id), product])
+    );
+
+    const line_items = [];
+    const orderItems = [];
+
+    let totalCents = 0;
+    let totalVotesGranted = 0;
+
+    for (const cartItem of cart) {
+      const product = productMap.get(cartItem.product_id);
+
+      if (!product) {
+        throw new Error(`Invalid product: ${cartItem.product_id}`);
+      }
+
+      if (!product.active) {
+        throw new Error(`Product is inactive: ${product.name}`);
+      }
+
+      if (!product.stripe_price_id) {
+        throw new Error(`Product is missing Stripe price ID: ${product.name}`);
+      }
+
+      if (!Number.isInteger(product.price_cents) || product.price_cents <= 0) {
+        throw new Error(`Product has invalid price_cents: ${product.name}`);
+      }
+
+      const votesGrantedEach = Number(product.votes_granted) || 0;
+
+      line_items.push({
+        price: product.stripe_price_id,
+        quantity: cartItem.quantity
+      });
+
+      orderItems.push({
+        product_id: product.id,
+        quantity: cartItem.quantity,
+        unit_price_cents: product.price_cents,
+        votes_granted_each: votesGrantedEach
+      });
+
+      totalCents += product.price_cents * cartItem.quantity;
+      totalVotesGranted += votesGrantedEach * cartItem.quantity;
+    }
+
+    // =========================
+    // CREATE ORDER
+    // =========================
+    const nowIso = new Date().toISOString();
+
     const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert([{ user_id, status: "pending" }])
+      .from('orders')
+      .insert([
+        {
+          user_id: user.id,
+          stripe_session_id: null,
+          status: 'pending',
+          total_cents: totalCents,
+          total_votes_granted: totalVotesGranted,
+          paid_at: null,
+          updated_at: nowIso
+        }
+      ])
       .select()
       .single();
 
     if (orderError || !order) {
-      console.error("Order creation error:", orderError);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "Failed to create order", details: orderError }),
-      };
+      console.error('Order creation error:', orderError);
+      return jsonResponse(500, {
+        error: 'Failed to create order',
+        details: orderError?.message || null
+      });
     }
 
-    // 2️⃣ Create Order Items with detailed logging
-    const items = cart.map((c) => ({
+    createdOrderId = order.id;
+
+    // =========================
+    // CREATE ORDER ITEMS
+    // =========================
+    const itemsToInsert = orderItems.map((item) => ({
       order_id: order.id,
-      product_id: c.product_id,
-      quantity: c.quantity,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price_cents: item.unit_price_cents,
+      votes_granted_each: item.votes_granted_each
     }));
 
-    const { data: itemsData, error: itemsError } = await supabase.from("order_items").insert(items);
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(itemsToInsert);
 
     if (itemsError) {
-      console.error("Order items insertion failed:", itemsError);
-      console.log("Items attempted to insert:", items);
-      return {
-        statusCode: 500,
-        body: JSON.stringify({
-          error: "Failed to create order items",
-          details: itemsError,
-          attemptedItems: items,
-        }),
-      };
+      console.error('Order items insertion failed:', itemsError);
+      console.error('Items attempted to insert:', itemsToInsert);
+
+      await markOrderFailed(order.id);
+
+      return jsonResponse(500, {
+        error: 'Failed to create order items',
+        details: itemsError.message || null
+      });
     }
 
-    // 3️⃣ Create Stripe Checkout Session
-    const line_items = cart.map((c) => ({
-      price: c.stripe_price_id,
-      quantity: c.quantity,
-    }));
-
+    // =========================
+    // CREATE STRIPE CHECKOUT SESSION
+    // =========================
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
+      mode: 'payment',
       line_items,
-      success_url: `${process.env.SITE_URL}/shop/success.html?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.SITE_URL}/shop/cancel.html`,
-      metadata: { order_id: order.id },
+      success_url: `${siteUrl}/shop/success.html?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/shop/cancel.html`,
+      client_reference_id: order.id,
+      metadata: {
+        order_id: order.id,
+        user_id: user.id,
+        total_cents: String(totalCents),
+        total_votes_granted: String(totalVotesGranted)
+      }
     });
 
-    // 4️⃣ Save session ID to order
+    // =========================
+    // SAVE SESSION ID TO ORDER
+    // =========================
     const { error: updateError } = await supabase
-      .from("orders")
-      .update({ stripe_session_id: session.id })
-      .eq("id", order.id);
+      .from('orders')
+      .update({
+        stripe_session_id: session.id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', order.id);
 
     if (updateError) {
-      console.error("Failed to update order with session ID:", updateError);
+      console.error('Failed to update order with session ID:', updateError);
+      await markOrderFailed(order.id);
+
+      return jsonResponse(500, {
+        error: 'Failed to save checkout session to order',
+        details: updateError.message || null
+      });
     }
 
-    // ✅ Return Stripe URL
-    return { statusCode: 200, body: JSON.stringify({ url: session.url }) };
-
+    return jsonResponse(200, {
+      success: true,
+      order_id: order.id,
+      url: session.url
+    });
   } catch (error) {
-    console.error("Checkout function error:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Server Error", details: error.message }),
-    };
+    console.error('Checkout function error:', error);
+
+    await markOrderFailed(createdOrderId);
+
+    return jsonResponse(500, {
+      error: error.message || 'Server error'
+    });
   }
 };

@@ -3,19 +3,17 @@
 // =========================
 // IMPORTS
 // =========================
-// Import auth helpers and the shared Supabase client used across the admin panel.
 import { getCurrentUserAsync, logout } from './auth.js';
 import { supabase } from './supabase.js';
 
 // =========================
 // GLOBAL DOM REFERENCES
 // =========================
-// Top-level status / user table elements.
 const statusEl = document.getElementById('status-message');
 const table = document.getElementById('users-table');
 const tbody = table?.querySelector('tbody');
 
-// Voting controls.
+// Voting controls
 const votingSection = document.getElementById('voting-section');
 const determineWinnerBtn = document.getElementById('determine-winner-btn');
 const closeVotingBtn = document.getElementById('close-voting-btn');
@@ -24,17 +22,17 @@ const votingStart = document.getElementById('voting-start');
 const votingEnd = document.getElementById('voting-end');
 const votingMsg = document.getElementById('voting-status-message');
 
-// Voting summary boxes.
+// Voting summary boxes
 const currentRoundSummary = document.getElementById('current-round-summary');
 const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
 
-// Tie resolution UI.
+// Tie resolution UI
 const tieResolutionPanel = document.getElementById('tie-resolution-panel');
 const tieResolutionMessage = document.getElementById('tie-resolution-message');
 const tieWinnerSelect = document.getElementById('tie-winner-select');
 const finalizeTieBtn = document.getElementById('finalize-tie-btn');
 
-// Legacy / hidden winner preview UI that still exists in the HTML.
+// Legacy / hidden winner preview UI
 const winnerPreviewPanel = document.getElementById('winner-preview-panel');
 const winnerPreviewContent = document.getElementById('winner-preview-content');
 const winnerPreviewMessage = document.getElementById('winner-preview-message');
@@ -42,7 +40,7 @@ const nextRoundFields = document.getElementById('next-round-fields');
 const finalizeOnlyBtn = document.getElementById('finalize-only-btn');
 const finalizeAndCreateBtn = document.getElementById('finalize-and-create-btn');
 
-// Story management UI.
+// Story management UI
 const storySection = document.getElementById('story-management-section');
 const storySelect = document.getElementById('story-select');
 const storyForm = document.getElementById('story-form');
@@ -52,19 +50,19 @@ const deleteStoryBtn = document.getElementById('delete-story-btn');
 const storyMsg = document.getElementById('story-status-message');
 const storiesPreview = document.getElementById('stories-preview');
 
-// Story form fields.
+// Story form fields
 const storyTitle = document.getElementById('story-title');
 const storyAuthor = document.getElementById('story-author');
 const storyDescription = document.getElementById('story-description');
 const storyActive = document.getElementById('story-active');
 
-// Cover image upload UI.
+// Cover image upload UI
 const storyCoverFile = document.getElementById('story-cover-file');
 const uploadCoverBtn = document.getElementById('upload-cover-btn');
 const coverUploadMessage = document.getElementById('cover-upload-message');
 const coverPreview = document.getElementById('cover-preview');
 
-// Story page upload UI.
+// Story page upload UI
 const storyPageForm = document.getElementById('story-page-form');
 const storyPageFile = document.getElementById('story-page-file');
 const storyPageCaption = document.getElementById('story-page-caption');
@@ -72,25 +70,40 @@ const uploadStoryPageBtn = document.getElementById('upload-story-page-btn');
 const storyPageStatusMsg = document.getElementById('story-page-status-message');
 const storyPagesPreview = document.getElementById('story-pages-preview');
 
-// Placeholder product section.
+// Product management UI
 const productSection = document.getElementById('product-management-section');
+const productSelect = document.getElementById('product-select');
+const productForm = document.getElementById('product-form');
+const saveProductBtn = document.getElementById('save-product-btn');
+const resetProductBtn = document.getElementById('reset-product-btn');
+const deactivateProductBtn = document.getElementById('deactivate-product-btn');
+const productStatusMsg = document.getElementById('product-status-message');
+const productsPreview = document.getElementById('products-preview');
+
+const productName = document.getElementById('product-name');
+const productDescription = document.getElementById('product-description');
+const productPriceCents = document.getElementById('product-price-cents');
+const productVotesGranted = document.getElementById('product-votes-granted');
+const productImageUrl = document.getElementById('product-image-url');
+const productImagePreview = document.getElementById('product-image-preview');
+const productActive = document.getElementById('product-active');
 
 // =========================
 // SHARED STATE
 // =========================
-// Shared page state reused across handlers and renderers.
 let currentUser = null;
 let currentAccessToken = null;
 let allStories = [];
 let allUsers = [];
+let allProducts = [];
 let editingStoryId = null;
+let editingProductId = null;
 let currentWorkingPeriod = null;
 let currentTieStories = [];
 
 // =========================
 // LOGOUT HANDLER
 // =========================
-// Logs the admin out and returns them to the homepage.
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
   await logout();
@@ -100,8 +113,6 @@ document.getElementById('logout-link')?.addEventListener('click', async (e) => {
 // =========================
 // ACCESS TOKEN HELPER
 // =========================
-// Gets the current Supabase session access token for authenticated
-// Netlify function requests.
 async function getAccessToken() {
   const { data, error } = await supabase.auth.getSession();
 
@@ -116,8 +127,6 @@ async function getAccessToken() {
 // =========================
 // SAFE JSON RESPONSE PARSER
 // =========================
-// Safely parses serverless function responses, even when an error
-// response comes back as plain text instead of JSON.
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -131,8 +140,6 @@ async function parseJsonResponseSafely(res) {
 // =========================
 // DATE FORMATTER
 // =========================
-// Converts an ISO datetime value into a friendly local string
-// for display in the admin UI.
 function formatDateTime(value) {
   if (!value) return '—';
 
@@ -145,13 +152,10 @@ function formatDateTime(value) {
 // =========================
 // DATETIME-LOCAL FORMATTER
 // =========================
-// Formats a datetime value for a datetime-local input without converting
-// it through UTC. This prevents the admin form from visually shifting times.
 function formatForDateTimeLocal(value) {
   if (!value) return '';
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return '';
 
   const year = date.getFullYear();
@@ -164,13 +168,31 @@ function formatForDateTimeLocal(value) {
 }
 
 // =========================
+// IMAGE PREVIEW HELPER
+// =========================
+function updatePreviewImage(imgEl, url) {
+  if (!imgEl) return;
+
+  const safeUrl = String(url || '').trim();
+
+  if (!safeUrl) {
+    imgEl.src = '';
+    imgEl.style.display = 'none';
+    return;
+  }
+
+  imgEl.src = safeUrl;
+  imgEl.style.display = 'block';
+
+  imgEl.onerror = () => {
+    imgEl.src = '';
+    imgEl.style.display = 'none';
+  };
+}
+
+// =========================
 // EFFECTIVE CLOSED CHECK
 // =========================
-// Determines whether a round should be treated as closed.
-// A round is effectively closed if:
-// - it has finalized_at
-// - it has closed_at
-// - or its scheduled end_time has passed
 function isEffectivelyClosed(period) {
   if (!period) return false;
   if (period.finalized_at) return true;
@@ -185,8 +207,6 @@ function isEffectivelyClosed(period) {
 // =========================
 // ROUND STATUS DERIVER
 // =========================
-// Returns the status that should be shown in the admin UI:
-// none / upcoming / open / closed / finalized
 function deriveRoundStatus(period) {
   if (!period) return 'none';
   if (period.finalized_at) return 'finalized';
@@ -204,8 +224,6 @@ function deriveRoundStatus(period) {
 // =========================
 // LEGACY WINNER PREVIEW HIDER
 // =========================
-// Hides the older winner preview UI that still exists in the DOM
-// but is no longer part of the active workflow.
 function hideWinnerPreviewUI() {
   if (winnerPreviewPanel) winnerPreviewPanel.style.display = 'none';
   if (winnerPreviewContent) winnerPreviewContent.innerHTML = '';
@@ -223,8 +241,6 @@ function hideWinnerPreviewUI() {
 // =========================
 // TIE RESOLUTION UI RESETTER
 // =========================
-// Hides and clears the tie-resolution panel so stale tie data
-// does not linger between rounds or attempts.
 function resetTieResolutionUI() {
   currentTieStories = [];
 
@@ -248,8 +264,6 @@ function resetTieResolutionUI() {
 // =========================
 // TIE RESOLUTION UI RENDERER
 // =========================
-// Displays the tie-resolution panel and fills the dropdown
-// with only the stories that are tied for first place.
 function renderTieResolutionUI(result) {
   if (!tieResolutionPanel || !tieWinnerSelect) return;
 
@@ -257,7 +271,7 @@ function renderTieResolutionUI(result) {
 
   tieWinnerSelect.innerHTML = '<option value="">-- Select a Winner --</option>';
 
-  currentTieStories.forEach(story => {
+  currentTieStories.forEach((story) => {
     const option = document.createElement('option');
     option.value = story.story_id;
     option.textContent = `${story.title} (${story.total_votes} vote${story.total_votes === 1 ? '' : 's'})`;
@@ -275,7 +289,6 @@ function renderTieResolutionUI(result) {
 // =========================
 // CURRENT ROUND SUMMARY RENDERER
 // =========================
-// Renders the current active unfinalized round into the summary box.
 function renderCurrentRoundSummary(period) {
   if (!currentRoundSummary) return;
 
@@ -298,7 +311,6 @@ function renderCurrentRoundSummary(period) {
 // =========================
 // FINALIZED WINNER SUMMARY RENDERER
 // =========================
-// Renders the most recently finalized round and winner summary.
 function renderFinalizedWinnerSummary(period, winnerTitle = null) {
   if (!finalizedWinnerSummary) return;
 
@@ -326,8 +338,6 @@ function renderFinalizedWinnerSummary(period, winnerTitle = null) {
 // =========================
 // VOTING PERIOD LOADER
 // =========================
-// Loads the current unfinalized round plus the most recent finalized round,
-// then updates the summary cards and button states.
 async function loadVotingPeriod() {
   try {
     const { data: currentPeriods, error: currentError } = await supabase
@@ -427,8 +437,6 @@ async function loadVotingPeriod() {
 // =========================
 // VOTING PERIOD SUBMIT HANDLER
 // =========================
-// Creates a new round or updates the current round using the main
-// voting period form.
 async function handleVotingPeriodSubmit(e) {
   e.preventDefault();
 
@@ -468,8 +476,6 @@ async function handleVotingPeriodSubmit(e) {
 // =========================
 // CLOSE VOTING HANDLER
 // =========================
-// Manually closes the current round without modifying its original
-// scheduled start/end times.
 async function handleCloseVoting() {
   try {
     const token = await getAccessToken();
@@ -514,9 +520,6 @@ async function handleCloseVoting() {
 // =========================
 // DETERMINE WINNER HANDLER
 // =========================
-// Finalizes the winner for the most recently closed round. If the backend
-// reports a tie, this displays the tie-resolution panel instead.
-// If no votes were cast, this finalizes the round with no winner.
 async function determineWinner() {
   try {
     const token = await getAccessToken();
@@ -542,11 +545,6 @@ async function determineWinner() {
       throw new Error(result.error || 'Unknown error');
     }
 
-    // =========================
-    // NO-VOTES FINALIZATION UI
-    // =========================
-    // If the backend finalized the round with no winner because nobody voted,
-    // show a special message and let the admin move on to the next round.
     if (result.success && result.no_votes) {
       alert(
         `Voting Period ${result.period_id} was finalized with no winner because no votes were cast.`
@@ -572,7 +570,7 @@ async function determineWinner() {
 
     if (result.success) {
       const totalsText = (result.vote_totals || [])
-        .map(item => `${item.title}: ${item.total_votes}`)
+        .map((item) => `${item.title}: ${item.total_votes}`)
         .join('\n');
 
       alert(
@@ -607,7 +605,7 @@ async function determineWinner() {
       renderTieResolutionUI(result);
 
       const totalsText = (result.vote_totals || [])
-        .map(item => `${item.title}: ${item.total_votes}`)
+        .map((item) => `${item.title}: ${item.total_votes}`)
         .join('\n');
 
       alert(
@@ -634,8 +632,6 @@ async function determineWinner() {
 // =========================
 // TIE FINALIZATION HANDLER
 // =========================
-// Sends the admin-selected tied story back to the backend so the round
-// can be finalized manually.
 async function handleFinalizeTieWinner() {
   try {
     const selectedWinnerStoryId = tieWinnerSelect?.value || '';
@@ -668,7 +664,7 @@ async function handleFinalizeTieWinner() {
     }
 
     const totalsText = (result.vote_totals || [])
-      .map(item => `${item.title}: ${item.total_votes}`)
+      .map((item) => `${item.title}: ${item.total_votes}`)
       .join('\n');
 
     alert(
@@ -708,7 +704,6 @@ async function handleFinalizeTieWinner() {
 // =========================
 // STORY PAGES UI RESETTER
 // =========================
-// Clears the story page upload UI and resets the preview panel.
 function clearStoryPagesUI() {
   if (storyPageFile) storyPageFile.value = '';
   if (storyPageCaption) storyPageCaption.value = '';
@@ -726,7 +721,6 @@ function clearStoryPagesUI() {
 // =========================
 // STORY FORM RESETTER
 // =========================
-// Resets the story form back to "create story" mode.
 function clearStoryForm() {
   editingStoryId = null;
 
@@ -749,18 +743,13 @@ function clearStoryForm() {
 
   if (storyCoverFile) storyCoverFile.value = '';
 
-  if (coverPreview) {
-    coverPreview.src = '';
-    coverPreview.style.display = 'none';
-  }
-
+  updatePreviewImage(coverPreview, '');
   clearStoryPagesUI();
 }
 
 // =========================
 // STORY FORM POPULATOR
 // =========================
-// Loads a selected story into the edit form.
 async function populateStoryForm(story) {
   editingStoryId = story.id;
   storyTitle.value = story.title || '';
@@ -768,17 +757,12 @@ async function populateStoryForm(story) {
   storyDescription.value = story.description || '';
   storyActive.checked = !!story.active;
 
-  if (story.cover_image_url) {
-    coverPreview.src = story.cover_image_url;
-    coverPreview.style.display = 'block';
-  } else {
-    coverPreview.src = '';
-    coverPreview.style.display = 'none';
-  }
+  updatePreviewImage(coverPreview, story.cover_image_url || '');
 
   coverUploadMessage.textContent = '';
   coverUploadMessage.style.color = '';
-  storyCoverFile.value = '';
+
+  if (storyCoverFile) storyCoverFile.value = '';
 
   saveStoryBtn.textContent = 'Update Story';
   deleteStoryBtn.style.display = 'inline-block';
@@ -791,7 +775,6 @@ async function populateStoryForm(story) {
 // =========================
 // STORIES PREVIEW LOADER
 // =========================
-// Loads all stories into the dropdown and preview grid.
 async function loadStoriesPreview() {
   try {
     const { data: stories, error } = await supabase
@@ -810,7 +793,7 @@ async function loadStoriesPreview() {
       return;
     }
 
-    allStories.forEach(story => {
+    allStories.forEach((story) => {
       const option = document.createElement('option');
       option.value = story.id;
       option.textContent = story.title;
@@ -835,7 +818,6 @@ async function loadStoriesPreview() {
 // =========================
 // STORY PAGES LOADER
 // =========================
-// Loads all page images and captions for the selected story.
 async function loadStoryPages(storyId) {
   if (!storyId) {
     clearStoryPagesUI();
@@ -860,7 +842,7 @@ async function loadStoryPages(storyId) {
       return;
     }
 
-    pages.forEach(page => {
+    pages.forEach((page) => {
       const card = document.createElement('div');
       card.className = 'story-page-card';
       card.innerHTML = `
@@ -889,13 +871,12 @@ async function loadStoryPages(storyId) {
 // =========================
 // USERS TABLE RENDERER
 // =========================
-// Renders the admin user management table.
 function renderUsersTable(users) {
   if (!tbody) return;
 
   tbody.innerHTML = '';
 
-  users.forEach(u => {
+  users.forEach((u) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${u.email}</td>
@@ -924,10 +905,8 @@ function renderUsersTable(users) {
 // =========================
 // USERS TABLE LISTENER ATTACHER
 // =========================
-// Attaches role update and vote balance adjustment handlers
-// for the rendered user table.
 function attachUserTableListeners() {
-  tbody.querySelectorAll('.role-update-btn').forEach(button => {
+  tbody.querySelectorAll('.role-update-btn').forEach((button) => {
     button.addEventListener('click', async () => {
       const userId = button.dataset.userId;
       const row = button.closest('tr');
@@ -973,7 +952,7 @@ function attachUserTableListeners() {
     });
   });
 
-  tbody.querySelectorAll('.vote-adjust-btn').forEach(button => {
+  tbody.querySelectorAll('.vote-adjust-btn').forEach((button) => {
     button.addEventListener('click', async () => {
       const userId = button.dataset.userId;
       const amount = Number(button.dataset.amount);
@@ -1023,7 +1002,6 @@ function attachUserTableListeners() {
 // =========================
 // COVER IMAGE UPLOAD HANDLER
 // =========================
-// Uploads a story cover image through the backend.
 async function handleCoverUpload() {
   try {
     coverUploadMessage.textContent = '';
@@ -1084,15 +1062,14 @@ async function handleCoverUpload() {
     coverUploadMessage.style.color = 'green';
 
     if (result.cover_image_url) {
-      coverPreview.src = result.cover_image_url;
-      coverPreview.style.display = 'block';
+      updatePreviewImage(coverPreview, result.cover_image_url);
     }
 
     storyCoverFile.value = '';
     await loadStoriesPreview();
 
     if (editingStoryId) {
-      const refreshedStory = allStories.find(story => story.id === editingStoryId);
+      const refreshedStory = allStories.find((story) => story.id === editingStoryId);
       if (refreshedStory) await populateStoryForm(refreshedStory);
     }
   } catch (err) {
@@ -1108,7 +1085,6 @@ async function handleCoverUpload() {
 // =========================
 // STORY PAGE UPLOAD HANDLER
 // =========================
-// Uploads a story page image to storage and creates a story_pages record.
 async function handleStoryPageUpload(e) {
   e.preventDefault();
 
@@ -1216,9 +1192,8 @@ async function handleStoryPageUpload(e) {
 // =========================
 // STORY PAGE DELETE LISTENER ATTACHER
 // =========================
-// Attaches delete handlers to all currently rendered story page cards.
 function attachStoryPageDeleteListeners() {
-  document.querySelectorAll('.delete-story-page-btn').forEach(button => {
+  document.querySelectorAll('.delete-story-page-btn').forEach((button) => {
     button.addEventListener('click', async () => {
       const pageId = button.dataset.pageId;
       if (!pageId) return;
@@ -1262,7 +1237,6 @@ function attachStoryPageDeleteListeners() {
 // =========================
 // STORY DELETE HANDLER
 // =========================
-// Deletes the currently selected story and its related pages.
 async function handleDeleteStory() {
   if (!editingStoryId) return;
 
@@ -1309,7 +1283,6 @@ async function handleDeleteStory() {
 // =========================
 // STORY SAVE HANDLER
 // =========================
-// Creates a new story or updates the currently selected story.
 async function handleStorySubmit(e) {
   e.preventDefault();
 
@@ -1332,7 +1305,7 @@ async function handleStorySubmit(e) {
       throw new Error('No active session found.');
     }
 
-    const selectedStory = allStories.find(story => story.id === editingStoryId);
+    const selectedStory = allStories.find((story) => story.id === editingStoryId);
     const cover_image_url = selectedStory?.cover_image_url || null;
 
     let res;
@@ -1391,7 +1364,7 @@ async function handleStorySubmit(e) {
       editingStoryId = returnedStoryId;
       storySelect.value = returnedStoryId;
 
-      const createdStory = allStories.find(story => story.id === returnedStoryId);
+      const createdStory = allStories.find((story) => story.id === returnedStoryId);
       if (createdStory) await populateStoryForm(createdStory);
     }
   } catch (err) {
@@ -1407,7 +1380,6 @@ async function handleStorySubmit(e) {
 // =========================
 // STORY SELECT CHANGE HANDLER
 // =========================
-// Switches between create mode and edit mode when the story selector changes.
 async function handleStorySelectChange() {
   const selectedId = storySelect.value;
 
@@ -1416,17 +1388,265 @@ async function handleStorySelectChange() {
     return;
   }
 
-  const selectedStory = allStories.find(story => story.id === selectedId);
+  const selectedStory = allStories.find((story) => story.id === selectedId);
   if (selectedStory) {
     await populateStoryForm(selectedStory);
   }
 }
 
 // =========================
+// PRODUCT FORM RESETTER
+// =========================
+function clearProductForm() {
+  editingProductId = null;
+
+  if (productSelect) productSelect.value = '';
+  productForm?.reset();
+
+  if (productActive) productActive.checked = true;
+  if (productVotesGranted) productVotesGranted.value = '0';
+
+  if (saveProductBtn) {
+    saveProductBtn.disabled = false;
+    saveProductBtn.textContent = 'Create Product';
+  }
+
+  if (deactivateProductBtn) {
+    deactivateProductBtn.style.display = 'none';
+  }
+
+  if (productStatusMsg) {
+    productStatusMsg.textContent = '';
+    productStatusMsg.style.color = '';
+  }
+
+  updatePreviewImage(productImagePreview, '');
+}
+
+// =========================
+// PRODUCT FORM POPULATOR
+// =========================
+function populateProductForm(product) {
+  editingProductId = product.id;
+
+  productName.value = product.name || '';
+  productDescription.value = product.description || '';
+  productPriceCents.value = Number.isInteger(product.price_cents) ? product.price_cents : '';
+  productVotesGranted.value = Number(product.votes_granted) || 0;
+  productImageUrl.value = product.image_url || '';
+  productActive.checked = !!product.active;
+
+  updatePreviewImage(productImagePreview, product.image_url || '');
+
+  if (productStatusMsg) {
+    productStatusMsg.textContent = 'Product editing is not wired yet. Reset the form to create a new product.';
+    productStatusMsg.style.color = '#b45309';
+  }
+
+  if (saveProductBtn) {
+    saveProductBtn.disabled = true;
+    saveProductBtn.textContent = 'Update Product (coming next)';
+  }
+
+  if (deactivateProductBtn) {
+    deactivateProductBtn.style.display = 'none';
+  }
+}
+
+// =========================
+// PRODUCTS PREVIEW RENDERER
+// =========================
+function renderProductsPreview(products) {
+  if (!productsPreview) return;
+
+  productsPreview.innerHTML = '';
+
+  if (!products || products.length === 0) {
+    productsPreview.innerHTML = '<p>No products yet.</p>';
+    return;
+  }
+
+  products.forEach((product) => {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+
+    const priceText = Number.isInteger(product.price_cents)
+      ? `$${(product.price_cents / 100).toFixed(2)}`
+      : 'Price unavailable';
+
+    card.innerHTML = `
+      ${product.image_url ? `<img src="${product.image_url}" alt="${product.name}">` : ''}
+      <strong>${product.name}</strong>
+      <div class="product-meta">${product.description || 'No description set.'}</div>
+      <div class="product-meta"><strong>Price:</strong> ${priceText}</div>
+      <div class="product-meta"><strong>Bonus Votes:</strong> ${product.votes_granted ?? 0}</div>
+      <div class="product-meta"><strong>Status:</strong> ${product.active ? 'Active' : 'Inactive'}</div>
+    `;
+
+    productsPreview.appendChild(card);
+  });
+}
+
+// =========================
+// PRODUCTS LOADER
+// =========================
+async function loadProductsPreview() {
+  try {
+    const { data: products, error } = await supabase
+      .from('products')
+      .select(`
+        id,
+        name,
+        description,
+        price_cents,
+        stripe_product_id,
+        stripe_price_id,
+        image_url,
+        active,
+        votes_granted,
+        created_at,
+        updated_at
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    allProducts = products || [];
+
+    if (productSelect) {
+      productSelect.innerHTML = '<option value="">-- Create New Product --</option>';
+
+      allProducts.forEach((product) => {
+        const option = document.createElement('option');
+        option.value = product.id;
+        option.textContent = product.name;
+        productSelect.appendChild(option);
+      });
+    }
+
+    renderProductsPreview(allProducts);
+  } catch (err) {
+    console.error('Error loading products preview:', err);
+    if (productsPreview) {
+      productsPreview.innerHTML = '<p>Failed to load products.</p>';
+    }
+  }
+}
+
+// =========================
+// PRODUCT SELECT CHANGE HANDLER
+// =========================
+function handleProductSelectChange() {
+  const selectedId = productSelect?.value || '';
+
+  if (!selectedId) {
+    clearProductForm();
+    return;
+  }
+
+  const selectedProduct = allProducts.find((product) => String(product.id) === String(selectedId));
+
+  if (selectedProduct) {
+    populateProductForm(selectedProduct);
+  }
+}
+
+// =========================
+// PRODUCT IMAGE PREVIEW HANDLER
+// =========================
+function handleProductImageUrlInput() {
+  updatePreviewImage(productImagePreview, productImageUrl?.value || '');
+}
+
+// =========================
+// PRODUCT CREATE HANDLER
+// =========================
+async function handleProductSubmit(e) {
+  e.preventDefault();
+
+  if (editingProductId) {
+    productStatusMsg.textContent = 'Product updates are not wired yet. Reset the form to create a new product.';
+    productStatusMsg.style.color = '#b45309';
+    return;
+  }
+
+  productStatusMsg.textContent = '';
+  productStatusMsg.style.color = '';
+
+  try {
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
+
+    const name = productName.value.trim();
+    const description = productDescription.value.trim();
+    const image_url = productImageUrl.value.trim() || null;
+    const active = productActive.checked;
+    const price_cents = Number(productPriceCents.value);
+    const votes_granted = Number(productVotesGranted.value);
+
+    if (!name) {
+      throw new Error('Product name is required.');
+    }
+
+    if (!description) {
+      throw new Error('Product description is required.');
+    }
+
+    if (!Number.isInteger(price_cents) || price_cents <= 0) {
+      throw new Error('Price must be a positive whole number in cents.');
+    }
+
+    if (!Number.isInteger(votes_granted) || votes_granted < 0) {
+      throw new Error('Bonus votes must be 0 or greater.');
+    }
+
+    saveProductBtn.disabled = true;
+    saveProductBtn.textContent = 'Creating...';
+
+    const res = await fetch('/.netlify/functions/create-product', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        name,
+        description,
+        image_url,
+        active,
+        price_cents,
+        votes_granted
+      })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to create product');
+    }
+
+    productStatusMsg.textContent = 'Product created successfully!';
+    productStatusMsg.style.color = 'green';
+
+    clearProductForm();
+    await loadProductsPreview();
+  } catch (err) {
+    console.error('Error creating product:', err);
+    productStatusMsg.textContent = err.message || 'Failed to create product.';
+    productStatusMsg.style.color = 'red';
+  } finally {
+    if (saveProductBtn) {
+      saveProductBtn.disabled = false;
+      saveProductBtn.textContent = editingProductId ? 'Update Product (coming next)' : 'Create Product';
+    }
+  }
+}
+
+// =========================
 // ADMIN PANEL INITIALIZER
 // =========================
-// Verifies the current user is an admin, loads all initial data,
-// and wires up event listeners for the page.
 export async function initAdminPanel() {
   currentUser = await getCurrentUserAsync();
 
@@ -1456,7 +1676,7 @@ export async function initAdminPanel() {
     return;
   }
 
-  const profile = users.find(u => u.id === currentUser.id);
+  const profile = users.find((u) => u.id === currentUser.id);
 
   if (!profile || profile.role !== 'admin') {
     statusEl.textContent = 'Access denied: Admins only.';
@@ -1474,8 +1694,10 @@ export async function initAdminPanel() {
 
   await loadVotingPeriod();
   await loadStoriesPreview();
+  await loadProductsPreview();
 
   clearStoryPagesUI();
+  clearProductForm();
   hideWinnerPreviewUI();
   resetTieResolutionUI();
 
@@ -1490,10 +1712,14 @@ export async function initAdminPanel() {
   deleteStoryBtn?.addEventListener('click', handleDeleteStory);
   storyForm?.addEventListener('submit', handleStorySubmit);
   storyPageForm?.addEventListener('submit', handleStoryPageUpload);
+
+  productSelect?.addEventListener('change', handleProductSelectChange);
+  resetProductBtn?.addEventListener('click', clearProductForm);
+  productImageUrl?.addEventListener('input', handleProductImageUrlInput);
+  productForm?.addEventListener('submit', handleProductSubmit);
 }
 
 // =========================
 // DOM READY BOOTSTRAP
 // =========================
-// Starts the admin panel once the page HTML has loaded.
 document.addEventListener('DOMContentLoaded', initAdminPanel);
