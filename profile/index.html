@@ -5,6 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Profile | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    .profile-page {
+      padding: 2rem 0 3rem;
+    }
+
+    .profile-hero {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .profile-hero h1 {
+      margin-bottom: 0.5rem;
+    }
+
+    .profile-hero p {
+      max-width: 700px;
+      margin: 0 auto;
+      color: #4b5563;
+    }
+
+    .profile-section {
+      margin-bottom: 2rem;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+      padding: 1.5rem;
+    }
+
+    .profile-section h2 {
+      margin-bottom: 1rem;
+    }
+
+    .profile-vote-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .vote-stat-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .vote-stat-card h3 {
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+      color: #374151;
+    }
+
+    .vote-stat-card p {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .vote-stat-card small {
+      display: block;
+      margin-top: 0.5rem;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+
+    .profile-note {
+      margin-top: 1rem;
+      color: #4b5563;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .profile-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .profile-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.9rem 1rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      background: #f9fafb;
+      flex-wrap: wrap;
+    }
+
+    .profile-list button {
+      min-width: 130px;
+    }
+
+    .profile-empty-state {
+      color: #6b7280;
+      margin: 0.5rem 0 0;
+    }
+
+    .story-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+      .profile-list li {
+        align-items: flex-start;
+      }
+
+      .profile-list button {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- HEADER -->
@@ -34,22 +153,56 @@
   </header>
 
   <!-- MAIN PROFILE DASHBOARD -->
-  <main class="container">
-    <section>
-      <h2>My Vote Balance</h2>
-      <p id="vote-balance">Loading...</p>
+  <main class="container profile-page">
+    <section class="profile-hero">
+      <h1>My Profile</h1>
+      <p>
+        View your current voting power, past votes, and saved stories all in one place.
+      </p>
     </section>
 
-    <section>
+    <section class="profile-section">
+      <h2>Your Voting Power</h2>
+
+      <div class="profile-vote-summary">
+        <div class="vote-stat-card">
+          <h3>Round Votes</h3>
+          <p id="round-vote-balance">—</p>
+          <small>These reset at the start of each new voting round.</small>
+        </div>
+
+        <div class="vote-stat-card">
+          <h3>Bonus Votes</h3>
+          <p id="bonus-vote-balance">—</p>
+          <small>These come from purchases and do not reset each round.</small>
+        </div>
+
+        <div class="vote-stat-card">
+          <h3>Total Available</h3>
+          <p id="total-vote-balance">—</p>
+          <small>Your current round votes plus any bonus votes.</small>
+        </div>
+      </div>
+
+      <p class="profile-note">
+        When you vote, your round votes should be used first before any bonus votes are spent.
+      </p>
+    </section>
+
+    <section class="profile-section">
       <h2>My Votes</h2>
-      <div id="voted-stories" class="story-grid"></div>
-      <p id="no-votes" style="display:none;">You haven’t voted for any stories yet.</p>
+      <ul id="vote-list" class="profile-list"></ul>
+      <p id="no-votes" class="profile-empty-state" style="display:none;">
+        You haven’t voted for any stories yet.
+      </p>
     </section>
 
-    <section>
+    <section class="profile-section">
       <h2>Saved Stories</h2>
-      <div id="saved-stories" class="story-grid"></div>
-      <p id="no-saved" style="display:none;">You haven’t saved any stories yet.</p>
+      <div id="my-saved-stories-container" class="story-grid"></div>
+      <p id="no-saved-stories" class="profile-empty-state" style="display:none;">
+        You haven’t saved any stories yet.
+      </p>
     </section>
   </main>
 
@@ -73,29 +226,14 @@
   <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- PAGE MODULES -->
-  <script type="module" src="/js/votingStateControl.js"></script>
-
   <!-- PROFILE PAGE LOGIC -->
-  <script type="module">
-    import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
-    import {
-      fetchStoriesWithVotes,
-      fetchUserVotes,
-      fetchUserVoteBalance,
-      fetchSavedStories,
-      renderStoriesForProfile,
-      attachRecantListeners,
-      attachUnsaveListeners
-    } from '/js/vote.js';
-    import { enforceVotingRules } from '/js/votingStateControl.js';
+  <script type="module" src="/js/profile.js"></script>
 
-    // =========================
-    // PROFILE PAGE INITIALIZER
-    // =========================
-    // Loads the current user's profile dashboard, including
-    // vote balance, voted stories, and saved stories.
-    async function initProfilePage() {
+  <!-- AUTH UI -->
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
       document.querySelectorAll('.logout-link').forEach((el) => {
@@ -105,92 +243,7 @@
           window.location.href = '/';
         });
       });
-
-      const user = await getCurrentUserAsync();
-
-      if (!user) {
-        alert('Please log in to view your profile.');
-        window.location.href = '/login/';
-        return;
-      }
-
-      // =========================
-      // VOTE BALANCE LOADER
-      // =========================
-      // Fetch and display the user's current remaining vote balance.
-      const voteBalance = await fetchUserVoteBalance();
-      document.getElementById('vote-balance').textContent = `${voteBalance} vote(s) remaining`;
-
-      // =========================
-      // USER VOTE DATA LOADER
-      // =========================
-      // Load all stories plus the current user's vote rows so we can
-      // build the voted-stories section with per-story vote counts.
-      const allStories = await fetchStoriesWithVotes();
-      const userVotes = await fetchUserVotes();
-
-      const votedStories = allStories
-        .filter((story) =>
-          userVotes.some(
-            (vote) => String(vote.story_id) === String(story.id) && Number(vote.vote_count) > 0
-          )
-        )
-        .map((story) => {
-          const voteRow = userVotes.find(
-            (vote) => String(vote.story_id) === String(story.id)
-          );
-
-          return {
-            ...story,
-            user_vote_count: voteRow ? Number(voteRow.vote_count) || 0 : 0
-          };
-        });
-
-      // =========================
-      // SAVED STORIES LOADER
-      // =========================
-      // Load the stories the current user has saved.
-      const savedData = await fetchSavedStories();
-      const savedStories = savedData.success ? savedData.data : [];
-
-      // =========================
-      // PROFILE SECTION RENDERER
-      // =========================
-      // Render both voted stories and saved stories into their
-      // respective profile dashboard grids.
-      renderStoriesForProfile(
-        votedStories,
-        savedStories,
-        'voted-stories',
-        'saved-stories'
-      );
-
-      // =========================
-      // EMPTY STATE TOGGLER
-      // =========================
-      // Show or hide the fallback messages for each section.
-      document.getElementById('no-votes').style.display =
-        votedStories.length === 0 ? 'block' : 'none';
-
-      document.getElementById('no-saved').style.display =
-        savedStories.length === 0 ? 'block' : 'none';
-
-      // =========================
-      // PROFILE ACTION LISTENERS
-      // =========================
-      // Wire the recant and unsave controls for the rendered cards.
-      attachRecantListeners('voted-stories');
-      attachUnsaveListeners('saved-stories');
-
-      // =========================
-      // VOTING RULE ENFORCER
-      // =========================
-      // Apply current-round voting rules to recant controls so they
-      // respect whether the round is still open.
-      await enforceVotingRules('voted-stories');
-    }
-
-    document.addEventListener('DOMContentLoaded', initProfilePage);
+    });
   </script>
 
   <!-- ADMIN NAV LINK -->

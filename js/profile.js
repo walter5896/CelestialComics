@@ -8,8 +8,59 @@ const noVotes = document.getElementById('no-votes');
 const savedContainer = document.getElementById('my-saved-stories-container');
 const noSaved = document.getElementById('no-saved-stories');
 
+const roundVoteBalanceEl = document.getElementById('round-vote-balance');
+const bonusVoteBalanceEl = document.getElementById('bonus-vote-balance');
+const totalVoteBalanceEl = document.getElementById('total-vote-balance');
+
 if (!voteList || !noVotes || !savedContainer || !noSaved) {
   throw new Error('Profile page missing required elements');
+}
+
+// =========================
+// PROFILE BALANCE HELPERS
+// =========================
+function setVoteBalances(roundVotes = 0, bonusVotes = 0) {
+  const safeRoundVotes = Number(roundVotes) || 0;
+  const safeBonusVotes = Number(bonusVotes) || 0;
+  const totalVotes = safeRoundVotes + safeBonusVotes;
+
+  if (roundVoteBalanceEl) {
+    roundVoteBalanceEl.textContent = String(safeRoundVotes);
+  }
+
+  if (bonusVoteBalanceEl) {
+    bonusVoteBalanceEl.textContent = String(safeBonusVotes);
+  }
+
+  if (totalVoteBalanceEl) {
+    totalVoteBalanceEl.textContent = String(totalVotes);
+  }
+}
+
+async function fetchVoteBalances() {
+  const user = getCurrentUser();
+
+  if (!user) {
+    setVoteBalances(0, 0);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('vote_balance, bonus_vote_balance')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching vote balances:', error);
+    setVoteBalances(0, 0);
+    return;
+  }
+
+  setVoteBalances(
+    data?.vote_balance ?? 0,
+    data?.bonus_vote_balance ?? 0
+  );
 }
 
 /**
@@ -17,6 +68,7 @@ if (!voteList || !noVotes || !savedContainer || !noSaved) {
  */
 async function fetchVotes() {
   const user = getCurrentUser();
+
   if (!user) {
     voteList.innerHTML = '';
     noVotes.style.display = 'block';
@@ -52,7 +104,7 @@ async function fetchVotes() {
   noVotes.style.display = 'none';
   voteList.innerHTML = '';
 
-  data.forEach(vote => {
+  data.forEach((vote) => {
     const li = document.createElement('li');
     const title = vote.stories?.title || `Story #${vote.story_id}`;
     const date = new Date(vote.created_at).toLocaleString();
@@ -63,6 +115,7 @@ async function fetchVotes() {
         Recant Vote
       </button>
     `;
+
     voteList.appendChild(li);
   });
 }
@@ -82,24 +135,25 @@ async function fetchAndRenderSavedStories() {
   savedContainer.style.display = 'grid';
   noSaved.style.display = 'none';
 
-  // Mark all stories as saved so buttons display "Unsave"
-  const storiesWithSavedFlag = data.map(story => ({ ...story, isSaved: true }));
+  const storiesWithSavedFlag = data.map((story) => ({
+    ...story,
+    isSaved: true
+  }));
 
   renderStories(storiesWithSavedFlag, 'my-saved-stories-container');
 
-  // Attach Unsave button listeners
-  document.querySelectorAll('.save-btn').forEach(btn => {
-    btn.textContent = 'Unsave'; // ← set button text for saved stories
+  document.querySelectorAll('.save-btn').forEach((btn) => {
+    btn.textContent = 'Unsave';
+
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
 
       const result = await unsaveStory(storyId);
+
       if (result.success) {
-        // Remove the story card
         const card = btn.closest('.story-card');
         if (card) card.remove();
 
-        // Show "no saved stories" message if container is empty
         if (!savedContainer.querySelector('.story-card')) {
           savedContainer.style.display = 'none';
           noSaved.style.display = 'block';
@@ -115,17 +169,20 @@ async function fetchAndRenderSavedStories() {
  * Initialize profile dashboard
  */
 function initProfile() {
+  fetchVoteBalances();
   fetchVotes();
   fetchAndRenderSavedStories();
 
-  // Re-fetch votes and saved stories if login state changes
   supabase.auth.onAuthStateChange(() => {
+    fetchVoteBalances();
     fetchVotes();
     fetchAndRenderSavedStories();
   });
 }
 
-// Recant vote handler
+// =========================
+// GLOBAL CLICK HANDLER
+// =========================
 document.addEventListener('click', async (e) => {
   if (!e.target.matches('.recant-btn')) return;
 
@@ -134,11 +191,14 @@ document.addEventListener('click', async (e) => {
 
   if (result.success) {
     alert('Vote recanted!');
-    fetchVotes(); // refresh votes list
+    fetchVotes();
+    fetchVoteBalances();
   } else {
     alert('Could not recant vote.');
   }
 });
 
-// Initialize on DOM load
+// =========================
+// INITIALIZE
+// =========================
 document.addEventListener('DOMContentLoaded', initProfile);

@@ -275,7 +275,10 @@ exports.handler = async (event) => {
     // =========================
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      payment_method_types: ['card'],
       line_items,
+      customer_email: user.email || undefined,
+      billing_address_collection: 'auto',
       success_url: `${siteUrl}/shop/success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/shop/cancel.html`,
       client_reference_id: order.id,

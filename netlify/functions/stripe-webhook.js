@@ -60,6 +60,10 @@ function getStripeSignature(event) {
   );
 }
 
+function getOrderIdFromSession(session) {
+  return session?.metadata?.order_id || session?.client_reference_id || null;
+}
+
 async function getOrderById(orderId) {
   const { data, error } = await supabase
     .from('orders')
@@ -139,10 +143,10 @@ async function markOrderPaid(orderId, stripeSessionId) {
   return data;
 }
 
-async function addVotesToUser(userId, votesToAdd) {
+async function addBonusVotesToUser(userId, votesToAdd) {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, vote_balance')
+    .select('id, bonus_vote_balance')
     .eq('id', userId)
     .single();
 
@@ -150,13 +154,13 @@ async function addVotesToUser(userId, votesToAdd) {
     throw profileError;
   }
 
-  const currentBalance = Number(profile.vote_balance) || 0;
-  const nextBalance = currentBalance + votesToAdd;
+  const currentBonusBalance = Number(profile.bonus_vote_balance) || 0;
+  const nextBonusBalance = currentBonusBalance + votesToAdd;
 
   const { error: updateError } = await supabase
     .from('profiles')
     .update({
-      vote_balance: nextBalance
+      bonus_vote_balance: nextBonusBalance
     })
     .eq('id', userId);
 
@@ -164,7 +168,7 @@ async function addVotesToUser(userId, votesToAdd) {
     throw updateError;
   }
 
-  return nextBalance;
+  return nextBonusBalance;
 }
 
 // =========================
@@ -175,7 +179,6 @@ async function handleCheckoutSessionCompleted(session) {
     throw new Error('Invalid checkout session payload');
   }
 
-  // Only fulfill paid sessions.
   if (session.payment_status !== 'paid') {
     return {
       ok: true,
@@ -184,10 +187,7 @@ async function handleCheckoutSessionCompleted(session) {
     };
   }
 
-  const orderId =
-    session.client_reference_id ||
-    session.metadata?.order_id ||
-    null;
+  const orderId = getOrderIdFromSession(session);
 
   if (!orderId) {
     throw new Error('Missing order_id on checkout session');
@@ -195,8 +195,13 @@ async function handleCheckoutSessionCompleted(session) {
 
   const order = await getOrderById(orderId);
 
-  // Idempotency guard:
-  // If already paid, do nothing and return success.
+  if (!order) {
+    throw new Error(`Order not found: ${orderId}`);
+  }
+
+  // =========================
+  // IDEMPOTENCY GUARD
+  // =========================
   if (order.status === 'paid') {
     return {
       ok: true,
@@ -205,7 +210,6 @@ async function handleCheckoutSessionCompleted(session) {
     };
   }
 
-  // Safety check: only pending orders should be fulfilled.
   if (order.status !== 'pending') {
     return {
       ok: true,
@@ -215,35 +219,59 @@ async function handleCheckoutSessionCompleted(session) {
     };
   }
 
-  // Optional consistency checks.
-  if (order.user_id && session.metadata?.user_id && String(order.user_id) !== String(session.metadata.user_id)) {
+  // =========================
+  // CONSISTENCY CHECKS
+  // =========================
+  if (
+    order.user_id &&
+    session.metadata?.user_id &&
+    String(order.user_id) !== String(session.metadata.user_id)
+  ) {
     throw new Error('Order user_id does not match session metadata user_id');
   }
 
-  // Prefer the stored total_votes_granted from the order snapshot.
+  if (
+    order.stripe_session_id &&
+    session.id &&
+    String(order.stripe_session_id) !== String(session.id)
+  ) {
+    throw new Error('Order stripe_session_id does not match webhook session.id');
+  }
+
+  if (
+    Number.isInteger(order.total_cents) &&
+    Number.isInteger(session.amount_total) &&
+    order.total_cents !== session.amount_total
+  ) {
+    throw new Error(
+      `Order total_cents (${order.total_cents}) does not match Stripe amount_total (${session.amount_total})`
+    );
+  }
+
   let votesToGrant = Number(order.total_votes_granted);
 
   if (!Number.isInteger(votesToGrant) || votesToGrant < 0) {
     votesToGrant = await getFallbackVotesGranted(order.id);
   }
 
-  // First, atomically move the order from pending -> paid.
-  // If this succeeds once, later retries will hit the idempotency guard above.
+  // =========================
+  // FULFILL ORDER
+  // =========================
+  // First move order from pending -> paid.
+  // This prevents retries from double-granting bonus votes.
   const paidOrder = await markOrderPaid(order.id, session.id);
 
-  // Then grant votes.
-  // Because the order status has already moved to paid, retries will not re-grant votes.
-  let newVoteBalance = null;
+  let newBonusVoteBalance = null;
 
   if (votesToGrant > 0) {
-    newVoteBalance = await addVotesToUser(order.user_id, votesToGrant);
+    newBonusVoteBalance = await addBonusVotesToUser(order.user_id, votesToGrant);
   }
 
   return {
     ok: true,
     order_id: paidOrder.id,
-    votes_granted: votesToGrant,
-    new_vote_balance: newVoteBalance
+    bonus_votes_granted: votesToGrant,
+    new_bonus_vote_balance: newBonusVoteBalance
   };
 }
 
@@ -255,10 +283,7 @@ async function handleCheckoutSessionExpired(session) {
     throw new Error('Invalid checkout session payload');
   }
 
-  const orderId =
-    session.client_reference_id ||
-    session.metadata?.order_id ||
-    null;
+  const orderId = getOrderIdFromSession(session);
 
   if (!orderId) {
     return {
@@ -270,7 +295,14 @@ async function handleCheckoutSessionExpired(session) {
 
   const order = await getOrderById(orderId);
 
-  // Only cancel pending orders.
+  if (!order) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: `Order not found for expired session: ${orderId}`
+    };
+  }
+
   if (order.status === 'pending') {
     await markOrderCanceled(orderId);
   }
@@ -322,13 +354,13 @@ exports.handler = async (event) => {
         });
       }
 
-      default:
-        // Acknowledge unhandled event types so Stripe does not keep retrying.
+      default: {
         return jsonResponse(200, {
           received: true,
           ignored: true,
           type: stripeEvent.type
         });
+      }
     }
   } catch (error) {
     console.error('stripe-webhook error:', error);
