@@ -5,6 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Shop | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    .shop-hero {
+      padding: 2rem 0 1rem;
+      text-align: center;
+    }
+
+    .shop-hero h1 {
+      margin-bottom: 0.75rem;
+    }
+
+    .shop-hero p {
+      max-width: 700px;
+      margin: 0 auto;
+      color: #555;
+    }
+
+    .shop-status-message {
+      text-align: center;
+      margin: 1rem 0 1.5rem;
+      min-height: 1.5rem;
+      font-weight: 500;
+    }
+
+    .shop-products-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      padding-bottom: 3rem;
+    }
+
+    .shop-product-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .shop-product-image,
+    .shop-product-image-placeholder {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      font-size: 0.95rem;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .shop-product-body {
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      flex: 1;
+    }
+
+    .shop-product-title {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .shop-product-description {
+      margin: 0;
+      color: #4b5563;
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .shop-product-price {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .shop-product-votes {
+      margin: 0;
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    .shop-buy-btn {
+      width: 100%;
+      margin-top: 0.25rem;
+    }
+
+    .shop-empty-state {
+      text-align: center;
+      padding: 2rem 1rem 3rem;
+      color: #6b7280;
+    }
+  </style>
 </head>
 <body>
 
@@ -13,7 +112,6 @@
     <div class="container header-container">
       <a href="/" class="logo">PROJECT LOGO</a>
 
-      <!-- Hamburger for mobile -->
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
@@ -44,17 +142,23 @@
 
   <!-- SHOP CONTENT -->
   <main class="container shop-container">
-    <h1>Shop</h1>
-    <p>Discover exclusive items and support the project while enjoying great products.</p>
+    <section class="shop-hero">
+      <h1>Shop</h1>
+      <p>
+        Support Celestial Comics with exclusive merch and project items.
+        Available products will appear below automatically.
+      </p>
+    </section>
 
-    <div class="shop-card">
-      <img src="/assets/images/product1.jpg" alt="Product 1" />
-      <h3>Crack</h3>
-      <p>LOTS of money</p>
+    <p id="shop-status-message" class="shop-status-message"></p>
 
-      <button id="buy-btn" type="button" class="btn btn-primary">Buy Now</button>
-      <a href="/shop/cancel.html" class="btn btn-secondary">Cancel Purchase</a>
-    </div>
+    <section
+      id="products-container"
+      class="shop-products-grid"
+      aria-live="polite"
+    >
+      <div class="shop-empty-state">Loading products...</div>
+    </section>
   </main>
 
   <!-- FOOTER -->
@@ -99,6 +203,5 @@
 
   <!-- ADMIN NAV LINK -->
   <script type="module" src="/js/admin-nav.js"></script>
-
 </body>
 </html>
