@@ -545,9 +545,25 @@
           </div>
 
           <div class="field-group">
-            <label for="product-image-url">Image URL</label>
+            <label for="product-image-file">Product Image Upload</label>
+            <input type="file" id="product-image-file" accept="image/*" />
+            <div class="action-row">
+              <button type="button" id="upload-product-image-btn" class="secondary-btn">
+                Upload Product Image
+              </button>
+            </div>
+            <p class="helper-text">
+              Create or select a product first, then upload an image. This is the recommended option.
+            </p>
+            <p id="product-image-upload-message" class="section-message"></p>
+          </div>
+
+          <div class="field-group">
+            <label for="product-image-url">Image URL (Optional Fallback)</label>
             <input type="text" id="product-image-url" placeholder="https://... or /assets/images/..." />
-            <p class="helper-text">Use a hosted image URL or a site-relative asset path.</p>
+            <p class="helper-text">
+              Use this only if you want to link an external image manually instead of uploading one.
+            </p>
             <img id="product-image-preview" class="product-image-preview" alt="Product image preview" />
           </div>
 

@@ -88,6 +88,11 @@ const productImageUrl = document.getElementById('product-image-url');
 const productImagePreview = document.getElementById('product-image-preview');
 const productActive = document.getElementById('product-active');
 
+// Product image upload UI
+const productImageFile = document.getElementById('product-image-file');
+const uploadProductImageBtn = document.getElementById('upload-product-image-btn');
+const productImageUploadMessage = document.getElementById('product-image-upload-message');
+
 // =========================
 // SHARED STATE
 // =========================
@@ -1420,6 +1425,15 @@ function clearProductForm() {
     productStatusMsg.style.color = '';
   }
 
+  if (productImageUploadMessage) {
+    productImageUploadMessage.textContent = '';
+    productImageUploadMessage.style.color = '';
+  }
+
+  if (productImageFile) {
+    productImageFile.value = '';
+  }
+
   updatePreviewImage(productImagePreview, '');
 }
 
@@ -1441,6 +1455,15 @@ function populateProductForm(product) {
   if (productStatusMsg) {
     productStatusMsg.textContent = 'Editing existing product.';
     productStatusMsg.style.color = '#2563eb';
+  }
+
+  if (productImageUploadMessage) {
+    productImageUploadMessage.textContent = '';
+    productImageUploadMessage.style.color = '';
+  }
+
+  if (productImageFile) {
+    productImageFile.value = '';
   }
 
   if (saveProductBtn) {
@@ -1556,6 +1579,102 @@ function handleProductSelectChange() {
 // =========================
 function handleProductImageUrlInput() {
   updatePreviewImage(productImagePreview, productImageUrl?.value || '');
+}
+
+// =========================
+// PRODUCT IMAGE UPLOAD HANDLER
+// =========================
+async function handleProductImageUpload() {
+  try {
+    if (productImageUploadMessage) {
+      productImageUploadMessage.textContent = '';
+      productImageUploadMessage.style.color = '';
+    }
+
+    if (!editingProductId) {
+      throw new Error('Create or select a product before uploading an image.');
+    }
+
+    const file = productImageFile?.files?.[0];
+    if (!file) {
+      throw new Error('Please choose an image file first.');
+    }
+
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
+
+    uploadProductImageBtn.disabled = true;
+    uploadProductImageBtn.textContent = 'Uploading...';
+
+    const file_base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const result = String(reader.result || '');
+          resolve(result.split(',')[1]);
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch('/.netlify/functions/upload-product-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        product_id: editingProductId,
+        file_name: file.name,
+        file_type: file.type,
+        file_base64
+      })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to upload product image');
+    }
+
+    if (productImageUploadMessage) {
+      productImageUploadMessage.textContent = 'Product image uploaded successfully!';
+      productImageUploadMessage.style.color = 'green';
+    }
+
+    if (result.image_url) {
+      productImageUrl.value = result.image_url;
+      updatePreviewImage(productImagePreview, result.image_url);
+    }
+
+    productImageFile.value = '';
+    await loadProductsPreview();
+
+    const refreshedProduct = allProducts.find((product) => String(product.id) === String(editingProductId));
+    if (refreshedProduct) {
+      populateProductForm(refreshedProduct);
+      if (productSelect) productSelect.value = editingProductId;
+    }
+  } catch (err) {
+    console.error('Error uploading product image:', err);
+
+    if (productImageUploadMessage) {
+      productImageUploadMessage.textContent = err.message || 'Failed to upload product image.';
+      productImageUploadMessage.style.color = 'red';
+    }
+  } finally {
+    if (uploadProductImageBtn) {
+      uploadProductImageBtn.disabled = false;
+      uploadProductImageBtn.textContent = 'Upload Product Image';
+    }
+  }
 }
 
 // =========================
@@ -1814,6 +1933,7 @@ export async function initAdminPanel() {
   productSelect?.addEventListener('change', handleProductSelectChange);
   resetProductBtn?.addEventListener('click', clearProductForm);
   deactivateProductBtn?.addEventListener('click', handleDeactivateProduct);
+  uploadProductImageBtn?.addEventListener('click', handleProductImageUpload);
   productImageUrl?.addEventListener('input', handleProductImageUrlInput);
   productForm?.addEventListener('submit', handleProductSubmit);
 }
