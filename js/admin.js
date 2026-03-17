@@ -894,7 +894,8 @@ function renderUsersTable(users) {
     tr.innerHTML = `
       <td>${u.email}</td>
       <td class="role-cell">${u.role}</td>
-      <td class="vote-balance-cell">${u.vote_balance ?? 0}</td>
+      <td class="round-vote-balance-cell">${u.vote_balance ?? 0}</td>
+      <td class="bonus-vote-balance-cell">${u.bonus_vote_balance ?? 0}</td>
       <td>
         <select class="role-select">
           <option value="user" ${u.role === 'user' ? 'selected' : ''}>user</option>
@@ -904,8 +905,34 @@ function renderUsersTable(users) {
       </td>
       <td>
         <div class="compact-actions">
-          <button class="vote-adjust-btn" data-user-id="${u.id}" data-amount="1">+1 Vote</button>
-          <button class="vote-adjust-btn danger-btn" data-user-id="${u.id}" data-amount="-1">-1 Vote</button>
+          <button
+            class="vote-adjust-btn"
+            data-user-id="${u.id}"
+            data-amount="1"
+            data-type="round">
+            +1 Round
+          </button>
+          <button
+            class="vote-adjust-btn danger-btn"
+            data-user-id="${u.id}"
+            data-amount="-1"
+            data-type="round">
+            -1 Round
+          </button>
+          <button
+            class="vote-adjust-btn"
+            data-user-id="${u.id}"
+            data-amount="1"
+            data-type="bonus">
+            +1 Bonus
+          </button>
+          <button
+            class="vote-adjust-btn danger-btn"
+            data-user-id="${u.id}"
+            data-amount="-1"
+            data-type="bonus">
+            -1 Bonus
+          </button>
         </div>
       </td>
     `;
@@ -969,9 +996,15 @@ function attachUserTableListeners() {
     button.addEventListener('click', async () => {
       const userId = button.dataset.userId;
       const amount = Number(button.dataset.amount);
+      const type = String(button.dataset.type || 'round');
       const row = button.closest('tr');
-      const balanceCell = row.querySelector('.vote-balance-cell');
-      const originalText = amount > 0 ? '+1 Vote' : '-1 Vote';
+      const roundBalanceCell = row.querySelector('.round-vote-balance-cell');
+      const bonusBalanceCell = row.querySelector('.bonus-vote-balance-cell');
+
+      const originalText =
+        type === 'bonus'
+          ? (amount > 0 ? '+1 Bonus' : '-1 Bonus')
+          : (amount > 0 ? '+1 Round' : '-1 Round');
 
       try {
         button.disabled = true;
@@ -985,7 +1018,8 @@ function attachUserTableListeners() {
           },
           body: JSON.stringify({
             targetUserId: userId,
-            amount
+            amount,
+            type
           })
         });
 
@@ -995,7 +1029,14 @@ function attachUserTableListeners() {
           throw new Error(result.error || 'Failed to update vote balance');
         }
 
-        balanceCell.textContent = result.user.vote_balance;
+        if (roundBalanceCell) {
+          roundBalanceCell.textContent = result.user.vote_balance ?? 0;
+        }
+
+        if (bonusBalanceCell) {
+          bonusBalanceCell.textContent = result.user.bonus_vote_balance ?? 0;
+        }
+
         button.textContent = amount > 0 ? '+1 Added' : '-1 Removed';
 
         setTimeout(() => {

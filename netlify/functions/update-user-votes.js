@@ -25,6 +25,9 @@ export async function handler(event) {
   }
 
   try {
+    // =========================
+    // AUTH VALIDATION
+    // =========================
     const {
       data: { user },
       error: userError
@@ -37,6 +40,9 @@ export async function handler(event) {
       };
     }
 
+    // =========================
+    // ADMIN CHECK
+    // =========================
     const { data: requesterProfile, error: requesterError } = await supabase
       .from('profiles')
       .select('role')
@@ -52,18 +58,35 @@ export async function handler(event) {
       };
     }
 
-    const { targetUserId, amount } = JSON.parse(event.body || '{}');
+    // =========================
+    // INPUT VALIDATION
+    // =========================
+    const { targetUserId, amount, type } = JSON.parse(event.body || '{}');
 
     if (!targetUserId || typeof amount !== 'number') {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'targetUserId and numeric amount are required' })
+        body: JSON.stringify({
+          error: 'targetUserId and numeric amount are required'
+        })
       };
     }
 
+    if (!['round', 'bonus'].includes(type)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: 'type must be either "round" or "bonus"'
+        })
+      };
+    }
+
+    // =========================
+    // FETCH TARGET USER
+    // =========================
     const { data: targetProfile, error: targetError } = await supabase
       .from('profiles')
-      .select('vote_balance')
+      .select('vote_balance, bonus_vote_balance')
       .eq('id', targetUserId)
       .single();
 
@@ -74,14 +97,26 @@ export async function handler(event) {
       };
     }
 
-    const currentBalance = Number(targetProfile.vote_balance) || 0;
-    const newBalance = Math.max(0, currentBalance + amount);
+    let updatedFields = {};
 
+    if (type === 'round') {
+      const current = Number(targetProfile.vote_balance) || 0;
+      updatedFields.vote_balance = Math.max(0, current + amount);
+    }
+
+    if (type === 'bonus') {
+      const current = Number(targetProfile.bonus_vote_balance) || 0;
+      updatedFields.bonus_vote_balance = Math.max(0, current + amount);
+    }
+
+    // =========================
+    // UPDATE USER
+    // =========================
     const { data: updatedProfile, error: updateError } = await supabase
       .from('profiles')
-      .update({ vote_balance: newBalance })
+      .update(updatedFields)
       .eq('id', targetUserId)
-      .select('id, vote_balance')
+      .select('id, vote_balance, bonus_vote_balance')
       .single();
 
     if (updateError) throw updateError;
@@ -90,14 +125,18 @@ export async function handler(event) {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        user: updatedProfile
+        user: updatedProfile,
+        updated_type: type,
+        amount
       })
     };
   } catch (err) {
     console.error('update-user-votes error:', err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message || 'Server error' })
+      body: JSON.stringify({
+        error: err.message || 'Server error'
+      })
     };
   }
 }

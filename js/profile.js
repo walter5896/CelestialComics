@@ -6,7 +6,6 @@ import {
   fetchSavedStories,
   unsaveStory,
   renderStoriesForProfile,
-  attachRecantListeners,
   attachUnsaveListeners
 } from './vote.js';
 
@@ -31,9 +30,10 @@ if (
   throw new Error('Profile page missing required elements');
 }
 
-// =========================
-// PROFILE BALANCE HELPERS
-// =========================
+/* =======================
+   HELPERS
+======================= */
+
 function setVoteBalances(roundVotes = 0, bonusVotes = 0) {
   const safeRoundVotes = Number(roundVotes) || 0;
   const safeBonusVotes = Number(bonusVotes) || 0;
@@ -70,39 +70,84 @@ async function fetchVoteBalances() {
   );
 }
 
-/**
- * Fetch votes for the current user
- */
-async function fetchVotes() {
-  const user = getCurrentUser();
+async function fetchCurrentVotingPeriod() {
+  const { data, error } = await supabase
+    .from('voting_periods')
+    .select('id, start_time, end_time, closed_at, finalized_at')
+    .is('finalized_at', null)
+    .order('id', { ascending: false })
+    .limit(1);
 
-  if (!user) {
-    voteList.innerHTML = '';
-    noVotes.style.display = 'block';
-    return;
+  if (error) {
+    console.error('Error fetching current voting period:', error);
+    return null;
   }
+
+  return data?.[0] || null;
+}
+
+function isOpenVotingPeriod(period) {
+  if (!period) return false;
+  if (period.finalized_at) return false;
+  if (period.closed_at) return false;
+
+  const now = new Date();
+  const start = new Date(period.start_time);
+  const end = new Date(period.end_time);
+
+  return now >= start && now <= end;
+}
+
+/* =======================
+   CURRENT-ROUND VOTES ONLY
+======================= */
+
+async function fetchCurrentRoundVotes() {
+  const user = getCurrentUser();
+  if (!user) return [];
+
+  const currentPeriod = await fetchCurrentVotingPeriod();
+  if (!currentPeriod?.id) return [];
 
   const { data, error } = await supabase
     .from('votes')
     .select(`
       story_id,
-      created_at,
+      vote_count,
+      voting_period_id,
       stories (
         id,
-        title
+        title,
+        image_url,
+        cover_image_url,
+        author,
+        description
       )
     `)
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+    .eq('voting_period_id', currentPeriod.id)
+    .order('story_id', { ascending: true });
 
   if (error) {
-    console.error('Error fetching votes:', error);
-    voteList.innerHTML = '<li>Error loading votes. Please try again.</li>';
-    noVotes.style.display = 'none';
-    return;
+    console.error('Error fetching current-round votes:', error);
+    return [];
   }
 
-  if (!data || data.length === 0) {
+  return (data || []).map((row) => ({
+    story_id: row.story_id,
+    vote_count: Number(row.vote_count) || 0,
+    voting_period_id: row.voting_period_id,
+    story: row.stories || null
+  }));
+}
+
+async function fetchAndRenderVotes() {
+  const currentPeriod = await fetchCurrentVotingPeriod();
+  const roundIsOpen = isOpenVotingPeriod(currentPeriod);
+
+  const voteRows = await fetchCurrentRoundVotes();
+
+  if (!voteRows.length) {
     voteList.innerHTML = '';
     noVotes.style.display = 'block';
     return;
@@ -111,25 +156,29 @@ async function fetchVotes() {
   noVotes.style.display = 'none';
   voteList.innerHTML = '';
 
-  data.forEach((vote) => {
+  voteRows.forEach((voteRow) => {
     const li = document.createElement('li');
-    const title = vote.stories?.title || `Story #${vote.story_id}`;
-    const date = new Date(vote.created_at).toLocaleString();
+
+    const title = voteRow.story?.title || `Story #${voteRow.story_id}`;
+    const count = Number(voteRow.vote_count) || 0;
 
     li.innerHTML = `
-      <span>${title} (voted on ${date})</span>
-      <button class="recant-btn" data-story-id="${vote.story_id}">
-        Recant Vote
-      </button>
+      <span>${title} — You cast ${count} vote(s) this round</span>
+      ${
+        roundIsOpen
+          ? `<button class="recant-btn" data-story-id="${voteRow.story_id}">Recant 1 Vote</button>`
+          : `<button type="button" disabled>Round Closed</button>`
+      }
     `;
 
     voteList.appendChild(li);
   });
 }
 
-/**
- * Fetch and render saved stories
- */
+/* =======================
+   SAVED STORIES
+======================= */
+
 async function fetchAndRenderSavedStories() {
   const { success, data } = await fetchSavedStories();
 
@@ -147,30 +196,30 @@ async function fetchAndRenderSavedStories() {
     isSaved: true
   }));
 
-  // Keep container populated in a way compatible with current vote.js renderers
   renderStoriesForProfile([], storiesWithSavedFlag, null, 'my-saved-stories-container');
-
   attachUnsaveListeners('my-saved-stories-container');
 }
 
-/**
- * Initialize profile dashboard
- */
+/* =======================
+   INIT
+======================= */
+
 function initProfile() {
   fetchVoteBalances();
-  fetchVotes();
+  fetchAndRenderVotes();
   fetchAndRenderSavedStories();
 
   supabase.auth.onAuthStateChange(() => {
     fetchVoteBalances();
-    fetchVotes();
+    fetchAndRenderVotes();
     fetchAndRenderSavedStories();
   });
 }
 
-// =========================
-// GLOBAL CLICK HANDLER
-// =========================
+/* =======================
+   GLOBAL CLICK HANDLER
+======================= */
+
 document.addEventListener('click', async (e) => {
   if (!e.target.matches('.recant-btn')) return;
 
@@ -179,14 +228,14 @@ document.addEventListener('click', async (e) => {
 
   if (result.success) {
     alert('Vote recanted!');
-    fetchVotes();
     fetchVoteBalances();
+    fetchAndRenderVotes();
+  } else if (result.reason === 'voting_closed') {
+    alert('Voting is closed. You can no longer recant votes this round.');
+    fetchAndRenderVotes();
   } else {
     alert('Could not recant vote.');
   }
 });
 
-// =========================
-// INITIALIZE
-// =========================
 document.addEventListener('DOMContentLoaded', initProfile);

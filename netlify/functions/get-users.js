@@ -1,4 +1,4 @@
-// netlify/functions/get-users.js
+// /.netlify/functions/get-users.js
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -54,14 +54,22 @@ export async function handler(event) {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, role, vote_balance, created_at, updated_at")
+      .select(`
+        id,
+        email,
+        role,
+        vote_balance,
+        bonus_vote_balance,
+        created_at,
+        updated_at
+      `)
       .order("created_at", { ascending: true });
 
     if (error) throw error;
 
     return {
       statusCode: 200,
-      body: JSON.stringify(data),
+      body: JSON.stringify(data || []),
     };
   } catch (err) {
     console.error("Error fetching users:", err);
