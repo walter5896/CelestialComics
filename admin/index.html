@@ -371,7 +371,6 @@
         <button id="determine-winner-btn" type="button">Determine Winner</button>
       </div>
 
-      <!-- TIE RESOLUTION PANEL -->
       <div class="section-card" id="tie-resolution-panel" style="display:none; margin-top:1rem; margin-bottom:0;">
         <h3>Tie Resolution</h3>
         <p id="tie-resolution-message" class="section-message"></p>
@@ -388,7 +387,6 @@
         </div>
       </div>
 
-      <!-- LEGACY HIDDEN PREVIEW BLOCK -->
       <div id="winner-preview-panel" class="winner-preview-box" style="display:none;">
         <h3>Winner Preview</h3>
         <div id="winner-preview-content"></div>
@@ -443,6 +441,7 @@
           <input type="file" id="story-cover-file" accept="image/*" />
           <div class="action-row">
             <button type="button" id="upload-cover-btn" class="secondary-btn">Upload Cover Image</button>
+            <button type="button" id="delete-cover-btn" class="danger-btn" style="display:none;">Delete Cover Image</button>
           </div>
           <p class="helper-text">Create or select a story first, then upload its cover image.</p>
           <p id="cover-upload-message" class="section-message"></p>
@@ -473,7 +472,6 @@
         <div id="stories-preview" class="story-chip-list"></div>
       </div>
 
-      <!-- STORY PAGES MANAGER -->
       <div class="story-pages-section">
         <h3>Story Pages</h3>
         <p class="helper-text">Select or create a story first, then upload readable pages for it.</p>
@@ -548,9 +546,8 @@
             <label for="product-image-file">Product Image Upload</label>
             <input type="file" id="product-image-file" accept="image/*" />
             <div class="action-row">
-              <button type="button" id="upload-product-image-btn" class="secondary-btn">
-                Upload Product Image
-              </button>
+              <button type="button" id="upload-product-image-btn" class="secondary-btn">Upload Product Image</button>
+              <button type="button" id="delete-product-image-btn" class="danger-btn" style="display:none;">Delete Product Image</button>
             </div>
             <p class="helper-text">
               Create or select a product first, then upload an image. This is the recommended option.

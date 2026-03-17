@@ -56,9 +56,10 @@ const storyAuthor = document.getElementById('story-author');
 const storyDescription = document.getElementById('story-description');
 const storyActive = document.getElementById('story-active');
 
-// Cover image upload UI
+// Cover image UI
 const storyCoverFile = document.getElementById('story-cover-file');
 const uploadCoverBtn = document.getElementById('upload-cover-btn');
+const deleteCoverBtn = document.getElementById('delete-cover-btn');
 const coverUploadMessage = document.getElementById('cover-upload-message');
 const coverPreview = document.getElementById('cover-preview');
 
@@ -77,6 +78,7 @@ const productForm = document.getElementById('product-form');
 const saveProductBtn = document.getElementById('save-product-btn');
 const resetProductBtn = document.getElementById('reset-product-btn');
 const deactivateProductBtn = document.getElementById('deactivate-product-btn');
+const deleteProductImageBtn = document.getElementById('delete-product-image-btn');
 const productStatusMsg = document.getElementById('product-status-message');
 const productsPreview = document.getElementById('products-preview');
 
@@ -735,6 +737,7 @@ function clearStoryForm() {
   if (storyActive) storyActive.checked = true;
   if (saveStoryBtn) saveStoryBtn.textContent = 'Create Story';
   if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
+  if (deleteCoverBtn) deleteCoverBtn.style.display = 'none';
 
   if (storyMsg) {
     storyMsg.textContent = '';
@@ -771,6 +774,11 @@ async function populateStoryForm(story) {
 
   saveStoryBtn.textContent = 'Update Story';
   deleteStoryBtn.style.display = 'inline-block';
+
+  if (deleteCoverBtn) {
+    deleteCoverBtn.style.display = story.cover_image_url ? 'inline-block' : 'none';
+  }
+
   storyMsg.textContent = '';
   storyMsg.style.color = '';
 
@@ -784,7 +792,7 @@ async function loadStoriesPreview() {
   try {
     const { data: stories, error } = await supabase
       .from('stories')
-      .select('id, title, author, description, cover_image_url, active, created_at')
+      .select('id, title, author, description, cover_image_url, cover_image_path, active, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -834,7 +842,7 @@ async function loadStoryPages(storyId) {
 
     const { data: pages, error } = await supabase
       .from('story_pages')
-      .select('id, story_id, page_number, image_url, caption, created_at')
+      .select('id, story_id, page_number, image_url, image_path, caption, created_at')
       .eq('story_id', storyId)
       .order('page_number', { ascending: true });
 
@@ -1029,16 +1037,18 @@ async function handleCoverUpload() {
     uploadCoverBtn.disabled = true;
     uploadCoverBtn.textContent = 'Uploading...';
 
-    const reader = new FileReader();
     const file_base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
       reader.onload = () => {
         try {
-          const result = reader.result;
-          resolve(String(result).split(',')[1]);
+          const result = String(reader.result || '');
+          resolve(result.split(',')[1]);
         } catch (err) {
           reject(err);
         }
       };
+
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
@@ -1059,7 +1069,7 @@ async function handleCoverUpload() {
 
     const result = await parseJsonResponseSafely(res);
 
-    if (!res.ok) {
+    if (!res.ok || !result.success) {
       throw new Error(result.error || 'Failed to upload cover image');
     }
 
@@ -1070,12 +1080,17 @@ async function handleCoverUpload() {
       updatePreviewImage(coverPreview, result.cover_image_url);
     }
 
+    if (deleteCoverBtn) {
+      deleteCoverBtn.style.display = 'inline-block';
+    }
+
     storyCoverFile.value = '';
     await loadStoriesPreview();
 
-    if (editingStoryId) {
-      const refreshedStory = allStories.find((story) => story.id === editingStoryId);
-      if (refreshedStory) await populateStoryForm(refreshedStory);
+    const refreshedStory = allStories.find((story) => String(story.id) === String(editingStoryId));
+    if (refreshedStory) {
+      await populateStoryForm(refreshedStory);
+      if (storySelect) storySelect.value = editingStoryId;
     }
   } catch (err) {
     console.error('Error uploading cover image:', err);
@@ -1084,6 +1099,68 @@ async function handleCoverUpload() {
   } finally {
     uploadCoverBtn.disabled = false;
     uploadCoverBtn.textContent = 'Upload Cover Image';
+  }
+}
+
+// =========================
+// COVER IMAGE DELETE HANDLER
+// =========================
+async function handleDeleteCoverImage() {
+  try {
+    if (!editingStoryId) {
+      throw new Error('Select a story first.');
+    }
+
+    const confirmed = confirm('Delete this cover image?');
+    if (!confirmed) return;
+
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
+
+    deleteCoverBtn.disabled = true;
+    deleteCoverBtn.textContent = 'Deleting...';
+
+    const res = await fetch('/.netlify/functions/delete-story-cover', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        story_id: editingStoryId
+      })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to delete cover image');
+    }
+
+    coverUploadMessage.textContent = 'Cover image deleted successfully.';
+    coverUploadMessage.style.color = 'green';
+
+    updatePreviewImage(coverPreview, '');
+    if (storyCoverFile) storyCoverFile.value = '';
+
+    await loadStoriesPreview();
+
+    const refreshedStory = allStories.find((story) => String(story.id) === String(editingStoryId));
+    if (refreshedStory) {
+      await populateStoryForm(refreshedStory);
+      if (storySelect) storySelect.value = editingStoryId;
+    } else {
+      clearStoryForm();
+    }
+  } catch (err) {
+    console.error('Error deleting cover image:', err);
+    coverUploadMessage.textContent = err.message || 'Failed to delete cover image.';
+    coverUploadMessage.style.color = 'red';
+  } finally {
+    deleteCoverBtn.disabled = false;
+    deleteCoverBtn.textContent = 'Delete Cover Image';
   }
 }
 
@@ -1106,75 +1183,49 @@ async function handleStoryPageUpload(e) {
       throw new Error('Please choose a page image first.');
     }
 
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      throw new Error('You must be logged in as an admin.');
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
     }
 
     uploadStoryPageBtn.disabled = true;
     uploadStoryPageBtn.textContent = 'Uploading Page...';
 
-    const { data: lastPageRow, error: lastPageError } = await supabase
-      .from('story_pages')
-      .select('page_number')
-      .eq('story_id', editingStoryId)
-      .order('page_number', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const file_base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
 
-    if (lastPageError) {
-      throw lastPageError;
-    }
-
-    const nextPageNumber = lastPageRow ? Number(lastPageRow.page_number) + 1 : 1;
-
-    const extension = file.name.includes('.')
-      ? file.name.split('.').pop().toLowerCase()
-      : 'png';
-
-    const safeExtension = extension.replace(/[^a-z0-9]/g, '') || 'png';
-    const storagePath = `${editingStoryId}/page-${nextPageNumber}-${Date.now()}.${safeExtension}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('story-pages')
-      .upload(storagePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type
-      });
-
-    if (uploadError) {
-      throw uploadError;
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from('story-pages')
-      .getPublicUrl(storagePath);
-
-    const publicUrl = publicUrlData?.publicUrl;
-    if (!publicUrl) {
-      throw new Error('Failed to generate page URL.');
-    }
-
-    const caption = storyPageCaption.value.trim() || null;
-
-    const { error: insertError } = await supabase
-      .from('story_pages')
-      .insert([
-        {
-          story_id: editingStoryId,
-          page_number: nextPageNumber,
-          image_url: publicUrl,
-          caption
+      reader.onload = () => {
+        try {
+          const result = String(reader.result || '');
+          resolve(result.split(',')[1]);
+        } catch (err) {
+          reject(err);
         }
-      ]);
+      };
 
-    if (insertError) {
-      throw insertError;
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch('/.netlify/functions/upload-story-page', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        story_id: editingStoryId,
+        file_name: file.name,
+        file_type: file.type,
+        file_base64,
+        caption: storyPageCaption.value.trim() || null
+      })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to upload story page');
     }
 
     storyPageStatusMsg.textContent = 'Story page uploaded successfully!';
@@ -1224,7 +1275,7 @@ function attachStoryPageDeleteListeners() {
 
         const result = await parseJsonResponseSafely(res);
 
-        if (!res.ok) {
+        if (!res.ok || !result.success) {
           throw new Error(result.error || 'Failed to delete story page');
         }
 
@@ -1245,7 +1296,7 @@ function attachStoryPageDeleteListeners() {
 async function handleDeleteStory() {
   if (!editingStoryId) return;
 
-  const confirmed = confirm('Are you sure you want to delete this story? This will also delete its story pages.');
+  const confirmed = confirm('Are you sure you want to delete this story? This will also delete its story pages and cover image.');
   if (!confirmed) return;
 
   try {
@@ -1266,7 +1317,7 @@ async function handleDeleteStory() {
 
     const result = await parseJsonResponseSafely(res);
 
-    if (!res.ok) {
+    if (!res.ok || !result.success) {
       throw new Error(result.error || 'Failed to delete story');
     }
 
@@ -1420,6 +1471,10 @@ function clearProductForm() {
     deactivateProductBtn.style.display = 'none';
   }
 
+  if (deleteProductImageBtn) {
+    deleteProductImageBtn.style.display = 'none';
+  }
+
   if (productStatusMsg) {
     productStatusMsg.textContent = '';
     productStatusMsg.style.color = '';
@@ -1474,6 +1529,10 @@ function populateProductForm(product) {
   if (deactivateProductBtn) {
     deactivateProductBtn.style.display = 'inline-block';
   }
+
+  if (deleteProductImageBtn) {
+    deleteProductImageBtn.style.display = product.image_url ? 'inline-block' : 'none';
+  }
 }
 
 // =========================
@@ -1525,6 +1584,7 @@ async function loadProductsPreview() {
         stripe_product_id,
         stripe_price_id,
         image_url,
+        image_path,
         active,
         votes_granted,
         created_at,
@@ -1654,6 +1714,10 @@ async function handleProductImageUpload() {
       updatePreviewImage(productImagePreview, result.image_url);
     }
 
+    if (deleteProductImageBtn) {
+      deleteProductImageBtn.style.display = 'inline-block';
+    }
+
     productImageFile.value = '';
     await loadProductsPreview();
 
@@ -1674,6 +1738,74 @@ async function handleProductImageUpload() {
       uploadProductImageBtn.disabled = false;
       uploadProductImageBtn.textContent = 'Upload Product Image';
     }
+  }
+}
+
+// =========================
+// PRODUCT IMAGE DELETE HANDLER
+// =========================
+async function handleDeleteProductImage() {
+  try {
+    if (!editingProductId) {
+      throw new Error('Select a product first.');
+    }
+
+    const confirmed = confirm('Delete this product image?');
+    if (!confirmed) return;
+
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
+
+    deleteProductImageBtn.disabled = true;
+    deleteProductImageBtn.textContent = 'Deleting...';
+
+    const res = await fetch('/.netlify/functions/delete-product-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        product_id: editingProductId
+      })
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to delete product image');
+    }
+
+    if (productImageUploadMessage) {
+      productImageUploadMessage.textContent = 'Product image deleted successfully.';
+      productImageUploadMessage.style.color = 'green';
+    }
+
+    productImageUrl.value = '';
+    updatePreviewImage(productImagePreview, '');
+    if (productImageFile) productImageFile.value = '';
+
+    await loadProductsPreview();
+
+    const refreshedProduct = allProducts.find((product) => String(product.id) === String(editingProductId));
+    if (refreshedProduct) {
+      populateProductForm(refreshedProduct);
+      if (productSelect) productSelect.value = editingProductId;
+    } else {
+      clearProductForm();
+    }
+  } catch (err) {
+    console.error('Error deleting product image:', err);
+
+    if (productImageUploadMessage) {
+      productImageUploadMessage.textContent = err.message || 'Failed to delete product image.';
+      productImageUploadMessage.style.color = 'red';
+    }
+  } finally {
+    deleteProductImageBtn.disabled = false;
+    deleteProductImageBtn.textContent = 'Delete Product Image';
   }
 }
 
@@ -1854,10 +1986,8 @@ async function handleDeactivateProduct() {
     productStatusMsg.textContent = err.message || 'Failed to deactivate product.';
     productStatusMsg.style.color = 'red';
   } finally {
-    if (deactivateProductBtn) {
-      deactivateProductBtn.disabled = false;
-      deactivateProductBtn.textContent = 'Deactivate Product';
-    }
+    deactivateProductBtn.disabled = false;
+    deactivateProductBtn.textContent = 'Deactivate Product';
   }
 }
 
@@ -1926,6 +2056,7 @@ export async function initAdminPanel() {
   storySelect?.addEventListener('change', handleStorySelectChange);
   resetStoryBtn?.addEventListener('click', clearStoryForm);
   uploadCoverBtn?.addEventListener('click', handleCoverUpload);
+  deleteCoverBtn?.addEventListener('click', handleDeleteCoverImage);
   deleteStoryBtn?.addEventListener('click', handleDeleteStory);
   storyForm?.addEventListener('submit', handleStorySubmit);
   storyPageForm?.addEventListener('submit', handleStoryPageUpload);
@@ -1934,6 +2065,7 @@ export async function initAdminPanel() {
   resetProductBtn?.addEventListener('click', clearProductForm);
   deactivateProductBtn?.addEventListener('click', handleDeactivateProduct);
   uploadProductImageBtn?.addEventListener('click', handleProductImageUpload);
+  deleteProductImageBtn?.addEventListener('click', handleDeleteProductImage);
   productImageUrl?.addEventListener('input', handleProductImageUrlInput);
   productForm?.addEventListener('submit', handleProductSubmit);
 }

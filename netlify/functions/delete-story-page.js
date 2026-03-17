@@ -6,46 +6,38 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-function extractStoragePathFromPublicUrl(publicUrl) {
-  if (!publicUrl) return null;
+const STORY_PAGES_BUCKET = 'story-pages';
 
-  const marker = '/storage/v1/object/public/story-pages/';
-  const idx = publicUrl.indexOf(marker);
-
-  if (idx === -1) return null;
-
-  return publicUrl.substring(idx + marker.length);
+function jsonResponse(statusCode, payload) {
+  return {
+    statusCode,
+    body: JSON.stringify(payload)
+  };
 }
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+    return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   const authHeader = event.headers.authorization || event.headers.Authorization;
-  const token = authHeader?.replace('Bearer ', '');
+  const token = authHeader?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
-    return {
-      statusCode: 401,
-      body: JSON.stringify({ error: 'Missing auth token' })
-    };
+    return jsonResponse(401, { error: 'Missing auth token' });
   }
 
   try {
+    // =========================
+    // AUTH
+    // =========================
     const {
       data: { user },
       error: userError
     } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ error: 'Invalid user token' })
-      };
+      return jsonResponse(401, { error: 'Invalid user token' });
     }
 
     const { data: profile, error: profileError } = await supabase
@@ -57,49 +49,47 @@ export async function handler(event) {
     if (profileError) throw profileError;
 
     if (!profile || profile.role !== 'admin') {
-      return {
-        statusCode: 403,
-        body: JSON.stringify({ error: 'Admin access required' })
-      };
+      return jsonResponse(403, { error: 'Admin access required' });
     }
 
+    // =========================
+    // INPUT
+    // =========================
     const { page_id } = JSON.parse(event.body || '{}');
 
     if (!page_id) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'page_id is required' })
-      };
+      return jsonResponse(400, { error: 'page_id is required' });
     }
 
-    // First fetch the page so we know which storage file to delete
+    // =========================
+    // LOAD PAGE ROW
+    // =========================
     const { data: pageRow, error: pageLookupError } = await supabase
       .from('story_pages')
-      .select('id, image_url')
+      .select('id, image_url, image_path')
       .eq('id', page_id)
       .single();
 
     if (pageLookupError || !pageRow) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: 'Story page not found' })
-      };
+      return jsonResponse(404, { error: 'Story page not found' });
     }
 
-    // Delete storage object if we can derive the path
-    const storagePath = extractStoragePathFromPublicUrl(pageRow.image_url);
-
-    if (storagePath) {
+    // =========================
+    // DELETE STORAGE OBJECT
+    // =========================
+    if (pageRow.image_path) {
       const { error: storageDeleteError } = await supabase.storage
-        .from('story-pages')
-        .remove([storagePath]);
+        .from(STORY_PAGES_BUCKET)
+        .remove([pageRow.image_path]);
 
       if (storageDeleteError) {
         throw storageDeleteError;
       }
     }
 
-    // Then delete DB row
+    // =========================
+    // DELETE DB ROW
+    // =========================
     const { error: deleteRowError } = await supabase
       .from('story_pages')
       .delete()
@@ -107,15 +97,15 @@ export async function handler(event) {
 
     if (deleteRowError) throw deleteRowError;
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true })
-    };
+    return jsonResponse(200, {
+      success: true,
+      message: 'Story page deleted successfully.'
+    });
   } catch (err) {
     console.error('delete-story-page error:', err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message || 'Server error' })
-    };
+
+    return jsonResponse(500, {
+      error: err.message || 'Server error'
+    });
   }
 }

@@ -25,8 +25,7 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/gif'
 ]);
 
-// 5 MB
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 // =========================
 // HELPERS
@@ -118,6 +117,8 @@ exports.handler = async (event) => {
     return buildJsonResponse(401, { error: 'Missing auth token' });
   }
 
+  let newlyUploadedPath = null;
+
   try {
     // =========================
     // AUTH / ADMIN CHECK
@@ -166,7 +167,7 @@ exports.handler = async (event) => {
     // =========================
     const { data: existingProduct, error: fetchError } = await supabase
       .from('products')
-      .select('id, name, image_url')
+      .select('id, name, image_url, image_path')
       .eq('id', product_id)
       .single();
 
@@ -196,6 +197,7 @@ exports.handler = async (event) => {
     const extension = getFileExtension(safeFileName, file_type);
     const timestamp = Date.now();
     const storagePath = `${product_id}/product-${timestamp}.${extension}`;
+    newlyUploadedPath = storagePath;
 
     // =========================
     // UPLOAD TO STORAGE
@@ -232,6 +234,7 @@ exports.handler = async (event) => {
       .from('products')
       .update({
         image_url: publicUrl,
+        image_path: storagePath,
         updated_at: new Date().toISOString()
       })
       .eq('id', product_id)
@@ -242,14 +245,47 @@ exports.handler = async (event) => {
       throw updateError;
     }
 
+    // =========================
+    // DELETE OLD IMAGE (BEST EFFORT)
+    // =========================
+    // Only remove after DB update succeeds, and only if the old path exists
+    // and is different from the new one.
+    if (
+      existingProduct.image_path &&
+      existingProduct.image_path !== storagePath
+    ) {
+      try {
+        await supabase.storage
+          .from(PRODUCT_IMAGES_BUCKET)
+          .remove([existingProduct.image_path]);
+      } catch (cleanupError) {
+        console.error('upload-product-image cleanup warning:', cleanupError);
+      }
+    }
+
     return buildJsonResponse(200, {
       success: true,
       message: 'Product image uploaded successfully.',
       image_url: publicUrl,
+      image_path: storagePath,
       product: updatedProduct
     });
   } catch (error) {
     console.error('upload-product-image error:', error);
+
+    // =========================
+    // BEST-EFFORT ROLLBACK
+    // =========================
+    // If upload succeeded but DB update failed, remove the newly uploaded file.
+    if (newlyUploadedPath) {
+      try {
+        await supabase.storage
+          .from(PRODUCT_IMAGES_BUCKET)
+          .remove([newlyUploadedPath]);
+      } catch (rollbackError) {
+        console.error('upload-product-image rollback warning:', rollbackError);
+      }
+    }
 
     return buildJsonResponse(500, {
       error: error.message || 'Server error'
