@@ -1439,17 +1439,17 @@ function populateProductForm(product) {
   updatePreviewImage(productImagePreview, product.image_url || '');
 
   if (productStatusMsg) {
-    productStatusMsg.textContent = 'Product editing is not wired yet. Reset the form to create a new product.';
-    productStatusMsg.style.color = '#b45309';
+    productStatusMsg.textContent = 'Editing existing product.';
+    productStatusMsg.style.color = '#2563eb';
   }
 
   if (saveProductBtn) {
-    saveProductBtn.disabled = true;
-    saveProductBtn.textContent = 'Update Product (coming next)';
+    saveProductBtn.disabled = false;
+    saveProductBtn.textContent = 'Update Product';
   }
 
   if (deactivateProductBtn) {
-    deactivateProductBtn.style.display = 'none';
+    deactivateProductBtn.style.display = 'inline-block';
   }
 }
 
@@ -1559,16 +1559,10 @@ function handleProductImageUrlInput() {
 }
 
 // =========================
-// PRODUCT CREATE HANDLER
+// PRODUCT SUBMIT HANDLER
 // =========================
 async function handleProductSubmit(e) {
   e.preventDefault();
-
-  if (editingProductId) {
-    productStatusMsg.textContent = 'Product updates are not wired yet. Reset the form to create a new product.';
-    productStatusMsg.style.color = '#b45309';
-    return;
-  }
 
   productStatusMsg.textContent = '';
   productStatusMsg.style.color = '';
@@ -1602,44 +1596,148 @@ async function handleProductSubmit(e) {
       throw new Error('Bonus votes must be 0 or greater.');
     }
 
-    saveProductBtn.disabled = true;
-    saveProductBtn.textContent = 'Creating...';
+    const isEditing = !!editingProductId;
 
-    const res = await fetch('/.netlify/functions/create-product', {
+    saveProductBtn.disabled = true;
+    saveProductBtn.textContent = isEditing ? 'Updating...' : 'Creating...';
+
+    const endpoint = isEditing
+      ? '/.netlify/functions/update-product'
+      : '/.netlify/functions/create-product';
+
+    const payload = isEditing
+      ? {
+          product_id: editingProductId,
+          name,
+          description,
+          image_url,
+          active,
+          price_cents,
+          votes_granted
+        }
+      : {
+          name,
+          description,
+          image_url,
+          active,
+          price_cents,
+          votes_granted
+        };
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || (isEditing ? 'Failed to update product' : 'Failed to create product'));
+    }
+
+    productStatusMsg.textContent = isEditing
+      ? 'Product updated successfully!'
+      : 'Product created successfully!';
+    productStatusMsg.style.color = 'green';
+
+    const savedProductId = result.product?.id || editingProductId || null;
+
+    await loadProductsPreview();
+
+    if (savedProductId) {
+      const refreshedProduct = allProducts.find((product) => String(product.id) === String(savedProductId));
+
+      if (refreshedProduct) {
+        populateProductForm(refreshedProduct);
+        if (productSelect) productSelect.value = savedProductId;
+      } else {
+        clearProductForm();
+      }
+    } else {
+      clearProductForm();
+    }
+  } catch (err) {
+    console.error('Error saving product:', err);
+    productStatusMsg.textContent = err.message || 'Failed to save product.';
+    productStatusMsg.style.color = 'red';
+  } finally {
+    if (saveProductBtn) {
+      saveProductBtn.disabled = false;
+      saveProductBtn.textContent = editingProductId ? 'Update Product' : 'Create Product';
+    }
+  }
+}
+
+// =========================
+// PRODUCT DEACTIVATE HANDLER
+// =========================
+async function handleDeactivateProduct() {
+  if (!editingProductId) return;
+
+  const confirmed = confirm('Deactivate this product? It will remain in the database but no longer be available for sale.');
+  if (!confirmed) return;
+
+  try {
+    const token = await getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
+
+    const existingProduct = allProducts.find((product) => String(product.id) === String(editingProductId));
+    if (!existingProduct) {
+      throw new Error('Product not found in current admin state.');
+    }
+
+    deactivateProductBtn.disabled = true;
+    deactivateProductBtn.textContent = 'Deactivating...';
+
+    const res = await fetch('/.netlify/functions/update-product', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
-        name,
-        description,
-        image_url,
-        active,
-        price_cents,
-        votes_granted
+        product_id: editingProductId,
+        name: existingProduct.name,
+        description: existingProduct.description,
+        image_url: existingProduct.image_url,
+        active: false,
+        price_cents: existingProduct.price_cents,
+        votes_granted: existingProduct.votes_granted
       })
     });
 
     const result = await parseJsonResponseSafely(res);
 
     if (!res.ok || !result.success) {
-      throw new Error(result.error || 'Failed to create product');
+      throw new Error(result.error || 'Failed to deactivate product');
     }
 
-    productStatusMsg.textContent = 'Product created successfully!';
+    productStatusMsg.textContent = 'Product deactivated successfully.';
     productStatusMsg.style.color = 'green';
 
-    clearProductForm();
     await loadProductsPreview();
+
+    const refreshedProduct = allProducts.find((product) => String(product.id) === String(editingProductId));
+    if (refreshedProduct) {
+      populateProductForm(refreshedProduct);
+      if (productSelect) productSelect.value = editingProductId;
+    } else {
+      clearProductForm();
+    }
   } catch (err) {
-    console.error('Error creating product:', err);
-    productStatusMsg.textContent = err.message || 'Failed to create product.';
+    console.error('Error deactivating product:', err);
+    productStatusMsg.textContent = err.message || 'Failed to deactivate product.';
     productStatusMsg.style.color = 'red';
   } finally {
-    if (saveProductBtn) {
-      saveProductBtn.disabled = false;
-      saveProductBtn.textContent = editingProductId ? 'Update Product (coming next)' : 'Create Product';
+    if (deactivateProductBtn) {
+      deactivateProductBtn.disabled = false;
+      deactivateProductBtn.textContent = 'Deactivate Product';
     }
   }
 }
@@ -1715,6 +1813,7 @@ export async function initAdminPanel() {
 
   productSelect?.addEventListener('change', handleProductSelectChange);
   resetProductBtn?.addEventListener('click', clearProductForm);
+  deactivateProductBtn?.addEventListener('click', handleDeactivateProduct);
   productImageUrl?.addEventListener('input', handleProductImageUrlInput);
   productForm?.addEventListener('submit', handleProductSubmit);
 }
