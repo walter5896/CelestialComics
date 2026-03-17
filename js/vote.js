@@ -6,11 +6,6 @@ import { getCurrentUserAsync } from './auth.js';
    VOTING PERIOD HELPERS
 ======================= */
 
-// Determine whether a round is effectively closed.
-// A round is closed if:
-// - it has been finalized
-// - it has a manual closed_at timestamp
-// - or its scheduled end_time has already passed
 function isEffectivelyClosed(period) {
   if (!period) return true;
   if (period.finalized_at) return true;
@@ -22,11 +17,6 @@ function isEffectivelyClosed(period) {
   return now > end;
 }
 
-// Determine whether a round should be treated as open for public voting.
-// A round is open only if:
-// - it is not finalized
-// - it has not been manually closed
-// - the current time is between start_time and end_time
 function isEffectivelyOpen(period) {
   if (!period) return false;
   if (period.finalized_at) return false;
@@ -39,8 +29,6 @@ function isEffectivelyOpen(period) {
   return now >= start && now <= end;
 }
 
-// Fetch the latest unfinalized voting period.
-// This is the round the public voting UI should care about.
 async function fetchCurrentVotingPeriod() {
   const { data, error } = await supabase
     .from('voting_periods')
@@ -66,7 +54,6 @@ async function fetchCurrentVotingPeriod() {
   return data?.[0] || null;
 }
 
-// Fetch the currently open voting period for vote submission/recant logic.
 async function fetchOpenVotingPeriod() {
   const { data, error } = await supabase
     .from('voting_periods')
@@ -92,8 +79,6 @@ async function fetchOpenVotingPeriod() {
   return periods.find(isEffectivelyOpen) || null;
 }
 
-// Derive the public voting state for the current round.
-// Respect finalized_at and closed_at first, then fall back to status/date math.
 function deriveVotingStatus(period) {
   if (!period) return 'closed';
   if (period.finalized_at) return 'closed';
@@ -109,12 +94,68 @@ function deriveVotingStatus(period) {
 }
 
 /* =======================
+   PROFILE / BALANCE HELPERS
+======================= */
+
+async function fetchUserProfileBalances() {
+  const user = await getCurrentUserAsync();
+  if (!user) {
+    return {
+      round: 0,
+      bonus: 0,
+      total: 0
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('vote_balance, bonus_vote_balance')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching user balances:', error);
+    return {
+      round: 0,
+      bonus: 0,
+      total: 0
+    };
+  }
+
+  const round = Number(data?.vote_balance) || 0;
+  const bonus = Number(data?.bonus_vote_balance) || 0;
+
+  return {
+    round,
+    bonus,
+    total: round + bonus
+  };
+}
+
+async function updateUserProfileBalances(userId, roundVotes, bonusVotes) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      vote_balance: roundVotes,
+      bonus_vote_balance: bonusVotes
+    })
+    .eq('id', userId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+function getStoryImage(story) {
+  return story.cover_image_url || story.image_url || '';
+}
+
+/* =======================
    FETCH FUNCTIONS
 ======================= */
 
 export async function fetchStoriesWithVotes() {
   try {
-    // Use the latest UNFINALIZED round as the current round.
     const currentPeriod = await fetchCurrentVotingPeriod();
     const currentVotingStatus = deriveVotingStatus(currentPeriod);
     const currentVotingPeriodId = currentPeriod?.id || null;
@@ -131,8 +172,7 @@ export async function fetchStoriesWithVotes() {
     if (currentVotingPeriodId) {
       votesQuery = votesQuery.eq('voting_period_id', currentVotingPeriodId);
     } else {
-      // No active round means no visible current-round votes.
-      return (stories || []).map(story => ({
+      return (stories || []).map((story) => ({
         ...story,
         vote_count: 0,
         voting_status: 'closed'
@@ -150,7 +190,7 @@ export async function fetchStoriesWithVotes() {
       return acc;
     }, {});
 
-    return (stories || []).map(story => ({
+    return (stories || []).map((story) => ({
       ...story,
       vote_count: voteCounts[String(story.id)] || 0,
       voting_status: currentVotingStatus
@@ -187,7 +227,7 @@ export async function fetchUserVotes() {
       return [];
     }
 
-    return (data || []).map(v => ({
+    return (data || []).map((v) => ({
       story_id: String(v.story_id),
       vote_count: Number(v.vote_count) || 0,
       voting_period_id: v.voting_period_id
@@ -199,21 +239,12 @@ export async function fetchUserVotes() {
 }
 
 export async function fetchUserVoteBalance() {
-  const user = await getCurrentUserAsync();
-  if (!user) return 0;
+  const balances = await fetchUserProfileBalances();
+  return balances.round;
+}
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('vote_balance')
-    .eq('id', user.id)
-    .single();
-
-  if (error) {
-    console.error('Error fetching vote balance:', error);
-    return 0;
-  }
-
-  return Number(data?.vote_balance) || 0;
+export async function fetchUserVoteBalances() {
+  return await fetchUserProfileBalances();
 }
 
 export async function fetchSavedStories() {
@@ -231,7 +262,7 @@ export async function fetchSavedStories() {
     return { success: false, data: [] };
   }
 
-  const stories = (data || []).map(item => item.stories).filter(Boolean);
+  const stories = (data || []).map((item) => item.stories).filter(Boolean);
   return { success: true, data: stories };
 }
 
@@ -258,13 +289,14 @@ export async function submitVote(storyId, amount = 1) {
     return { success: false, reason: 'invalid_amount' };
   }
 
-  const currentBalance = await fetchUserVoteBalance();
-  if (currentBalance < voteAmount) {
-    alert(`You do not have enough votes. Remaining votes: ${currentBalance}`);
+  const balances = await fetchUserProfileBalances();
+
+  if (balances.total < voteAmount) {
+    alert(`You do not have enough votes. Total available votes: ${balances.total}`);
     return {
       success: false,
       reason: 'insufficient_balance',
-      balance: currentBalance
+      balance: balances.total
     };
   }
 
@@ -311,22 +343,26 @@ export async function submitVote(storyId, amount = 1) {
     }
   }
 
-  const newBalance = currentBalance - voteAmount;
+  // Spend round votes first, then bonus votes
+  const roundToSpend = Math.min(balances.round, voteAmount);
+  const bonusToSpend = voteAmount - roundToSpend;
 
-  const { error: balanceError } = await supabase
-    .from('profiles')
-    .update({ vote_balance: newBalance })
-    .eq('id', user.id);
+  const newRoundBalance = balances.round - roundToSpend;
+  const newBonusBalance = balances.bonus - bonusToSpend;
 
-  if (balanceError) {
-    console.error('Error updating vote balance:', balanceError);
+  try {
+    await updateUserProfileBalances(user.id, newRoundBalance, newBonusBalance);
+  } catch (balanceError) {
+    console.error('Error updating vote balances:', balanceError);
     return { success: false, reason: 'balance_update_failed' };
   }
 
   return {
     success: true,
     amount: voteAmount,
-    balance: newBalance,
+    round_balance: newRoundBalance,
+    bonus_balance: newBonusBalance,
+    total_balance: newRoundBalance + newBonusBalance,
     voting_period_id: votingPeriodId
   };
 }
@@ -395,23 +431,28 @@ export async function recantVote(storyId, amount = 1) {
     }
   }
 
-  const currentBalance = await fetchUserVoteBalance();
-  const newBalance = currentBalance + recantAmount;
+  const balances = await fetchUserProfileBalances();
 
-  const { error: balanceError } = await supabase
-    .from('profiles')
-    .update({ vote_balance: newBalance })
-    .eq('id', user.id);
+  // Refund bonus first, then round
+  const bonusToRefund = Math.min(recantAmount, balances.bonus);
+  const roundToRefund = recantAmount - bonusToRefund;
 
-  if (balanceError) {
-    console.error('Error restoring vote balance:', balanceError);
+  const newRoundBalance = balances.round + roundToRefund;
+  const newBonusBalance = balances.bonus + bonusToRefund;
+
+  try {
+    await updateUserProfileBalances(user.id, newRoundBalance, newBonusBalance);
+  } catch (balanceError) {
+    console.error('Error restoring vote balances:', balanceError);
     return { success: false, reason: 'balance_update_failed' };
   }
 
   return {
     success: true,
     amount: recantAmount,
-    balance: newBalance,
+    round_balance: newRoundBalance,
+    bonus_balance: newBonusBalance,
+    total_balance: newRoundBalance + newBonusBalance,
     voting_period_id: votingPeriodId
   };
 }
@@ -458,17 +499,13 @@ export async function unsaveStory(storyId) {
    RENDERERS
 ======================= */
 
-function getStoryImage(story) {
-  return story.cover_image_url || story.image_url || '';
-}
-
 export function renderStoriesForHome(stories, containerId = 'story-grid') {
   const container = document.getElementById(containerId);
   if (!container) return;
 
   container.innerHTML = '';
 
-  stories.forEach(story => {
+  stories.forEach((story) => {
     const card = document.createElement('article');
     card.className = 'story-card';
     card.innerHTML = `
@@ -488,7 +525,7 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
 
   container.innerHTML = '';
 
-  stories.forEach(story => {
+  stories.forEach((story) => {
     const card = document.createElement('article');
     card.className = 'story-card';
     card.innerHTML = `
@@ -508,7 +545,7 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
 
   container.innerHTML = '';
 
-  stories.forEach(story => {
+  stories.forEach((story) => {
     const card = document.createElement('article');
     card.className = 'story-card';
     const voteCount = Number(story.vote_count) || 0;
@@ -532,13 +569,13 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
 }
 
 export function renderStoriesForProfile(votedStories, savedStories, votedContainerId, savedContainerId) {
-  const votedContainer = document.getElementById(votedContainerId);
-  const savedContainer = document.getElementById(savedContainerId);
+  const votedContainer = votedContainerId ? document.getElementById(votedContainerId) : null;
+  const savedContainer = savedContainerId ? document.getElementById(savedContainerId) : null;
 
   if (votedContainer) {
     votedContainer.innerHTML = '';
 
-    votedStories.forEach(story => {
+    votedStories.forEach((story) => {
       const card = document.createElement('article');
       card.className = 'story-card';
       card.innerHTML = `
@@ -559,7 +596,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
   if (savedContainer) {
     savedContainer.innerHTML = '';
 
-    savedStories.forEach(story => {
+    savedStories.forEach((story) => {
       const card = document.createElement('article');
       card.className = 'story-card';
       card.innerHTML = `
@@ -583,12 +620,12 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
 
 export function updateVoteButtons(userVotes, stories) {
   const userVoteMap = new Map(
-    userVotes.map(v => [String(v.story_id), Number(v.vote_count) || 0])
+    userVotes.map((v) => [String(v.story_id), Number(v.vote_count) || 0])
   );
 
-  document.querySelectorAll('.vote-btn').forEach(btn => {
+  document.querySelectorAll('.vote-btn').forEach((btn) => {
     const storyId = String(btn.dataset.storyId);
-    const story = stories.find(s => String(s.id) === storyId);
+    const story = stories.find((s) => String(s.id) === storyId);
     if (!story) return;
 
     const status = story.voting_status || 'upcoming';
@@ -605,7 +642,7 @@ export function updateVoteButtons(userVotes, stories) {
       btn.disabled = true;
       btn.textContent = 'Voting starts soon';
       btn.classList.remove('voted');
-    } else if (status === 'closed') {
+    } else {
       btn.disabled = true;
       btn.textContent = `Voting Closed (${publicVoteCount})`;
       btn.classList.remove('voted');
@@ -614,7 +651,7 @@ export function updateVoteButtons(userVotes, stories) {
 }
 
 export function attachVoteListeners(containerId = 'story-grid') {
-  document.querySelectorAll(`#${containerId} .vote-btn`).forEach(btn => {
+  document.querySelectorAll(`#${containerId} .vote-btn`).forEach((btn) => {
     btn.addEventListener('click', async () => {
       if (btn.disabled) return;
 
@@ -631,15 +668,14 @@ export function attachVoteListeners(containerId = 'story-grid') {
           return;
         }
 
-        if (result.reason === 'voting_closed') {
-          btn.textContent = 'Voting Closed';
-        } else if (result.reason === 'insufficient_balance') {
-          btn.textContent = originalText;
-        } else {
-          btn.textContent = originalText;
-        }
-
+        btn.textContent = originalText;
         btn.disabled = false;
+
+        if (result.reason === 'voting_closed') {
+          alert('Voting is closed right now.');
+        } else if (result.reason === 'insufficient_balance') {
+          alert('You do not have enough votes.');
+        }
       } catch (err) {
         console.error('Vote click error:', err);
         btn.disabled = false;
@@ -650,7 +686,7 @@ export function attachVoteListeners(containerId = 'story-grid') {
 }
 
 export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = []) {
-  document.querySelectorAll(`#${containerId} .save-btn`).forEach(btn => {
+  document.querySelectorAll(`#${containerId} .save-btn`).forEach((btn) => {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const alreadySaved = savedStoryIds.includes(String(storyId));
@@ -676,7 +712,7 @@ export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = 
 }
 
 export function attachRecantListeners(containerId) {
-  document.querySelectorAll(`#${containerId} .recant-btn`).forEach(btn => {
+  document.querySelectorAll(`#${containerId} .recant-btn`).forEach((btn) => {
     btn.addEventListener('click', async () => {
       if (btn.disabled) return;
 
@@ -712,7 +748,7 @@ export function attachRecantListeners(containerId) {
 }
 
 export function attachUnsaveListeners(containerId) {
-  document.querySelectorAll(`#${containerId} .unsave-btn`).forEach(btn => {
+  document.querySelectorAll(`#${containerId} .unsave-btn`).forEach((btn) => {
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const res = await unsaveStory(storyId);

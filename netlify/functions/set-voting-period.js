@@ -10,7 +10,6 @@ const supabase = createClient(
 // =========================
 // STATUS DERIVATION HELPER
 // =========================
-// Determines the initial status of a round from its start/end window.
 function deriveStatus(startTime, endTime) {
   const now = new Date();
   const start = new Date(startTime);
@@ -25,12 +24,9 @@ function deriveStatus(startTime, endTime) {
 // MAIN HANDLER
 // =========================
 // Creates a brand new voting period only when no other unfinalized round exists.
-// When a new round is created, every user's vote balance is reset to 5.
+// When a new round is created, each user's ROUND vote balance is reset to 5.
+// Purchased bonus votes are intentionally preserved.
 export async function handler(event) {
-  // =========================
-  // METHOD VALIDATION
-  // =========================
-  // Only POST requests are allowed for this admin action.
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -42,7 +38,6 @@ export async function handler(event) {
     // =========================
     // AUTH VALIDATION
     // =========================
-    // Validate the incoming bearer token and resolve the current user.
     const authHeader = event.headers.authorization || event.headers.Authorization;
     const token = authHeader?.replace('Bearer ', '');
 
@@ -68,7 +63,6 @@ export async function handler(event) {
     // =========================
     // ADMIN ROLE CHECK
     // =========================
-    // Ensure only admins can create a new voting period.
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -87,7 +81,6 @@ export async function handler(event) {
     // =========================
     // REQUEST BODY VALIDATION
     // =========================
-    // Parse and validate the requested start and end times.
     const { start_time, end_time } = JSON.parse(event.body || '{}');
 
     if (!start_time || !end_time) {
@@ -119,7 +112,6 @@ export async function handler(event) {
     // =========================
     // CHECK FOR EXISTING WORKING ROUND
     // =========================
-    // Only one unfinalized round is allowed at a time.
     const { data: existingRounds, error: existingError } = await supabase
       .from('voting_periods')
       .select('id')
@@ -141,8 +133,6 @@ export async function handler(event) {
     // =========================
     // CREATE NEW ROUND
     // =========================
-    // Insert a brand new round row so this round gets its own unique
-    // voting_period_id and clean historical separation.
     const { data: savedPeriod, error: insertError } = await supabase
       .from('voting_periods')
       .insert([
@@ -163,10 +153,12 @@ export async function handler(event) {
     if (insertError) throw insertError;
 
     // =========================
-    // RESET USER VOTE BALANCES
+    // RESET ROUND VOTES ONLY
     // =========================
-    // Each new voting round gives every user a fresh total of 5 votes.
-    // This is a reset, not an increment, so unused votes do not stack.
+    // Important:
+    // - vote_balance = standard votes for the current round
+    // - bonus_vote_balance = purchased votes that persist across rounds
+    // Only reset vote_balance here.
     const { error: resetVotesError } = await supabase
       .from('profiles')
       .update({ vote_balance: 5 })
@@ -176,16 +168,13 @@ export async function handler(event) {
       throw resetVotesError;
     }
 
-    // =========================
-    // SUCCESS RESPONSE
-    // =========================
-    // Return the newly created period so the admin UI can refresh.
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
         period: savedPeriod,
-        votes_reset_to: 5
+        round_votes_reset_to: 5,
+        bonus_votes_preserved: true
       })
     };
   } catch (err) {

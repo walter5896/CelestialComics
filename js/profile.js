@@ -1,7 +1,14 @@
 // /js/profile.js
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
-import { recantVote, fetchSavedStories, renderStories, unsaveStory } from './vote.js';
+import {
+  recantVote,
+  fetchSavedStories,
+  unsaveStory,
+  renderStoriesForProfile,
+  attachRecantListeners,
+  attachUnsaveListeners
+} from './vote.js';
 
 const voteList = document.getElementById('vote-list');
 const noVotes = document.getElementById('no-votes');
@@ -12,7 +19,15 @@ const roundVoteBalanceEl = document.getElementById('round-vote-balance');
 const bonusVoteBalanceEl = document.getElementById('bonus-vote-balance');
 const totalVoteBalanceEl = document.getElementById('total-vote-balance');
 
-if (!voteList || !noVotes || !savedContainer || !noSaved) {
+if (
+  !voteList ||
+  !noVotes ||
+  !savedContainer ||
+  !noSaved ||
+  !roundVoteBalanceEl ||
+  !bonusVoteBalanceEl ||
+  !totalVoteBalanceEl
+) {
   throw new Error('Profile page missing required elements');
 }
 
@@ -24,17 +39,9 @@ function setVoteBalances(roundVotes = 0, bonusVotes = 0) {
   const safeBonusVotes = Number(bonusVotes) || 0;
   const totalVotes = safeRoundVotes + safeBonusVotes;
 
-  if (roundVoteBalanceEl) {
-    roundVoteBalanceEl.textContent = String(safeRoundVotes);
-  }
-
-  if (bonusVoteBalanceEl) {
-    bonusVoteBalanceEl.textContent = String(safeBonusVotes);
-  }
-
-  if (totalVoteBalanceEl) {
-    totalVoteBalanceEl.textContent = String(totalVotes);
-  }
+  roundVoteBalanceEl.textContent = String(safeRoundVotes);
+  bonusVoteBalanceEl.textContent = String(safeBonusVotes);
+  totalVoteBalanceEl.textContent = String(totalVotes);
 }
 
 async function fetchVoteBalances() {
@@ -140,29 +147,10 @@ async function fetchAndRenderSavedStories() {
     isSaved: true
   }));
 
-  renderStories(storiesWithSavedFlag, 'my-saved-stories-container');
+  // Keep container populated in a way compatible with current vote.js renderers
+  renderStoriesForProfile([], storiesWithSavedFlag, null, 'my-saved-stories-container');
 
-  document.querySelectorAll('.save-btn').forEach((btn) => {
-    btn.textContent = 'Unsave';
-
-    btn.addEventListener('click', async () => {
-      const storyId = btn.dataset.storyId;
-
-      const result = await unsaveStory(storyId);
-
-      if (result.success) {
-        const card = btn.closest('.story-card');
-        if (card) card.remove();
-
-        if (!savedContainer.querySelector('.story-card')) {
-          savedContainer.style.display = 'none';
-          noSaved.style.display = 'block';
-        }
-      } else {
-        alert('Could not unsave story.');
-      }
-    });
-  });
+  attachUnsaveListeners('my-saved-stories-container');
 }
 
 /**
