@@ -343,7 +343,7 @@ export async function submitVote(storyId, amount = 1) {
     }
   }
 
-  // Spend round votes first, then bonus votes
+  // Spend round votes first, then bonus votes.
   const roundToSpend = Math.min(balances.round, voteAmount);
   const bonusToSpend = voteAmount - roundToSpend;
 
@@ -433,9 +433,12 @@ export async function recantVote(storyId, amount = 1) {
 
   const balances = await fetchUserProfileBalances();
 
-  // Refund bonus first, then round
-  const bonusToRefund = Math.min(recantAmount, balances.bonus);
-  const roundToRefund = recantAmount - bonusToRefund;
+  // Restore round votes first, up to the normal round cap.
+  // Any overflow gets returned to bonus votes.
+  const ROUND_VOTE_CAP = 5;
+  const availableRoundSpace = Math.max(0, ROUND_VOTE_CAP - balances.round);
+  const roundToRefund = Math.min(recantAmount, availableRoundSpace);
+  const bonusToRefund = recantAmount - roundToRefund;
 
   const newRoundBalance = balances.round + roundToRefund;
   const newBonusBalance = balances.bonus + bonusToRefund;

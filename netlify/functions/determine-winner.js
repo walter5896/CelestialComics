@@ -3,13 +3,11 @@
 // =========================
 // IMPORTS
 // =========================
-// Import Supabase client creator for secure server-side admin operations.
 const { createClient } = require('@supabase/supabase-js');
 
 // =========================
 // SUPABASE CLIENT
 // =========================
-// Create the service-role Supabase client for privileged backend access.
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -18,7 +16,6 @@ const supabase = createClient(
 // =========================
 // ADMIN USER VALIDATOR
 // =========================
-// Validates the bearer token and confirms the user is an admin.
 async function getAdminUser(token) {
   const {
     data: { user },
@@ -45,9 +42,28 @@ async function getAdminUser(token) {
 }
 
 // =========================
+// CLOSED STATE HELPER
+// =========================
+function isEffectivelyClosed(period) {
+  if (!period) return false;
+  if (period.finalized_at) return true;
+  if (period.closed_at) return true;
+
+  const now = new Date();
+  const end = new Date(period.end_time);
+
+  if (Number.isNaN(end.getTime())) return false;
+
+  return now > end;
+}
+
+// =========================
 // CLOSED UNFINALIZED ROUND FETCHER
 // =========================
-// Returns the latest round that is closed but not yet finalized.
+// Returns the latest round that is effectively closed but not yet finalized.
+// A round counts as closed if:
+// - closed_at is set, OR
+// - end_time has already passed.
 async function getLatestClosedUnfinalizedPeriod() {
   const { data, error } = await supabase
     .from('voting_periods')
@@ -62,19 +78,18 @@ async function getLatestClosedUnfinalizedPeriod() {
       winning_vote_count
     `)
     .is('finalized_at', null)
-    .not('closed_at', 'is', null)
     .order('id', { ascending: false })
-    .limit(1);
+    .limit(10);
 
   if (error) throw error;
 
-  return data?.[0] || null;
+  const periods = data || [];
+  return periods.find((period) => !period.finalized_at && isEffectivelyClosed(period)) || null;
 }
 
 // =========================
 // ROUND VOTE TOTALS FETCHER
 // =========================
-// Loads all votes for the specified round and aggregates totals by story.
 async function getVoteTotalsForPeriod(periodId) {
   const { data: votes, error: voteError } = await supabase
     .from('votes')
@@ -133,14 +148,17 @@ async function finalizeRound({
   winningVoteCount = null,
   adminUserId
 }) {
+  const nowIso = new Date().toISOString();
+
   const { data: finalizedPeriod, error: finalizeError } = await supabase
     .from('voting_periods')
     .update({
       winner_id: winnerStoryId,
       winning_vote_count: winningVoteCount,
-      finalized_at: new Date().toISOString(),
+      finalized_at: nowIso,
       finalized_by: adminUserId,
-      status: 'finalized'
+      status: 'finalized',
+      closed_at: nowIso
     })
     .eq('id', periodId)
     .is('finalized_at', null)
@@ -158,9 +176,6 @@ async function finalizeRound({
 // Determines the winner automatically when possible, allows an admin
 // to manually resolve a tie, and finalizes no-vote rounds with no winner.
 exports.handler = async (event) => {
-  // =========================
-  // METHOD VALIDATION
-  // =========================
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -168,11 +183,8 @@ exports.handler = async (event) => {
     };
   }
 
-  // =========================
-  // AUTH HEADER PARSING
-  // =========================
   const authHeader = event.headers.authorization || event.headers.Authorization;
-  const token = authHeader?.replace('Bearer ', '');
+  const token = authHeader?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
     return {
@@ -182,22 +194,13 @@ exports.handler = async (event) => {
   }
 
   try {
-    // =========================
-    // ADMIN VALIDATION
-    // =========================
     const adminUser = await getAdminUser(token);
 
-    // =========================
-    // REQUEST BODY PARSING
-    // =========================
     const body = JSON.parse(event.body || '{}');
     const selectedWinnerStoryId = body.winner_story_id
       ? String(body.winner_story_id)
       : null;
 
-    // =========================
-    // TARGET ROUND LOOKUP
-    // =========================
     const period = await getLatestClosedUnfinalizedPeriod();
 
     if (!period) {
@@ -210,16 +213,11 @@ exports.handler = async (event) => {
       };
     }
 
-    // =========================
-    // VOTE TOTALS LOOKUP
-    // =========================
     const voteTotals = await getVoteTotalsForPeriod(period.id);
 
     // =========================
     // NO-VOTES FINALIZATION
     // =========================
-    // If nobody voted, finalize the round with no winner so the system
-    // can move forward and a new round can be created.
     if (!voteTotals.length) {
       const finalizedPeriod = await finalizeRound({
         periodId: period.id,
@@ -253,8 +251,6 @@ exports.handler = async (event) => {
     // =========================
     // MANUAL TIE RESOLUTION
     // =========================
-    // If the admin provided a winner_story_id, only allow it if that story
-    // is one of the tied top-vote stories.
     if (selectedWinnerStoryId) {
       const selectedTiedStory = topStories.find(
         (item) => String(item.story_id) === selectedWinnerStoryId
@@ -296,8 +292,6 @@ exports.handler = async (event) => {
     // =========================
     // AUTO TIE RESPONSE
     // =========================
-    // If there is a tie and no manual winner was provided, return tie data
-    // to the admin UI instead of finalizing.
     if (topStories.length > 1) {
       return {
         statusCode: 200,
@@ -315,7 +309,6 @@ exports.handler = async (event) => {
     // =========================
     // AUTO FINALIZATION
     // =========================
-    // If there is a clear winner, finalize the round automatically.
     const winner = voteTotals[0];
 
     const finalizedPeriod = await finalizeRound({
@@ -338,9 +331,6 @@ exports.handler = async (event) => {
       })
     };
   } catch (err) {
-    // =========================
-    // ERROR RESPONSE
-    // =========================
     console.error('determine-winner error:', err);
 
     return {
