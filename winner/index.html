@@ -37,19 +37,23 @@
   <main class="container winner-page">
     <!-- EMPTY STATE -->
     <section id="winner-empty" style="display:none;">
-      <h2>No Winner Yet 🏆</h2>
-      <p>The latest round has not been finalized yet.</p>
+      <h2>No Current Winner Yet 🏆</h2>
+      <p>
+        There is not currently a winning concept in production. Check back after
+        the next tournament is finalized.
+      </p>
     </section>
 
     <!-- WINNER DETAILS -->
     <section id="winner-details" style="display:none;">
       <article class="story-card">
-        <img id="winner-image" src="" alt="Winning Story" />
-        <h2 id="winner-name">Winning Story Title</h2>
+        <p id="winner-status-label" class="winner-status-label">Winner in Production</p>
+        <img id="winner-image" src="" alt="Winning Concept" />
+        <h2 id="winner-name">Winning Concept Title</h2>
         <p id="winner-meta"></p>
         <p id="winner-story"></p>
         <p>
-          <a id="winner-link" href="#" class="btn btn-primary">Read Full Story</a>
+          <a id="winner-link" href="#" class="btn btn-primary">View Concept Details</a>
         </p>
       </article>
     </section>

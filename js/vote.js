@@ -154,6 +154,37 @@ function getStoryImage(story) {
    FETCH FUNCTIONS
 ======================= */
 
+export async function fetchConceptBankStories() {
+  try {
+    const { data, error } = await supabase
+      .from('stories')
+      .select(`
+        id,
+        title,
+        image_url,
+        cover_image_url,
+        author,
+        description,
+        active,
+        story_status
+      `)
+      .eq('active', true)
+      .eq('story_status', 'concept_bank')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((story) => ({
+      ...story,
+      vote_count: 0,
+      voting_status: 'closed'
+    }));
+  } catch (err) {
+    console.error('Error fetching concept bank stories:', err);
+    return [];
+  }
+}
+
 export async function fetchStoriesWithVotes() {
   try {
     const currentPeriod = await fetchCurrentVotingPeriod();
@@ -162,8 +193,18 @@ export async function fetchStoriesWithVotes() {
 
     const { data: stories, error: storiesError } = await supabase
       .from('stories')
-      .select('id, title, image_url, cover_image_url, author, description, active')
-      .eq('active', true);
+      .select(`
+        id,
+        title,
+        image_url,
+        cover_image_url,
+        author,
+        description,
+        active,
+        story_status
+      `)
+      .eq('active', true)
+      .eq('story_status', 'active_vote');
 
     if (storiesError) throw storiesError;
 
@@ -343,7 +384,6 @@ export async function submitVote(storyId, amount = 1) {
     }
   }
 
-  // Spend round votes first, then bonus votes.
   const roundToSpend = Math.min(balances.round, voteAmount);
   const bonusToSpend = voteAmount - roundToSpend;
 
@@ -433,8 +473,6 @@ export async function recantVote(storyId, amount = 1) {
 
   const balances = await fetchUserProfileBalances();
 
-  // Restore round votes first, up to the normal round cap.
-  // Any overflow gets returned to bonus votes.
   const ROUND_VOTE_CAP = 5;
   const availableRoundSpace = Math.max(0, ROUND_VOTE_CAP - balances.round);
   const roundToRefund = Math.min(recantAmount, availableRoundSpace);

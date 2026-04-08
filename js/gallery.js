@@ -1,13 +1,13 @@
 // /js/gallery.js
 import { getCurrentUserAsync, updateUI, logout } from './auth.js';
-import { fetchStoriesWithVotes, renderStoriesForGallery } from './vote.js';
+import { fetchConceptBankStories, renderStoriesForGallery } from './vote.js';
 
 async function initGallery() {
   try {
-    await getCurrentUserAsync(); // wait for auth state
+    await getCurrentUserAsync();
     updateUI();
 
-    document.querySelectorAll('.logout-link').forEach(el => {
+    document.querySelectorAll('.logout-link').forEach((el) => {
       el.addEventListener('click', async (e) => {
         e.preventDefault();
         await logout();
@@ -15,13 +15,13 @@ async function initGallery() {
       });
     });
 
-    const stories = await fetchStoriesWithVotes();
+    const stories = await fetchConceptBankStories();
 
     const grid = document.getElementById('story-grid');
     if (!grid) return;
 
     if (!stories || stories.length === 0) {
-      grid.innerHTML = '<p>No stories found.</p>';
+      grid.innerHTML = '<p>No story concepts found.</p>';
       return;
     }
 
@@ -30,7 +30,7 @@ async function initGallery() {
     console.error('Gallery init error:', err);
     const grid = document.getElementById('story-grid');
     if (grid) {
-      grid.innerHTML = '<p class="error">Failed to load stories.</p>';
+      grid.innerHTML = '<p class="error">Failed to load story concepts.</p>';
     }
   }
 }

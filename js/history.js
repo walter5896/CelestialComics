@@ -1,8 +1,8 @@
 import { supabase } from './supabase.js';
 
-// =========================
-// DATE FORMATTER
-// =========================
+/* =========================
+   DATE FORMATTER
+========================= */
 function formatDateTime(value) {
   if (!value) return '—';
 
@@ -12,9 +12,9 @@ function formatDateTime(value) {
   return date.toLocaleString();
 }
 
-// =========================
-// ROUND STATUS DERIVER
-// =========================
+/* =========================
+   ROUND STATUS DERIVER
+========================= */
 function deriveRoundStatus(period) {
   if (!period) return 'none';
   if (period.finalized_at) return 'finalized';
@@ -29,16 +29,16 @@ function deriveRoundStatus(period) {
   return 'closed';
 }
 
-// =========================
-// STATUS PILL RENDERER
-// =========================
+/* =========================
+   STATUS PILL RENDERER
+========================= */
 function getStatusPill(status) {
   return `<span class="status-pill ${status}">${status}</span>`;
 }
 
-// =========================
-// CURRENT ROUND FETCHER
-// =========================
+/* =========================
+   CURRENT ROUND FETCHER
+========================= */
 async function fetchCurrentRound() {
   const { data, error } = await supabase
     .from('voting_periods')
@@ -59,9 +59,9 @@ async function fetchCurrentRound() {
   return data?.[0] || null;
 }
 
-// =========================
-// PAST FINALIZED ROUNDS FETCHER
-// =========================
+/* =========================
+   PAST FINALIZED ROUNDS FETCHER
+========================= */
 async function fetchPastFinalizedRounds() {
   const { data, error } = await supabase
     .from('voting_periods')
@@ -81,13 +81,21 @@ async function fetchPastFinalizedRounds() {
   return data || [];
 }
 
-// =========================
-// ACTIVE STORIES FETCHER
-// =========================
+/* =========================
+   STORIES MAP FETCHER
+========================= */
 async function fetchStoriesMap() {
   const { data, error } = await supabase
     .from('stories')
-    .select('id, title, author, cover_image_url, image_url, active');
+    .select(`
+      id,
+      title,
+      author,
+      cover_image_url,
+      image_url,
+      active,
+      story_status
+    `);
 
   if (error) throw error;
 
@@ -99,9 +107,9 @@ async function fetchStoriesMap() {
   return map;
 }
 
-// =========================
-// ROUND VOTES FETCHER
-// =========================
+/* =========================
+   ROUND VOTES FETCHER
+========================= */
 async function fetchVotesForRound(roundId) {
   if (!roundId) return [];
 
@@ -114,15 +122,15 @@ async function fetchVotesForRound(roundId) {
   return data || [];
 }
 
-// =========================
-// CURRENT ROUND SUMMARY RENDERER
-// =========================
+/* =========================
+   CURRENT ROUND SUMMARY RENDERER
+========================= */
 function renderCurrentRoundSummary(round) {
   const container = document.getElementById('current-round-summary');
   if (!container) return;
 
   if (!round) {
-    container.innerHTML = `<p class="history-empty">No active or pending round exists right now.</p>`;
+    container.innerHTML = `<p class="history-empty">No active or pending concept tournament exists right now.</p>`;
     return;
   }
 
@@ -130,22 +138,22 @@ function renderCurrentRoundSummary(round) {
 
   container.innerHTML = `
     ${getStatusPill(status)}
-    <p><strong>Round ID:</strong> ${round.id}</p>
+    <p><strong>Tournament ID:</strong> ${round.id}</p>
     <p><strong>Start:</strong> ${formatDateTime(round.start_time)}</p>
     <p><strong>End:</strong> ${formatDateTime(round.end_time)}</p>
     <p><strong>Closed At:</strong> ${formatDateTime(round.closed_at)}</p>
   `;
 }
 
-// =========================
-// STANDINGS RENDERER
-// =========================
+/* =========================
+   STANDINGS RENDERER
+========================= */
 function renderCurrentStandings(round, storiesMap, votes) {
   const container = document.getElementById('current-standings-list');
   if (!container) return;
 
   if (!round) {
-    container.innerHTML = `<p class="history-empty">No current round standings to display.</p>`;
+    container.innerHTML = `<p class="history-empty">No current standings to display.</p>`;
     return;
   }
 
@@ -158,7 +166,7 @@ function renderCurrentStandings(round, storiesMap, votes) {
   });
 
   const standings = Array.from(storiesMap.values())
-    .filter((story) => story.active)
+    .filter((story) => story.active && story.story_status === 'active_vote')
     .map((story) => ({
       ...story,
       totalVotes: totals.get(String(story.id)) || 0
@@ -166,7 +174,7 @@ function renderCurrentStandings(round, storiesMap, votes) {
     .sort((a, b) => b.totalVotes - a.totalVotes || a.title.localeCompare(b.title));
 
   if (!standings.length) {
-    container.innerHTML = `<p class="history-empty">No stories available for this round yet.</p>`;
+    container.innerHTML = `<p class="history-empty">No active concept competitors are in this tournament right now.</p>`;
     return;
   }
 
@@ -180,7 +188,7 @@ function renderCurrentStandings(round, storiesMap, votes) {
             ${story.author ? `By ${story.author} · ` : ''}${story.totalVotes} vote${story.totalVotes === 1 ? '' : 's'}
           </div>
           <div class="standing-actions">
-            <a href="/gallery/story.html?id=${story.id}">Read Story</a>
+            <a href="/gallery/story.html?id=${story.id}">View Concept Details</a>
           </div>
         </div>
       `;
@@ -188,22 +196,22 @@ function renderCurrentStandings(round, storiesMap, votes) {
     .join('');
 }
 
-// =========================
-// PAST WINNERS RENDERER
-// =========================
+/* =========================
+   PAST WINNERS RENDERER
+========================= */
 function renderPastWinners(rounds, storiesMap) {
   const container = document.getElementById('past-winners-list');
   if (!container) return;
 
   if (!rounds.length) {
-    container.innerHTML = `<p class="history-empty">No past winners yet.</p>`;
+    container.innerHTML = `<p class="history-empty">No past winning concepts yet.</p>`;
     return;
   }
 
   container.innerHTML = rounds
     .map((round) => {
       const story = storiesMap.get(String(round.winner_id));
-      const title = story?.title || 'Unknown Story';
+      const title = story?.title || 'Unknown Concept';
       const author = story?.author || '';
       const winnerLink = story ? `/gallery/story.html?id=${story.id}` : '#';
 
@@ -211,13 +219,13 @@ function renderPastWinners(rounds, storiesMap) {
         <div class="winner-card">
           <div class="winner-title">${title}</div>
           <div class="winner-meta">
-            <strong>Round:</strong> ${round.id}<br>
+            <strong>Tournament:</strong> ${round.id}<br>
             ${author ? `<strong>Author:</strong> ${author}<br>` : ''}
             <strong>Winning Votes:</strong> ${round.winning_vote_count ?? '—'}<br>
             <strong>Finalized At:</strong> ${formatDateTime(round.finalized_at)}
           </div>
           <div class="winner-actions">
-            <a href="${winnerLink}">Read Winning Story</a>
+            <a href="${winnerLink}">View Winning Concept</a>
           </div>
         </div>
       `;
@@ -225,9 +233,9 @@ function renderPastWinners(rounds, storiesMap) {
     .join('');
 }
 
-// =========================
-// PAGE INITIALIZER
-// =========================
+/* =========================
+   PAGE INITIALIZER
+========================= */
 async function initHistoryPage() {
   try {
     const [currentRound, pastRounds, storiesMap] = await Promise.all([
@@ -244,14 +252,14 @@ async function initHistoryPage() {
     renderCurrentStandings(currentRound, storiesMap, currentRoundVotes);
     renderPastWinners(pastRounds, storiesMap);
   } catch (err) {
-    console.error('Error loading standings and history:', err);
+    console.error('Error loading tournament history:', err);
 
     const currentRoundSummary = document.getElementById('current-round-summary');
     const currentStandingsList = document.getElementById('current-standings-list');
     const pastWinnersList = document.getElementById('past-winners-list');
 
     if (currentRoundSummary) {
-      currentRoundSummary.innerHTML = `<p class="history-empty">Failed to load current round.</p>`;
+      currentRoundSummary.innerHTML = `<p class="history-empty">Failed to load current tournament.</p>`;
     }
 
     if (currentStandingsList) {

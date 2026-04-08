@@ -1,19 +1,11 @@
 // /js/admin.js
-
-// =========================
-// IMPORTS
-// =========================
 import { getCurrentUserAsync, logout } from './auth.js';
 import { supabase } from './supabase.js';
 
-// =========================
-// GLOBAL DOM REFERENCES
-// =========================
 const statusEl = document.getElementById('status-message');
 const table = document.getElementById('users-table');
 const tbody = table?.querySelector('tbody');
 
-// Voting controls
 const votingSection = document.getElementById('voting-section');
 const determineWinnerBtn = document.getElementById('determine-winner-btn');
 const closeVotingBtn = document.getElementById('close-voting-btn');
@@ -22,17 +14,14 @@ const votingStart = document.getElementById('voting-start');
 const votingEnd = document.getElementById('voting-end');
 const votingMsg = document.getElementById('voting-status-message');
 
-// Voting summary boxes
 const currentRoundSummary = document.getElementById('current-round-summary');
 const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
 
-// Tie resolution UI
 const tieResolutionPanel = document.getElementById('tie-resolution-panel');
 const tieResolutionMessage = document.getElementById('tie-resolution-message');
 const tieWinnerSelect = document.getElementById('tie-winner-select');
 const finalizeTieBtn = document.getElementById('finalize-tie-btn');
 
-// Legacy / hidden winner preview UI
 const winnerPreviewPanel = document.getElementById('winner-preview-panel');
 const winnerPreviewContent = document.getElementById('winner-preview-content');
 const winnerPreviewMessage = document.getElementById('winner-preview-message');
@@ -40,7 +29,6 @@ const nextRoundFields = document.getElementById('next-round-fields');
 const finalizeOnlyBtn = document.getElementById('finalize-only-btn');
 const finalizeAndCreateBtn = document.getElementById('finalize-and-create-btn');
 
-// Story management UI
 const storySection = document.getElementById('story-management-section');
 const storySelect = document.getElementById('story-select');
 const storyForm = document.getElementById('story-form');
@@ -50,20 +38,25 @@ const deleteStoryBtn = document.getElementById('delete-story-btn');
 const storyMsg = document.getElementById('story-status-message');
 const storiesPreview = document.getElementById('stories-preview');
 
-// Story form fields
 const storyTitle = document.getElementById('story-title');
 const storyAuthor = document.getElementById('story-author');
 const storyDescription = document.getElementById('story-description');
 const storyActive = document.getElementById('story-active');
+const storyStatusSelect = document.getElementById('story-status-select');
+const productionStageLabel = document.getElementById('production-stage-label');
+const storyPreviewEnabled = document.getElementById('story-preview-enabled');
+const storyPreviewPageCount = document.getElementById('story-preview-page-count');
+const storyDigitalAvailable = document.getElementById('story-digital-available');
+const storyPaperbackAvailable = document.getElementById('story-paperback-available');
+const storyBundleAvailable = document.getElementById('story-bundle-available');
+const storyReleaseDate = document.getElementById('story-release-date');
 
-// Cover image UI
 const storyCoverFile = document.getElementById('story-cover-file');
 const uploadCoverBtn = document.getElementById('upload-cover-btn');
 const deleteCoverBtn = document.getElementById('delete-cover-btn');
 const coverUploadMessage = document.getElementById('cover-upload-message');
 const coverPreview = document.getElementById('cover-preview');
 
-// Story page upload UI
 const storyPageForm = document.getElementById('story-page-form');
 const storyPageFile = document.getElementById('story-page-file');
 const storyPageCaption = document.getElementById('story-page-caption');
@@ -71,7 +64,6 @@ const uploadStoryPageBtn = document.getElementById('upload-story-page-btn');
 const storyPageStatusMsg = document.getElementById('story-page-status-message');
 const storyPagesPreview = document.getElementById('story-pages-preview');
 
-// Product management UI
 const productSection = document.getElementById('product-management-section');
 const productSelect = document.getElementById('product-select');
 const productForm = document.getElementById('product-form');
@@ -90,14 +82,10 @@ const productImageUrl = document.getElementById('product-image-url');
 const productImagePreview = document.getElementById('product-image-preview');
 const productActive = document.getElementById('product-active');
 
-// Product image upload UI
 const productImageFile = document.getElementById('product-image-file');
 const uploadProductImageBtn = document.getElementById('upload-product-image-btn');
 const productImageUploadMessage = document.getElementById('product-image-upload-message');
 
-// =========================
-// SHARED STATE
-// =========================
 let currentUser = null;
 let currentAccessToken = null;
 let allStories = [];
@@ -108,35 +96,23 @@ let editingProductId = null;
 let currentWorkingPeriod = null;
 let currentTieStories = [];
 
-// =========================
-// LOGOUT HANDLER
-// =========================
 document.getElementById('logout-link')?.addEventListener('click', async (e) => {
   e.preventDefault();
   await logout();
   window.location.href = '/';
 });
 
-// =========================
-// ACCESS TOKEN HELPER
-// =========================
 async function getAccessToken() {
   const { data, error } = await supabase.auth.getSession();
-
   if (error) {
     console.error('Error getting session:', error);
     return null;
   }
-
   return data?.session?.access_token || null;
 }
 
-// =========================
-// SAFE JSON RESPONSE PARSER
-// =========================
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
-
   try {
     return rawText ? JSON.parse(rawText) : {};
   } catch {
@@ -144,39 +120,25 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-// =========================
-// DATE FORMATTER
-// =========================
 function formatDateTime(value) {
   if (!value) return '—';
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-
   return date.toLocaleString();
 }
 
-// =========================
-// DATETIME-LOCAL FORMATTER
-// =========================
 function formatForDateTimeLocal(value) {
   if (!value) return '';
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
-
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
-// =========================
-// IMAGE PREVIEW HELPER
-// =========================
 function updatePreviewImage(imgEl, url) {
   if (!imgEl) return;
 
@@ -197,9 +159,6 @@ function updatePreviewImage(imgEl, url) {
   };
 }
 
-// =========================
-// EFFECTIVE CLOSED CHECK
-// =========================
 function isEffectivelyClosed(period) {
   if (!period) return false;
   if (period.finalized_at) return true;
@@ -211,9 +170,6 @@ function isEffectivelyClosed(period) {
   return now > end;
 }
 
-// =========================
-// ROUND STATUS DERIVER
-// =========================
 function deriveRoundStatus(period) {
   if (!period) return 'none';
   if (period.finalized_at) return 'finalized';
@@ -228,9 +184,16 @@ function deriveRoundStatus(period) {
   return 'closed';
 }
 
-// =========================
-// LEGACY WINNER PREVIEW HIDER
-// =========================
+function prettyStoryStatus(status) {
+  switch (status) {
+    case 'concept_bank': return 'Concept Bank';
+    case 'active_vote': return 'Active Vote';
+    case 'winner_in_production': return 'Winner in Production';
+    case 'released': return 'Released';
+    default: return status || 'Unknown';
+  }
+}
+
 function hideWinnerPreviewUI() {
   if (winnerPreviewPanel) winnerPreviewPanel.style.display = 'none';
   if (winnerPreviewContent) winnerPreviewContent.innerHTML = '';
@@ -245,9 +208,6 @@ function hideWinnerPreviewUI() {
   if (finalizeAndCreateBtn) finalizeAndCreateBtn.style.display = 'none';
 }
 
-// =========================
-// TIE RESOLUTION UI RESETTER
-// =========================
 function resetTieResolutionUI() {
   currentTieStories = [];
 
@@ -268,14 +228,10 @@ function resetTieResolutionUI() {
   }
 }
 
-// =========================
-// TIE RESOLUTION UI RENDERER
-// =========================
 function renderTieResolutionUI(result) {
   if (!tieResolutionPanel || !tieWinnerSelect) return;
 
   currentTieStories = result.tied_stories || [];
-
   tieWinnerSelect.innerHTML = '<option value="">-- Select a Winner --</option>';
 
   currentTieStories.forEach((story) => {
@@ -293,9 +249,6 @@ function renderTieResolutionUI(result) {
   tieResolutionPanel.style.display = 'block';
 }
 
-// =========================
-// CURRENT ROUND SUMMARY RENDERER
-// =========================
 function renderCurrentRoundSummary(period) {
   if (!currentRoundSummary) return;
 
@@ -315,9 +268,6 @@ function renderCurrentRoundSummary(period) {
   `;
 }
 
-// =========================
-// FINALIZED WINNER SUMMARY RENDERER
-// =========================
 function renderFinalizedWinnerSummary(period, winnerTitle = null) {
   if (!finalizedWinnerSummary) return;
 
@@ -342,9 +292,6 @@ function renderFinalizedWinnerSummary(period, winnerTitle = null) {
   `;
 }
 
-// =========================
-// VOTING PERIOD LOADER
-// =========================
 async function loadVotingPeriod() {
   try {
     const { data: currentPeriods, error: currentError } = await supabase
@@ -441,9 +388,6 @@ async function loadVotingPeriod() {
   }
 }
 
-// =========================
-// VOTING PERIOD SUBMIT HANDLER
-// =========================
 async function handleVotingPeriodSubmit(e) {
   e.preventDefault();
 
@@ -480,9 +424,6 @@ async function handleVotingPeriodSubmit(e) {
   }
 }
 
-// =========================
-// CLOSE VOTING HANDLER
-// =========================
 async function handleCloseVoting() {
   try {
     const token = await getAccessToken();
@@ -524,9 +465,6 @@ async function handleCloseVoting() {
   }
 }
 
-// =========================
-// DETERMINE WINNER HANDLER
-// =========================
 async function determineWinner() {
   try {
     const token = await getAccessToken();
@@ -553,9 +491,7 @@ async function determineWinner() {
     }
 
     if (result.success && result.no_votes) {
-      alert(
-        `Voting Period ${result.period_id} was finalized with no winner because no votes were cast.`
-      );
+      alert(`Voting Period ${result.period_id} was finalized with no winner because no votes were cast.`);
 
       if (finalizedWinnerSummary) {
         finalizedWinnerSummary.innerHTML = `
@@ -636,9 +572,6 @@ async function determineWinner() {
   }
 }
 
-// =========================
-// TIE FINALIZATION HANDLER
-// =========================
 async function handleFinalizeTieWinner() {
   try {
     const selectedWinnerStoryId = tieWinnerSelect?.value || '';
@@ -708,9 +641,6 @@ async function handleFinalizeTieWinner() {
   }
 }
 
-// =========================
-// STORY PAGES UI RESETTER
-// =========================
 function clearStoryPagesUI() {
   if (storyPageFile) storyPageFile.value = '';
   if (storyPageCaption) storyPageCaption.value = '';
@@ -725,9 +655,6 @@ function clearStoryPagesUI() {
   }
 }
 
-// =========================
-// STORY FORM RESETTER
-// =========================
 function clearStoryForm() {
   editingStoryId = null;
 
@@ -735,6 +662,15 @@ function clearStoryForm() {
   storyForm?.reset();
 
   if (storyActive) storyActive.checked = true;
+  if (storyStatusSelect) storyStatusSelect.value = 'concept_bank';
+  if (productionStageLabel) productionStageLabel.value = '';
+  if (storyPreviewEnabled) storyPreviewEnabled.checked = false;
+  if (storyPreviewPageCount) storyPreviewPageCount.value = '0';
+  if (storyDigitalAvailable) storyDigitalAvailable.checked = false;
+  if (storyPaperbackAvailable) storyPaperbackAvailable.checked = false;
+  if (storyBundleAvailable) storyBundleAvailable.checked = false;
+  if (storyReleaseDate) storyReleaseDate.value = '';
+
   if (saveStoryBtn) saveStoryBtn.textContent = 'Create Story';
   if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
   if (deleteCoverBtn) deleteCoverBtn.style.display = 'none';
@@ -755,15 +691,22 @@ function clearStoryForm() {
   clearStoryPagesUI();
 }
 
-// =========================
-// STORY FORM POPULATOR
-// =========================
 async function populateStoryForm(story) {
   editingStoryId = story.id;
+
   storyTitle.value = story.title || '';
   storyAuthor.value = story.author || '';
   storyDescription.value = story.description || '';
   storyActive.checked = !!story.active;
+
+  storyStatusSelect.value = story.story_status || 'concept_bank';
+  productionStageLabel.value = story.production_stage_label || '';
+  storyPreviewEnabled.checked = !!story.is_preview_enabled;
+  storyPreviewPageCount.value = Number(story.preview_page_count) || 0;
+  storyDigitalAvailable.checked = !!story.is_digital_purchase_available;
+  storyPaperbackAvailable.checked = !!story.is_paperback_available;
+  storyBundleAvailable.checked = !!story.bundle_purchase_available;
+  storyReleaseDate.value = formatForDateTimeLocal(story.release_date);
 
   updatePreviewImage(coverPreview, story.cover_image_url || '');
 
@@ -785,14 +728,28 @@ async function populateStoryForm(story) {
   await loadStoryPages(story.id);
 }
 
-// =========================
-// STORIES PREVIEW LOADER
-// =========================
 async function loadStoriesPreview() {
   try {
     const { data: stories, error } = await supabase
       .from('stories')
-      .select('id, title, author, description, cover_image_url, cover_image_path, active, created_at')
+      .select(`
+        id,
+        title,
+        author,
+        description,
+        cover_image_url,
+        cover_image_path,
+        active,
+        created_at,
+        story_status,
+        production_stage_label,
+        is_preview_enabled,
+        preview_page_count,
+        is_digital_purchase_available,
+        is_paperback_available,
+        bundle_purchase_available,
+        release_date
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -817,8 +774,14 @@ async function loadStoriesPreview() {
       div.innerHTML = `
         ${story.cover_image_url ? `<img src="${story.cover_image_url}" alt="${story.title} cover">` : ''}
         <strong>${story.title}</strong>
+        <span class="status-badge">${prettyStoryStatus(story.story_status)}</span>
         <div>${story.author || 'No author set'}</div>
-        <div>Status: ${story.active ? 'Active' : 'Inactive'}</div>
+        <div><strong>Visible:</strong> ${story.active ? 'Yes' : 'No'}</div>
+        <div><strong>Preview:</strong> ${story.is_preview_enabled ? `Enabled (${story.preview_page_count || 0} pages)` : 'Disabled'}</div>
+        <div><strong>Digital:</strong> ${story.is_digital_purchase_available ? 'Yes' : 'No'}</div>
+        <div><strong>Paperback:</strong> ${story.is_paperback_available ? 'Yes' : 'No'}</div>
+        <div><strong>Bundle:</strong> ${story.bundle_purchase_available ? 'Yes' : 'No'}</div>
+        <div><strong>Stage:</strong> ${story.production_stage_label || '—'}</div>
       `;
       storiesPreview.appendChild(div);
     });
@@ -828,9 +791,6 @@ async function loadStoriesPreview() {
   }
 }
 
-// =========================
-// STORY PAGES LOADER
-// =========================
 async function loadStoryPages(storyId) {
   if (!storyId) {
     clearStoryPagesUI();
@@ -842,7 +802,7 @@ async function loadStoryPages(storyId) {
 
     const { data: pages, error } = await supabase
       .from('story_pages')
-      .select('id, story_id, page_number, image_url, image_path, caption, created_at')
+      .select('id, story_id, page_number, image_url, image_path, caption, created_at, is_preview_page')
       .eq('story_id', storyId)
       .order('page_number', { ascending: true });
 
@@ -862,6 +822,7 @@ async function loadStoryPages(storyId) {
         <img src="${page.image_url || ''}" alt="Story page ${page.page_number}">
         <strong>Page ${page.page_number}</strong>
         <div>${page.caption || 'No caption'}</div>
+        <div><strong>Preview Page:</strong> ${page.is_preview_page ? 'Yes' : 'No'}</div>
         <div class="action-row">
           <button
             type="button"
@@ -881,9 +842,6 @@ async function loadStoryPages(storyId) {
   }
 }
 
-// =========================
-// USERS TABLE RENDERER
-// =========================
 function renderUsersTable(users) {
   if (!tbody) return;
 
@@ -905,34 +863,10 @@ function renderUsersTable(users) {
       </td>
       <td>
         <div class="compact-actions">
-          <button
-            class="vote-adjust-btn"
-            data-user-id="${u.id}"
-            data-amount="1"
-            data-type="round">
-            +1 Round
-          </button>
-          <button
-            class="vote-adjust-btn danger-btn"
-            data-user-id="${u.id}"
-            data-amount="-1"
-            data-type="round">
-            -1 Round
-          </button>
-          <button
-            class="vote-adjust-btn"
-            data-user-id="${u.id}"
-            data-amount="1"
-            data-type="bonus">
-            +1 Bonus
-          </button>
-          <button
-            class="vote-adjust-btn danger-btn"
-            data-user-id="${u.id}"
-            data-amount="-1"
-            data-type="bonus">
-            -1 Bonus
-          </button>
+          <button class="vote-adjust-btn" data-user-id="${u.id}" data-amount="1" data-type="round">+1 Round</button>
+          <button class="vote-adjust-btn danger-btn" data-user-id="${u.id}" data-amount="-1" data-type="round">-1 Round</button>
+          <button class="vote-adjust-btn" data-user-id="${u.id}" data-amount="1" data-type="bonus">+1 Bonus</button>
+          <button class="vote-adjust-btn danger-btn" data-user-id="${u.id}" data-amount="-1" data-type="bonus">-1 Bonus</button>
         </div>
       </td>
     `;
@@ -942,9 +876,6 @@ function renderUsersTable(users) {
   attachUserTableListeners();
 }
 
-// =========================
-// USERS TABLE LISTENER ATTACHER
-// =========================
 function attachUserTableListeners() {
   tbody.querySelectorAll('.role-update-btn').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -1053,9 +984,6 @@ function attachUserTableListeners() {
   });
 }
 
-// =========================
-// COVER IMAGE UPLOAD HANDLER
-// =========================
 async function handleCoverUpload() {
   try {
     coverUploadMessage.textContent = '';
@@ -1143,9 +1071,6 @@ async function handleCoverUpload() {
   }
 }
 
-// =========================
-// COVER IMAGE DELETE HANDLER
-// =========================
 async function handleDeleteCoverImage() {
   try {
     if (!editingStoryId) {
@@ -1205,9 +1130,6 @@ async function handleDeleteCoverImage() {
   }
 }
 
-// =========================
-// STORY PAGE UPLOAD HANDLER
-// =========================
 async function handleStoryPageUpload(e) {
   e.preventDefault();
 
@@ -1286,9 +1208,6 @@ async function handleStoryPageUpload(e) {
   }
 }
 
-// =========================
-// STORY PAGE DELETE LISTENER ATTACHER
-// =========================
 function attachStoryPageDeleteListeners() {
   document.querySelectorAll('.delete-story-page-btn').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -1331,9 +1250,6 @@ function attachStoryPageDeleteListeners() {
   });
 }
 
-// =========================
-// STORY DELETE HANDLER
-// =========================
 async function handleDeleteStory() {
   if (!editingStoryId) return;
 
@@ -1377,9 +1293,6 @@ async function handleDeleteStory() {
   }
 }
 
-// =========================
-// STORY SAVE HANDLER
-// =========================
 async function handleStorySubmit(e) {
   e.preventDefault();
 
@@ -1393,8 +1306,25 @@ async function handleStorySubmit(e) {
     const description = storyDescription.value.trim();
     const active = storyActive.checked;
 
+    const story_status = storyStatusSelect.value;
+    const production_stage_label = productionStageLabel.value.trim() || null;
+    const is_preview_enabled = storyPreviewEnabled.checked;
+    const preview_page_count = Number(storyPreviewPageCount.value || 0);
+    const is_digital_purchase_available = storyDigitalAvailable.checked;
+    const is_paperback_available = storyPaperbackAvailable.checked;
+    const bundle_purchase_available = storyBundleAvailable.checked;
+    const release_date = storyReleaseDate.value ? new Date(storyReleaseDate.value).toISOString() : null;
+
     if (!title) {
       throw new Error('Title is required.');
+    }
+
+    if (!['concept_bank', 'active_vote', 'winner_in_production', 'released'].includes(story_status)) {
+      throw new Error('Invalid story lifecycle status.');
+    }
+
+    if (!Number.isInteger(preview_page_count) || preview_page_count < 0) {
+      throw new Error('Preview page count must be 0 or greater.');
     }
 
     const token = await getAccessToken();
@@ -1420,7 +1350,15 @@ async function handleStorySubmit(e) {
           author,
           cover_image_url,
           description,
-          active
+          active,
+          story_status,
+          production_stage_label,
+          is_preview_enabled,
+          preview_page_count,
+          is_digital_purchase_available,
+          is_paperback_available,
+          bundle_purchase_available,
+          release_date
         })
       });
     } else {
@@ -1435,7 +1373,15 @@ async function handleStorySubmit(e) {
           author,
           cover_image_url,
           description,
-          active
+          active,
+          story_status,
+          production_stage_label,
+          is_preview_enabled,
+          preview_page_count,
+          is_digital_purchase_available,
+          is_paperback_available,
+          bundle_purchase_available,
+          release_date
         })
       });
     }
@@ -1474,9 +1420,6 @@ async function handleStorySubmit(e) {
   }
 }
 
-// =========================
-// STORY SELECT CHANGE HANDLER
-// =========================
 async function handleStorySelectChange() {
   const selectedId = storySelect.value;
 
@@ -1491,9 +1434,6 @@ async function handleStorySelectChange() {
   }
 }
 
-// =========================
-// PRODUCT FORM RESETTER
-// =========================
 function clearProductForm() {
   editingProductId = null;
 
@@ -1533,9 +1473,6 @@ function clearProductForm() {
   updatePreviewImage(productImagePreview, '');
 }
 
-// =========================
-// PRODUCT FORM POPULATOR
-// =========================
 function populateProductForm(product) {
   editingProductId = product.id;
 
@@ -1576,9 +1513,6 @@ function populateProductForm(product) {
   }
 }
 
-// =========================
-// PRODUCTS PREVIEW RENDERER
-// =========================
 function renderProductsPreview(products) {
   if (!productsPreview) return;
 
@@ -1610,9 +1544,6 @@ function renderProductsPreview(products) {
   });
 }
 
-// =========================
-// PRODUCTS LOADER
-// =========================
 async function loadProductsPreview() {
   try {
     const { data: products, error } = await supabase
@@ -1657,9 +1588,6 @@ async function loadProductsPreview() {
   }
 }
 
-// =========================
-// PRODUCT SELECT CHANGE HANDLER
-// =========================
 function handleProductSelectChange() {
   const selectedId = productSelect?.value || '';
 
@@ -1675,16 +1603,10 @@ function handleProductSelectChange() {
   }
 }
 
-// =========================
-// PRODUCT IMAGE PREVIEW HANDLER
-// =========================
 function handleProductImageUrlInput() {
   updatePreviewImage(productImagePreview, productImageUrl?.value || '');
 }
 
-// =========================
-// PRODUCT IMAGE UPLOAD HANDLER
-// =========================
 async function handleProductImageUpload() {
   try {
     if (productImageUploadMessage) {
@@ -1782,9 +1704,6 @@ async function handleProductImageUpload() {
   }
 }
 
-// =========================
-// PRODUCT IMAGE DELETE HANDLER
-// =========================
 async function handleDeleteProductImage() {
   try {
     if (!editingProductId) {
@@ -1850,9 +1769,6 @@ async function handleDeleteProductImage() {
   }
 }
 
-// =========================
-// PRODUCT SUBMIT HANDLER
-// =========================
 async function handleProductSubmit(e) {
   e.preventDefault();
 
@@ -1964,9 +1880,6 @@ async function handleProductSubmit(e) {
   }
 }
 
-// =========================
-// PRODUCT DEACTIVATE HANDLER
-// =========================
 async function handleDeactivateProduct() {
   if (!editingProductId) return;
 
@@ -2032,9 +1945,6 @@ async function handleDeactivateProduct() {
   }
 }
 
-// =========================
-// ADMIN PANEL INITIALIZER
-// =========================
 export async function initAdminPanel() {
   currentUser = await getCurrentUserAsync();
 
@@ -2111,7 +2021,4 @@ export async function initAdminPanel() {
   productForm?.addEventListener('submit', handleProductSubmit);
 }
 
-// =========================
-// DOM READY BOOTSTRAP
-// =========================
 document.addEventListener('DOMContentLoaded', initAdminPanel);

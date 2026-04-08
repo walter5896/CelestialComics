@@ -1,32 +1,15 @@
 // /js/winner.js
-
-// =========================
-// IMPORTS
-// =========================
-// Import the shared Supabase client for reading winner and story data.
 import { supabase } from './supabase.js';
 
-// =========================
-// IMAGE RESOLVER
-// =========================
-// Returns the best available image for the winning story.
 function getWinnerImage(story) {
   return story?.cover_image_url || story?.image_url || '';
 }
 
-// =========================
-// EMPTY STATE RENDERER
-// =========================
-// Shows the "no winner yet" state and hides the winner card.
 function showEmptyState(winnerEmpty, winnerDetails) {
   if (winnerEmpty) winnerEmpty.style.display = 'block';
   if (winnerDetails) winnerDetails.style.display = 'none';
 }
 
-// =========================
-// WINNER STATE RENDERER
-// =========================
-// Shows the winner card and fills in all winner details.
 function showWinnerState({
   winnerEmpty,
   winnerDetails,
@@ -35,27 +18,33 @@ function showWinnerState({
   winnerMetaEl,
   winnerImageEl,
   winnerLinkEl,
-  winnerData,
-  winnerPeriod
+  winnerStatusLabelEl,
+  winnerData
 }) {
   if (winnerEmpty) winnerEmpty.style.display = 'none';
   if (winnerDetails) winnerDetails.style.display = 'block';
 
   if (winnerNameEl) {
-    winnerNameEl.textContent = winnerData.title || 'Untitled Story';
+    winnerNameEl.textContent = winnerData.title || 'Untitled Concept';
   }
 
   if (winnerStoryEl) {
-    winnerStoryEl.textContent = winnerData.description || 'Read the full winning story below.';
+    winnerStoryEl.textContent =
+      winnerData.description || 'No concept description available yet.';
   }
 
   if (winnerMetaEl) {
     const authorText = winnerData.author ? `By ${winnerData.author}` : 'Author not listed';
-    const votesText = winnerPeriod?.winning_vote_count != null
-      ? `Winning Votes: ${winnerPeriod.winning_vote_count}`
-      : 'Winning vote count unavailable';
+    const productionText = winnerData.production_stage_label
+      ? `Production Stage: ${winnerData.production_stage_label}`
+      : 'Production Stage: In Production';
 
-    winnerMetaEl.textContent = `${authorText} • ${votesText}`;
+    winnerMetaEl.textContent = `${authorText} • ${productionText}`;
+  }
+
+  if (winnerStatusLabelEl) {
+    winnerStatusLabelEl.textContent =
+      winnerData.production_stage_label || 'Winner in Production';
   }
 
   if (winnerImageEl) {
@@ -63,7 +52,7 @@ function showWinnerState({
 
     if (imageUrl) {
       winnerImageEl.src = imageUrl;
-      winnerImageEl.alt = winnerData.title || 'Winning Story';
+      winnerImageEl.alt = winnerData.title || 'Winning Concept';
       winnerImageEl.style.display = 'block';
     } else {
       winnerImageEl.removeAttribute('src');
@@ -74,40 +63,11 @@ function showWinnerState({
 
   if (winnerLinkEl) {
     winnerLinkEl.href = `/gallery/story.html?id=${winnerData.id}`;
-    winnerLinkEl.textContent = 'Read Full Story';
+    winnerLinkEl.textContent = 'View Concept Details';
   }
 }
 
-// =========================
-// LATEST FINALIZED ROUND FETCHER
-// =========================
-// Fetches the most recently finalized round only.
-// This prevents older winners from being shown accidentally.
-async function fetchLatestFinalizedWinnerPeriod() {
-  const { data, error } = await supabase
-    .from('voting_periods')
-    .select(`
-      id,
-      winner_id,
-      winning_vote_count,
-      finalized_at,
-      start_time,
-      end_time
-    `)
-    .not('finalized_at', 'is', null)
-    .order('finalized_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data || null;
-}
-
-// =========================
-// WINNING STORY FETCHER
-// =========================
-// Loads the story record for the finalized winner.
-async function fetchWinningStory(winnerId) {
+async function fetchCurrentWinnerInProduction() {
   const { data, error } = await supabase
     .from('stories')
     .select(`
@@ -116,19 +76,20 @@ async function fetchWinningStory(winnerId) {
       author,
       description,
       image_url,
-      cover_image_url
+      cover_image_url,
+      story_status,
+      production_stage_label
     `)
-    .eq('id', winnerId)
+    .eq('active', true)
+    .eq('story_status', 'winner_in_production')
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error) throw error;
   return data || null;
 }
 
-// =========================
-// WINNER PAGE INITIALIZER
-// =========================
-// Loads the latest finalized winner and renders the winner page.
 async function initWinnerPage() {
   const winnerEmpty = document.getElementById('winner-empty');
   const winnerDetails = document.getElementById('winner-details');
@@ -137,31 +98,16 @@ async function initWinnerPage() {
   const winnerMetaEl = document.getElementById('winner-meta');
   const winnerImageEl = document.getElementById('winner-image');
   const winnerLinkEl = document.getElementById('winner-link');
+  const winnerStatusLabelEl = document.getElementById('winner-status-label');
 
   try {
-    // =========================
-    // FETCH LATEST FINALIZED ROUND
-    // =========================
-    const winnerPeriod = await fetchLatestFinalizedWinnerPeriod();
-
-    if (!winnerPeriod?.winner_id) {
-      showEmptyState(winnerEmpty, winnerDetails);
-      return;
-    }
-
-    // =========================
-    // FETCH WINNING STORY
-    // =========================
-    const winnerData = await fetchWinningStory(winnerPeriod.winner_id);
+    const winnerData = await fetchCurrentWinnerInProduction();
 
     if (!winnerData) {
       showEmptyState(winnerEmpty, winnerDetails);
       return;
     }
 
-    // =========================
-    // RENDER WINNER
-    // =========================
     showWinnerState({
       winnerEmpty,
       winnerDetails,
@@ -170,8 +116,8 @@ async function initWinnerPage() {
       winnerMetaEl,
       winnerImageEl,
       winnerLinkEl,
-      winnerData,
-      winnerPeriod
+      winnerStatusLabelEl,
+      winnerData
     });
   } catch (err) {
     console.error('Error fetching winner:', err);
@@ -179,8 +125,4 @@ async function initWinnerPage() {
   }
 }
 
-// =========================
-// DOM READY BOOTSTRAP
-// =========================
-// Starts winner-page loading once the DOM is ready.
 document.addEventListener('DOMContentLoaded', initWinnerPage);

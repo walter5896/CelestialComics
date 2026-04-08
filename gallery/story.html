@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Story | Celestial Comics</title>
+  <title>Story Concept | Celestial Comics</title>
   <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
@@ -43,6 +43,7 @@
 
     <section class="story-hero">
       <div class="container">
+        <p class="story-status-label">Concept Bank</p>
         <h1 class="story-title">Loading...</h1>
         <p class="story-meta"></p>
         <img src="" alt="" class="story-hero-img" />
@@ -52,20 +53,23 @@
     <section class="story-body">
       <div class="container">
         <div class="story-content">
-          <p>Loading story content...</p>
+          <p>Loading concept details...</p>
         </div>
 
         <div class="story-cta">
-          <a id="read-full-story-btn" href="#" class="btn btn-primary">Read Full Story</a>
-          <button type="button" class="btn btn-primary vote-btn" data-story-id="">Vote for this story</button>
-          <button type="button" class="btn btn-secondary save-btn" data-story-id="">Save Story</button>
+          <button type="button" class="btn btn-primary vote-btn" data-story-id="" style="display:none;">
+            Vote for this concept
+          </button>
+          <button type="button" class="btn btn-secondary save-btn" data-story-id="">
+            Save Concept
+          </button>
         </div>
       </div>
     </section>
 
     <section class="related-stories">
       <div class="container">
-        <h2>Other Stories You Might Like</h2>
+        <h2>Other Concepts You Might Like</h2>
         <div id="related-stories-grid" class="story-grid"></div>
       </div>
     </section>
@@ -97,6 +101,7 @@
     import { updateUI, logout } from '/js/auth.js';
     import { loadStory } from '/js/story.js';
     import {
+      fetchConceptBankStories,
       fetchStoriesWithVotes,
       renderStoriesForHome,
       fetchSavedStories,
@@ -105,11 +110,6 @@
     } from '/js/vote.js';
     import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
 
-    // =========================
-    // STORY PAGE INITIALIZER
-    // =========================
-    // Loads the story detail page, wires vote/save behavior,
-    // and renders related stories.
     document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
 
@@ -125,63 +125,42 @@
       if (!story) return;
 
       const storyId = story.id;
+      const voteBtn = document.querySelector('.vote-btn');
+      const saveBtn = document.querySelector('.save-btn');
+      const statusLabel = document.querySelector('.story-status-label');
 
-      // =========================
-      // STORY + VOTE METADATA LOAD
-      // =========================
-      // Load vote-related story data so the detail page reflects
-      // the current round status and visible vote totals.
-      const storiesWithVotes = await fetchStoriesWithVotes();
-      const fullStory = storiesWithVotes.find(
+      // Default label for current phase
+      statusLabel.textContent = 'Concept Bank';
+
+      // Load active-vote stories to see whether this concept is currently competing
+      const activeVoteStories = await fetchStoriesWithVotes();
+      const matchingActiveStory = activeVoteStories.find(
         (item) => String(item.id) === String(storyId)
       );
 
-      if (fullStory) {
-        story.voting_status = fullStory.voting_status;
-        story.vote_count = fullStory.vote_count;
+      if (matchingActiveStory) {
+        story.voting_status = matchingActiveStory.voting_status;
+        story.vote_count = matchingActiveStory.vote_count || 0;
+        statusLabel.textContent = 'Currently in Voting';
+      } else {
+        story.voting_status = 'closed';
+        story.vote_count = 0;
       }
 
-      // =========================
-      // STORY DETAIL RENDER
-      // =========================
-      // Populate the story title, author, cover image, and description.
-      document.querySelector('.story-title').textContent = story.title || 'Untitled Story';
-      document.querySelector('.story-meta').textContent = story.author || '';
-
-      const heroImg = document.querySelector('.story-hero-img');
-      heroImg.src = story.cover_image_url || story.image_url || '';
-      heroImg.alt = story.title || 'Story cover';
-
-      const storyContent = document.querySelector('.story-content');
-      storyContent.innerHTML = `<p>${story.description || 'No story description available yet.'}</p>`;
-
-      // =========================
-      // CTA SETUP
-      // =========================
-      // Wire the read button plus story-specific vote/save button metadata.
-      const readFullStoryBtn = document.getElementById('read-full-story-btn');
-      readFullStoryBtn.href = `/gallery/read.html?id=${storyId}`;
-
-      const voteBtn = document.querySelector('.vote-btn');
       voteBtn.dataset.storyId = storyId;
       voteBtn.dataset.voteCount = story.vote_count || 0;
-
-      const saveBtn = document.querySelector('.save-btn');
       saveBtn.dataset.storyId = storyId;
 
-      // =========================
-      // SINGLE STORY VOTING RULES
-      // =========================
-      // Apply the same round-state restrictions used elsewhere so
-      // users cannot vote from this page when the round is not open.
-      await restrictSingleStoryVoting(story, voteBtn);
+      // Only show voting if this concept is actively competing
+      if (matchingActiveStory) {
+        voteBtn.style.display = 'inline-flex';
+        await restrictSingleStoryVoting(story, voteBtn);
+      } else {
+        voteBtn.style.display = 'none';
+      }
 
-      // =========================
-      // SINGLE STORY VOTE HANDLER
-      // =========================
-      // Allows the user to cast a vote directly from the story page.
       voteBtn.addEventListener('click', async () => {
-        if (voteBtn.disabled) return;
+        if (voteBtn.disabled || voteBtn.style.display === 'none') return;
 
         const originalText = voteBtn.textContent;
         voteBtn.disabled = true;
@@ -208,10 +187,6 @@
         }
       });
 
-      // =========================
-      // SAVED STORY STATE LOAD
-      // =========================
-      // Check whether this story is already saved for the current user.
       const savedResult = await fetchSavedStories();
       const savedStories = savedResult.success ? savedResult.data : [];
       const alreadySaved = savedStories.some(
@@ -223,10 +198,6 @@
         saveBtn.textContent = 'Already Saved';
       }
 
-      // =========================
-      // SAVE STORY HANDLER
-      // =========================
-      // Allows the user to save the story from the detail page.
       saveBtn.addEventListener('click', async () => {
         if (saveBtn.disabled) return;
 
@@ -244,22 +215,19 @@
           } else {
             saveBtn.disabled = false;
             saveBtn.textContent = originalText;
-            alert('Failed to save story.');
+            alert('Failed to save concept.');
           }
         } catch (err) {
           console.error('Save story error:', err);
           saveBtn.disabled = false;
           saveBtn.textContent = originalText;
-          alert('Failed to save story.');
+          alert('Failed to save concept.');
         }
       });
 
-      // =========================
-      // RELATED STORIES RENDER
-      // =========================
-      // Render all other stories as related content beneath this one.
-      const stories = await fetchStoriesWithVotes();
-      const relatedStories = stories.filter(
+      // Related concepts should come from concept bank, not vote list
+      const conceptStories = await fetchConceptBankStories();
+      const relatedStories = conceptStories.filter(
         (item) => String(item.id) !== String(storyId)
       );
 

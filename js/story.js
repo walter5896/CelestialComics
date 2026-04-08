@@ -7,12 +7,17 @@ export function getQueryParam(param) {
   return urlParams.get(param);
 }
 
-/** Load and render a story (NO voting logic here) */
+/** Load and render a concept/story detail page */
 export async function loadStory() {
   const storyId = getQueryParam('id');
 
+  const titleEl = document.querySelector('.story-title');
+  const metaEl = document.querySelector('.story-meta');
+  const heroImg = document.querySelector('.story-hero-img');
+  const contentEl = document.querySelector('.story-content');
+
   if (!storyId) {
-    document.querySelector('.story-title').textContent = 'No story specified';
+    if (titleEl) titleEl.textContent = 'No story concept specified';
     return null;
   }
 
@@ -25,27 +30,33 @@ export async function loadStory() {
 
     if (error || !story) {
       console.error('Story fetch error:', error);
-      document.querySelector('.story-title').textContent = 'Story not found';
+      if (titleEl) titleEl.textContent = 'Story concept not found';
       return null;
     }
 
-    // Inject into DOM using current schema
-    document.querySelector('.story-title').textContent = story.title || 'Untitled Story';
-    document.querySelector('.story-meta').textContent = story.author
-      ? `By ${story.author}`
-      : '';
+    if (titleEl) {
+      titleEl.textContent = story.title || 'Untitled Concept';
+    }
 
-    const heroImg = document.querySelector('.story-hero-img');
-    heroImg.src = story.cover_image_url || story.image_url || '';
-    heroImg.alt = story.title || 'Story cover';
+    if (metaEl) {
+      metaEl.textContent = story.author ? `By ${story.author}` : '';
+    }
 
-    document.querySelector('.story-content').innerHTML =
-      `<p>${story.description || 'No story description available yet.'}</p>`;
+    if (heroImg) {
+      heroImg.src = story.cover_image_url || story.image_url || '';
+      heroImg.alt = story.title || 'Story concept cover';
+    }
+
+    if (contentEl) {
+      contentEl.innerHTML = `
+        <p>${story.description || 'No concept description available yet.'}</p>
+      `;
+    }
 
     return story;
   } catch (err) {
     console.error('Unexpected error loading story:', err);
-    document.querySelector('.story-title').textContent = 'Error loading story';
+    if (titleEl) titleEl.textContent = 'Error loading concept';
     return null;
   }
 }

@@ -6,6 +6,47 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const VALID_STATUSES = [
+  'concept_bank',
+  'active_vote',
+  'winner_in_production',
+  'released'
+];
+
+function normalizeBoolean(value, fallback = false) {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeNullableText(value) {
+  const str = String(value ?? '').trim();
+  return str ? str : null;
+}
+
+function normalizePreviewCount(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error('preview_page_count must be a whole number 0 or greater');
+  }
+  return parsed;
+}
+
+function normalizeStoryStatus(value) {
+  const status = String(value || 'concept_bank').trim();
+  if (!VALID_STATUSES.includes(status)) {
+    throw new Error('Invalid story_status value');
+  }
+  return status;
+}
+
+function normalizeReleaseDate(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('Invalid release_date value');
+  }
+  return parsed.toISOString();
+}
+
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
     return {
@@ -52,15 +93,9 @@ export async function handler(event) {
       };
     }
 
-    const {
-      story_id,
-      title,
-      description,
-      author,
-      cover_image_url,
-      active
-    } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
 
+    const story_id = String(body.story_id || '').trim();
     if (!story_id) {
       return {
         statusCode: 400,
@@ -68,7 +103,8 @@ export async function handler(event) {
       };
     }
 
-    if (!title || !title.trim()) {
+    const title = String(body.title || '').trim();
+    if (!title) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Title is required' })
@@ -76,11 +112,19 @@ export async function handler(event) {
     }
 
     const updates = {
-      title: title.trim(),
-      description: description || null,
-      author: author || null,
-      cover_image_url: cover_image_url || null,
-      active: typeof active === 'boolean' ? active : true
+      title,
+      description: normalizeNullableText(body.description),
+      author: normalizeNullableText(body.author),
+      cover_image_url: normalizeNullableText(body.cover_image_url),
+      active: normalizeBoolean(body.active, true),
+      story_status: normalizeStoryStatus(body.story_status),
+      production_stage_label: normalizeNullableText(body.production_stage_label),
+      is_preview_enabled: normalizeBoolean(body.is_preview_enabled, false),
+      preview_page_count: normalizePreviewCount(body.preview_page_count ?? 0),
+      is_digital_purchase_available: normalizeBoolean(body.is_digital_purchase_available, false),
+      is_paperback_available: normalizeBoolean(body.is_paperback_available, false),
+      bundle_purchase_available: normalizeBoolean(body.bundle_purchase_available, false),
+      release_date: normalizeReleaseDate(body.release_date)
     };
 
     const { data, error } = await supabase

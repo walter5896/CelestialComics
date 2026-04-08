@@ -278,6 +278,24 @@
       gap: 1rem;
     }
 
+    .three-column-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: #e5e7eb;
+      color: #111827;
+      margin-top: 0.25rem;
+      margin-bottom: 0.35rem;
+    }
+
     code {
       background: #eef2ff;
       padding: 0.15rem 0.4rem;
@@ -316,7 +334,6 @@
   <div class="container">
     <p id="status-message">Loading...</p>
 
-    <!-- USER MANAGEMENT -->
     <table id="users-table" style="display:none;">
       <thead>
         <tr>
@@ -331,7 +348,6 @@
       <tbody></tbody>
     </table>
 
-    <!-- VOTING CONTROLS -->
     <div class="section-card" id="voting-section" style="display:none;">
       <h2>Voting Controls</h2>
 
@@ -414,7 +430,6 @@
       </div>
     </div>
 
-    <!-- STORY MANAGEMENT -->
     <div class="section-card" id="story-management-section" style="display:none;">
       <h2>Story Management</h2>
 
@@ -437,6 +452,29 @@
           <input type="text" id="story-author" placeholder="Optional author/team name" />
         </div>
 
+        <div class="two-column-grid">
+          <div class="field-group">
+            <label for="story-status-select">Story Lifecycle Status</label>
+            <select id="story-status-select">
+              <option value="concept_bank">Concept Bank</option>
+              <option value="active_vote">Active Vote</option>
+              <option value="winner_in_production">Winner in Production</option>
+              <option value="released">Released</option>
+            </select>
+            <p class="helper-text">This controls which public-facing section the story appears in.</p>
+          </div>
+
+          <div class="field-group">
+            <label for="production-stage-label">Production Stage Label</label>
+            <input
+              type="text"
+              id="production-stage-label"
+              placeholder="Example: Concept, In Production, Printing, Released"
+            />
+            <p class="helper-text">Optional label shown on winner / release-focused views.</p>
+          </div>
+        </div>
+
         <div class="field-group">
           <label for="story-cover-file">Cover Image Upload</label>
           <input type="file" id="story-cover-file" accept="image/*" />
@@ -454,9 +492,45 @@
           <textarea id="story-description" placeholder="Story description..."></textarea>
         </div>
 
-        <div class="field-group inline-checkbox">
-          <input type="checkbox" id="story-active" checked />
-          <label for="story-active" style="margin-bottom:0;">Active / published</label>
+        <div class="three-column-grid">
+          <div class="field-group inline-checkbox">
+            <input type="checkbox" id="story-active" checked />
+            <label for="story-active" style="margin-bottom:0;">Active / visible</label>
+          </div>
+
+          <div class="field-group inline-checkbox">
+            <input type="checkbox" id="story-preview-enabled" />
+            <label for="story-preview-enabled" style="margin-bottom:0;">Preview enabled</label>
+          </div>
+
+          <div class="field-group">
+            <label for="story-preview-page-count">Preview Page Count</label>
+            <input type="number" id="story-preview-page-count" min="0" step="1" value="0" />
+            <p class="helper-text">Use 0 if there is no public preview yet.</p>
+          </div>
+        </div>
+
+        <div class="three-column-grid">
+          <div class="field-group inline-checkbox">
+            <input type="checkbox" id="story-digital-available" />
+            <label for="story-digital-available" style="margin-bottom:0;">Digital purchase available</label>
+          </div>
+
+          <div class="field-group inline-checkbox">
+            <input type="checkbox" id="story-paperback-available" />
+            <label for="story-paperback-available" style="margin-bottom:0;">Paperback available</label>
+          </div>
+
+          <div class="field-group inline-checkbox">
+            <input type="checkbox" id="story-bundle-available" />
+            <label for="story-bundle-available" style="margin-bottom:0;">Bundle available</label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="story-release-date">Release Date</label>
+          <input type="datetime-local" id="story-release-date" />
+          <p class="helper-text">Optional. Best used once a story moves close to release.</p>
         </div>
 
         <div class="action-row">
@@ -502,7 +576,6 @@
       </div>
     </div>
 
-    <!-- PRODUCT MANAGEMENT -->
     <div class="section-card" id="product-management-section" style="display:none;">
       <h2>Product Management</h2>
       <p class="helper-text">

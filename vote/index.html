@@ -37,22 +37,31 @@
   <main class="container">
     <div id="voting-closed" class="voting-state" style="display:none;">
       <h2>Voting is Closed</h2>
-      <p>Voting is currently closed. Thank you for participating!</p>
+      <p>
+        There is no active concept tournament at the moment. Check back soon to
+        help decide which story concept gets produced next.
+      </p>
       <div class="story-actions">
-        <a href="/winner/" class="btn btn-primary">View Winner</a>
-        <a href="/history/" class="btn btn-secondary">View Standings & History</a>
+        <a href="/winner/" class="btn btn-primary">View Current Winner</a>
+        <a href="/gallery/" class="btn btn-secondary">Browse Concept Gallery</a>
       </div>
     </div>
 
     <div id="voting-open" class="voting-state" style="display:none;">
       <h2>Voting is Open!</h2>
-      <p>Select your favorite story below and cast your vote.</p>
+      <p>
+        Review the competing story concepts below and cast your vote for the one
+        you want to see move into production.
+      </p>
       <div id="story-grid" class="story-grid"></div>
     </div>
 
     <div id="login-prompt" class="voting-state" style="display:none;">
       <h2>Please Log In to Vote</h2>
-      <p>You must be logged in to vote. Please log in or sign up to participate.</p>
+      <p>
+        You must be logged in to vote in the current concept tournament. Please
+        log in or sign up to participate.
+      </p>
       <a href="/login/" class="btn btn-primary">Login</a>
     </div>
   </main>
@@ -85,11 +94,6 @@
     import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
     import { initVoting, fetchStoriesWithVotes } from '/js/vote.js';
 
-    // =========================
-    // VOTE PAGE STATE RENDERER
-    // =========================
-    // Shows the correct vote-page state depending on whether the user
-    // is logged in and whether the current round is open.
     async function initVotePage() {
       const loginPrompt = document.getElementById('login-prompt');
       const votingOpen = document.getElementById('voting-open');
