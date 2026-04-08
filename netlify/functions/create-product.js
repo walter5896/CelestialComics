@@ -3,9 +3,6 @@
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 
-// =========================
-// ENVIRONMENT VALIDATION
-// =========================
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -21,9 +18,8 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 const stripe = new Stripe(stripeSecretKey);
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-// =========================
-// HELPERS
-// =========================
+const VALID_PRODUCT_TYPES = ['merch', 'digital_comic', 'paperback', 'bundle'];
+
 function buildJsonResponse(statusCode, payload) {
   return {
     statusCode,
@@ -47,6 +43,45 @@ function normalizeInteger(value, fallback = 0) {
   return Math.trunc(parsed);
 }
 
+function normalizeNullableString(value) {
+  const str = String(value ?? '').trim();
+  return str || null;
+}
+
+function normalizeProductType(value) {
+  const type = String(value || 'merch').trim();
+
+  if (!VALID_PRODUCT_TYPES.includes(type)) {
+    throw new Error(`Invalid product_type. Must be one of: ${VALID_PRODUCT_TYPES.join(', ')}`);
+  }
+
+  return type;
+}
+
+async function validateStoryReference(storyId, productType) {
+  if (!storyId) {
+    if (productType === 'merch') return null;
+    throw new Error('story_id is required for digital_comic, paperback, and bundle products.');
+  }
+
+  const { data: story, error } = await supabase
+    .from('stories')
+    .select('id, title, story_status, active')
+    .eq('id', storyId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!story) {
+    throw new Error('Referenced story was not found.');
+  }
+
+  if (productType !== 'merch' && story.story_status !== 'released') {
+    throw new Error('Comic-format products can only be attached to released stories.');
+  }
+
+  return story;
+}
+
 function validateProductPayload(body) {
   const name = String(body.name || '').trim();
   const description = String(body.description || '').trim();
@@ -54,6 +89,8 @@ function validateProductPayload(body) {
   const active = normalizeBoolean(body.active, true);
   const price_cents = normalizeInteger(body.price_cents, NaN);
   const votes_granted = normalizeInteger(body.votes_granted, 0);
+  const product_type = normalizeProductType(body.product_type);
+  const story_id = normalizeNullableString(body.story_id);
 
   if (!name) {
     throw new Error('Product name is required.');
@@ -75,13 +112,23 @@ function validateProductPayload(body) {
     throw new Error('image_url must be an absolute URL or site-relative path.');
   }
 
+  if (product_type === 'merch' && story_id) {
+    throw new Error('Merch products should not have a story_id attached.');
+  }
+
+  if (product_type !== 'merch' && votes_granted > 0) {
+    throw new Error('Comic-format products should not grant bonus votes.');
+  }
+
   return {
     name,
     description,
     image_url,
     active,
     price_cents,
-    votes_granted
+    votes_granted,
+    product_type,
+    story_id
   };
 }
 
@@ -112,9 +159,6 @@ async function getAdminUserFromToken(token) {
   return user;
 }
 
-// =========================
-// MAIN HANDLER
-// =========================
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return buildJsonResponse(405, { error: 'Method not allowed' });
@@ -130,14 +174,8 @@ exports.handler = async (event) => {
   let createdStripeProductId = null;
 
   try {
-    // =========================
-    // AUTH / ADMIN CHECK
-    // =========================
     const adminUser = await getAdminUserFromToken(token);
 
-    // =========================
-    // BODY PARSE / VALIDATION
-    // =========================
     let body = {};
     try {
       body = JSON.parse(event.body || '{}');
@@ -151,18 +189,22 @@ exports.handler = async (event) => {
       image_url,
       active,
       price_cents,
-      votes_granted
+      votes_granted,
+      product_type,
+      story_id
     } = validateProductPayload(body);
 
-    // =========================
-    // STRIPE PRODUCT CREATION
-    // =========================
+    const linkedStory = await validateStoryReference(story_id, product_type);
+
     const stripeProduct = await stripe.products.create({
       name,
       description,
       active,
       images: image_url && /^https?:\/\//i.test(image_url) ? [image_url] : [],
       metadata: {
+        product_type,
+        story_id: story_id || '',
+        story_title: linkedStory?.title || '',
         votes_granted: String(votes_granted),
         supabase_created_by: adminUser.id
       }
@@ -170,23 +212,19 @@ exports.handler = async (event) => {
 
     createdStripeProductId = stripeProduct.id;
 
-    // =========================
-    // STRIPE PRICE CREATION
-    // =========================
     const stripePrice = await stripe.prices.create({
       product: stripeProduct.id,
       unit_amount: price_cents,
       currency: 'usd',
       active,
       metadata: {
+        product_type,
+        story_id: story_id || '',
         votes_granted: String(votes_granted),
         supabase_created_by: adminUser.id
       }
     });
 
-    // =========================
-    // SUPABASE INSERT
-    // =========================
     const { data: insertedProduct, error: insertError } = await supabase
       .from('products')
       .insert([
@@ -199,6 +237,8 @@ exports.handler = async (event) => {
           image_url,
           active,
           votes_granted,
+          product_type,
+          story_id,
           updated_at: new Date().toISOString()
         }
       ])
@@ -217,11 +257,6 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('create-product error:', error);
 
-    // =========================
-    // BEST-EFFORT STRIPE CLEANUP
-    // =========================
-    // If Stripe product creation succeeded but DB insert failed,
-    // archive the Stripe product so it does not remain active orphaned.
     if (createdStripeProductId) {
       try {
         await stripe.products.update(createdStripeProductId, {

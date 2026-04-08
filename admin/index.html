@@ -579,7 +579,7 @@
     <div class="section-card" id="product-management-section" style="display:none;">
       <h2>Product Management</h2>
       <p class="helper-text">
-        Create real merch products and optionally attach bonus votes using <code>votes_granted</code>.
+        Create merch, digital comics, paperbacks, and bundles. Comic-format products must be linked to a released story.
       </p>
 
       <div class="product-management-inner">
@@ -604,6 +604,27 @@
 
           <div class="two-column-grid">
             <div class="field-group">
+              <label for="product-type">Product Type</label>
+              <select id="product-type" required>
+                <option value="merch">Merch</option>
+                <option value="digital_comic">Digital Comic</option>
+                <option value="paperback">Paperback</option>
+                <option value="bundle">Bundle</option>
+              </select>
+              <p class="helper-text">Merch stays standalone. Comic products must be tied to a released story.</p>
+            </div>
+
+            <div class="field-group">
+              <label for="product-story-id">Linked Story</label>
+              <select id="product-story-id">
+                <option value="">-- No Linked Story --</option>
+              </select>
+              <p class="helper-text">Required for digital comic, paperback, and bundle products.</p>
+            </div>
+          </div>
+
+          <div class="two-column-grid">
+            <div class="field-group">
               <label for="product-price-cents">Price (in cents)</label>
               <input type="number" id="product-price-cents" min="1" step="1" placeholder="2500" required />
               <p class="helper-text">Example: 2500 = $25.00</p>
@@ -612,7 +633,7 @@
             <div class="field-group">
               <label for="product-votes-granted">Bonus Votes Granted</label>
               <input type="number" id="product-votes-granted" min="0" step="1" value="0" required />
-              <p class="helper-text">Set to 0 if the product does not include bonus votes.</p>
+              <p class="helper-text">Only merch should grant bonus votes. Comic products should usually stay at 0.</p>
             </div>
           </div>
 

@@ -3,9 +3,6 @@
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 
-// =========================
-// ENVIRONMENT
-// =========================
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -30,9 +27,6 @@ const supabase = createClient(
   supabaseServiceRoleKey
 );
 
-// =========================
-// HELPERS
-// =========================
 function jsonResponse(statusCode, payload) {
   return {
     statusCode,
@@ -107,9 +101,6 @@ async function markOrderFailed(orderId) {
   }
 }
 
-// =========================
-// MAIN HANDLER
-// =========================
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return jsonResponse(405, { error: 'Method not allowed' });
@@ -125,14 +116,8 @@ exports.handler = async (event) => {
   let createdOrderId = null;
 
   try {
-    // =========================
-    // AUTHENTICATE USER
-    // =========================
     const user = await getAuthenticatedUser(token);
 
-    // =========================
-    // PARSE AND VALIDATE CART
-    // =========================
     const body = parseRequestBody(event.body);
     const rawCart = Array.isArray(body.cart) ? body.cart : [];
 
@@ -143,10 +128,6 @@ exports.handler = async (event) => {
     const cart = mergeCartItems(rawCart);
     const productIds = cart.map((item) => item.product_id);
 
-    // =========================
-    // LOAD PRODUCTS FROM DB
-    // =========================
-    // Never trust Stripe IDs or pricing from the client.
     const { data: products, error: productsError } = await supabase
       .from('products')
       .select(`
@@ -157,7 +138,9 @@ exports.handler = async (event) => {
         stripe_product_id,
         stripe_price_id,
         active,
-        votes_granted
+        votes_granted,
+        product_type,
+        story_id
       `)
       .in('id', productIds);
 
@@ -212,9 +195,6 @@ exports.handler = async (event) => {
       totalVotesGranted += votesGrantedEach * cartItem.quantity;
     }
 
-    // =========================
-    // CREATE ORDER
-    // =========================
     const nowIso = new Date().toISOString();
 
     const { data: order, error: orderError } = await supabase
@@ -243,9 +223,6 @@ exports.handler = async (event) => {
 
     createdOrderId = order.id;
 
-    // =========================
-    // CREATE ORDER ITEMS
-    // =========================
     const itemsToInsert = orderItems.map((item) => ({
       order_id: order.id,
       product_id: item.product_id,
@@ -270,9 +247,14 @@ exports.handler = async (event) => {
       });
     }
 
-    // =========================
-    // CREATE STRIPE CHECKOUT SESSION
-    // =========================
+    const productTypeSummary = Array.from(
+      new Set((products || []).map((p) => p.product_type || 'merch'))
+    ).join(',');
+
+    const storyIdsSummary = Array.from(
+      new Set((products || []).map((p) => p.story_id).filter(Boolean))
+    ).join(',');
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -286,13 +268,12 @@ exports.handler = async (event) => {
         order_id: order.id,
         user_id: user.id,
         total_cents: String(totalCents),
-        total_votes_granted: String(totalVotesGranted)
+        total_votes_granted: String(totalVotesGranted),
+        product_types: productTypeSummary,
+        story_ids: storyIdsSummary
       }
     });
 
-    // =========================
-    // SAVE SESSION ID TO ORDER
-    // =========================
     const { error: updateError } = await supabase
       .from('orders')
       .update({

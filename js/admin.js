@@ -81,6 +81,8 @@ const productVotesGranted = document.getElementById('product-votes-granted');
 const productImageUrl = document.getElementById('product-image-url');
 const productImagePreview = document.getElementById('product-image-preview');
 const productActive = document.getElementById('product-active');
+const productType = document.getElementById('product-type');
+const productStoryId = document.getElementById('product-story-id');
 
 const productImageFile = document.getElementById('product-image-file');
 const uploadProductImageBtn = document.getElementById('upload-product-image-btn');
@@ -191,6 +193,64 @@ function prettyStoryStatus(status) {
     case 'winner_in_production': return 'Winner in Production';
     case 'released': return 'Released';
     default: return status || 'Unknown';
+  }
+}
+
+function prettyProductType(type) {
+  switch (type) {
+    case 'digital_comic': return 'Digital Comic';
+    case 'paperback': return 'Paperback';
+    case 'bundle': return 'Bundle';
+    case 'merch': return 'Merch';
+    default: return type || 'Unknown';
+  }
+}
+
+function isComicProductType(type) {
+  return ['digital_comic', 'paperback', 'bundle'].includes(type);
+}
+
+function syncProductFormRules() {
+  const selectedType = productType?.value || 'merch';
+  const comicProduct = isComicProductType(selectedType);
+
+  if (productStoryId) {
+    productStoryId.disabled = !comicProduct;
+    if (!comicProduct) {
+      productStoryId.value = '';
+    }
+  }
+
+  if (productVotesGranted) {
+    if (comicProduct) {
+      productVotesGranted.value = '0';
+      productVotesGranted.disabled = true;
+    } else {
+      productVotesGranted.disabled = false;
+    }
+  }
+}
+
+function populateReleasedStoryOptions() {
+  if (!productStoryId) return;
+
+  const releasedStories = allStories.filter(
+    (story) => story.story_status === 'released' && story.active
+  );
+
+  const currentValue = productStoryId.value;
+
+  productStoryId.innerHTML = '<option value="">-- No Linked Story --</option>';
+
+  releasedStories.forEach((story) => {
+    const option = document.createElement('option');
+    option.value = story.id;
+    option.textContent = story.title;
+    productStoryId.appendChild(option);
+  });
+
+  if (currentValue && releasedStories.some((story) => story.id === currentValue)) {
+    productStoryId.value = currentValue;
   }
 }
 
@@ -760,6 +820,7 @@ async function loadStoriesPreview() {
 
     if (!allStories.length) {
       storiesPreview.innerHTML = '<p>No stories yet.</p>';
+      populateReleasedStoryOptions();
       return;
     }
 
@@ -785,6 +846,8 @@ async function loadStoriesPreview() {
       `;
       storiesPreview.appendChild(div);
     });
+
+    populateReleasedStoryOptions();
   } catch (err) {
     console.error('Error loading stories preview:', err);
     storiesPreview.innerHTML = '<p>Failed to load stories.</p>';
@@ -1442,6 +1505,8 @@ function clearProductForm() {
 
   if (productActive) productActive.checked = true;
   if (productVotesGranted) productVotesGranted.value = '0';
+  if (productType) productType.value = 'merch';
+  if (productStoryId) productStoryId.value = '';
 
   if (saveProductBtn) {
     saveProductBtn.disabled = false;
@@ -1471,6 +1536,7 @@ function clearProductForm() {
   }
 
   updatePreviewImage(productImagePreview, '');
+  syncProductFormRules();
 }
 
 function populateProductForm(product) {
@@ -1482,6 +1548,16 @@ function populateProductForm(product) {
   productVotesGranted.value = Number(product.votes_granted) || 0;
   productImageUrl.value = product.image_url || '';
   productActive.checked = !!product.active;
+
+  if (productType) {
+    productType.value = product.product_type || 'merch';
+  }
+
+  populateReleasedStoryOptions();
+
+  if (productStoryId) {
+    productStoryId.value = product.story_id || '';
+  }
 
   updatePreviewImage(productImagePreview, product.image_url || '');
 
@@ -1511,6 +1587,8 @@ function populateProductForm(product) {
   if (deleteProductImageBtn) {
     deleteProductImageBtn.style.display = product.image_url ? 'inline-block' : 'none';
   }
+
+  syncProductFormRules();
 }
 
 function renderProductsPreview(products) {
@@ -1531,9 +1609,13 @@ function renderProductsPreview(products) {
       ? `$${(product.price_cents / 100).toFixed(2)}`
       : 'Price unavailable';
 
+    const linkedStoryTitle = product.stories?.title || 'No linked story';
+
     card.innerHTML = `
       ${product.image_url ? `<img src="${product.image_url}" alt="${product.name}">` : ''}
       <strong>${product.name}</strong>
+      <div class="product-meta"><strong>Type:</strong> ${prettyProductType(product.product_type)}</div>
+      <div class="product-meta"><strong>Story:</strong> ${product.story_id ? linkedStoryTitle : 'None'}</div>
       <div class="product-meta">${product.description || 'No description set.'}</div>
       <div class="product-meta"><strong>Price:</strong> ${priceText}</div>
       <div class="product-meta"><strong>Bonus Votes:</strong> ${product.votes_granted ?? 0}</div>
@@ -1559,8 +1641,14 @@ async function loadProductsPreview() {
         image_path,
         active,
         votes_granted,
+        product_type,
+        story_id,
         created_at,
-        updated_at
+        updated_at,
+        stories (
+          id,
+          title
+        )
       `)
       .order('created_at', { ascending: false });
 
@@ -1574,11 +1662,12 @@ async function loadProductsPreview() {
       allProducts.forEach((product) => {
         const option = document.createElement('option');
         option.value = product.id;
-        option.textContent = product.name;
+        option.textContent = `${product.name} (${prettyProductType(product.product_type || 'merch')})`;
         productSelect.appendChild(option);
       });
     }
 
+    populateReleasedStoryOptions();
     renderProductsPreview(allProducts);
   } catch (err) {
     console.error('Error loading products preview:', err);
@@ -1786,6 +1875,8 @@ async function handleProductSubmit(e) {
     const image_url = productImageUrl.value.trim() || null;
     const active = productActive.checked;
     const price_cents = Number(productPriceCents.value);
+    const product_type = productType.value;
+    const story_id = productStoryId.value || null;
     const votes_granted = Number(productVotesGranted.value);
 
     if (!name) {
@@ -1800,8 +1891,24 @@ async function handleProductSubmit(e) {
       throw new Error('Price must be a positive whole number in cents.');
     }
 
+    if (!['merch', 'digital_comic', 'paperback', 'bundle'].includes(product_type)) {
+      throw new Error('Invalid product type.');
+    }
+
+    if (isComicProductType(product_type) && !story_id) {
+      throw new Error('Comic products must be linked to a released story.');
+    }
+
+    if (product_type === 'merch' && story_id) {
+      throw new Error('Merch products should not be linked to a story.');
+    }
+
     if (!Number.isInteger(votes_granted) || votes_granted < 0) {
       throw new Error('Bonus votes must be 0 or greater.');
+    }
+
+    if (isComicProductType(product_type) && votes_granted > 0) {
+      throw new Error('Comic products should not grant bonus votes.');
     }
 
     const isEditing = !!editingProductId;
@@ -1821,7 +1928,9 @@ async function handleProductSubmit(e) {
           image_url,
           active,
           price_cents,
-          votes_granted
+          votes_granted,
+          product_type,
+          story_id
         }
       : {
           name,
@@ -1829,7 +1938,9 @@ async function handleProductSubmit(e) {
           image_url,
           active,
           price_cents,
-          votes_granted
+          votes_granted,
+          product_type,
+          story_id
         };
 
     const res = await fetch(endpoint, {
@@ -1913,7 +2024,9 @@ async function handleDeactivateProduct() {
         image_url: existingProduct.image_url,
         active: false,
         price_cents: existingProduct.price_cents,
-        votes_granted: existingProduct.votes_granted
+        votes_granted: existingProduct.votes_granted,
+        product_type: existingProduct.product_type || 'merch',
+        story_id: existingProduct.story_id || null
       })
     });
 
@@ -1998,6 +2111,8 @@ export async function initAdminPanel() {
   clearProductForm();
   hideWinnerPreviewUI();
   resetTieResolutionUI();
+  populateReleasedStoryOptions();
+  syncProductFormRules();
 
   determineWinnerBtn?.addEventListener('click', determineWinner);
   closeVotingBtn?.addEventListener('click', handleCloseVoting);
@@ -2018,6 +2133,7 @@ export async function initAdminPanel() {
   uploadProductImageBtn?.addEventListener('click', handleProductImageUpload);
   deleteProductImageBtn?.addEventListener('click', handleDeleteProductImage);
   productImageUrl?.addEventListener('input', handleProductImageUrlInput);
+  productType?.addEventListener('change', syncProductFormRules);
   productForm?.addEventListener('submit', handleProductSubmit);
 }
 
