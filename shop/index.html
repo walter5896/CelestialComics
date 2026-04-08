@@ -16,7 +16,7 @@
     }
 
     .shop-hero p {
-      max-width: 700px;
+      max-width: 760px;
       margin: 0 auto;
       color: #555;
     }
@@ -69,6 +69,48 @@
       flex: 1;
     }
 
+    .shop-product-badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .shop-product-badge {
+      display: inline-block;
+      padding: 0.22rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .shop-product-badge.merch {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .shop-product-badge.digital_comic {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+
+    .shop-product-badge.paperback {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .shop-product-badge.bundle {
+      background: #fce7f3;
+      color: #be185d;
+    }
+
+    .shop-product-story-link {
+      margin: 0;
+      font-size: 0.92rem;
+      color: #4b5563;
+    }
+
     .shop-product-title {
       margin: 0;
       font-size: 1.2rem;
@@ -93,9 +135,24 @@
       font-weight: 600;
     }
 
-    .shop-buy-btn {
-      width: 100%;
+    .shop-product-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
       margin-top: 0.25rem;
+    }
+
+    .shop-buy-btn,
+    .shop-view-comic-btn {
+      flex: 1 1 180px;
+      margin-top: 0;
+      text-align: center;
+    }
+
+    .shop-view-comic-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .shop-empty-state {
@@ -145,8 +202,8 @@
     <section class="shop-hero">
       <h1>Shop</h1>
       <p>
-        Support Celestial Comics with exclusive merch and project items.
-        Available products will appear below automatically.
+        Browse Celestial Comics merch, released comic formats, and bundles.
+        Comic products will link you to the released comic page for preview and purchase context.
       </p>
     </section>
 

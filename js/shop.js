@@ -1,21 +1,12 @@
 // /js/shop.js
 import { supabase } from "./supabase.js";
 
-// =========================
-// DOM REFERENCES
-// =========================
 const productsContainer = document.getElementById("products-container");
 const shopStatusMessage = document.getElementById("shop-status-message");
 
-// =========================
-// SHARED STATE
-// =========================
 let activeProducts = [];
 let currentAccessToken = null;
 
-// =========================
-// HELPERS
-// =========================
 function setStatus(message = "", color = "") {
   if (!shopStatusMessage) return;
   shopStatusMessage.textContent = message;
@@ -47,6 +38,25 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+function prettyProductType(type) {
+  switch (type) {
+    case "digital_comic":
+      return "Digital Comic";
+    case "paperback":
+      return "Paperback";
+    case "bundle":
+      return "Bundle";
+    case "merch":
+      return "Merch";
+    default:
+      return "Product";
+  }
+}
+
+function isComicProduct(productType) {
+  return ["digital_comic", "paperback", "bundle"].includes(productType);
+}
+
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -57,9 +67,6 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-// =========================
-// PRODUCT LOADING
-// =========================
 async function loadProducts() {
   if (!productsContainer) {
     console.error("Missing #products-container in shop page.");
@@ -80,7 +87,14 @@ async function loadProducts() {
         image_url,
         active,
         votes_granted,
-        created_at
+        created_at,
+        product_type,
+        story_id,
+        stories (
+          id,
+          title,
+          story_status
+        )
       `)
       .eq("active", true)
       .order("created_at", { ascending: false });
@@ -102,9 +116,6 @@ async function loadProducts() {
   }
 }
 
-// =========================
-// PRODUCT RENDERING
-// =========================
 function renderProducts(products) {
   if (!productsContainer) return;
 
@@ -118,9 +129,30 @@ function renderProducts(products) {
       const safeName = escapeHtml(product.name);
       const safeDescription = escapeHtml(product.description || "");
       const priceText = formatPrice(product.price_cents);
+      const productType = String(product.product_type || "merch");
+      const productTypeLabel = prettyProductType(productType);
+      const relatedStory = product.stories || null;
+
       const votesText =
         Number(product.votes_granted) > 0
           ? `<p class="shop-product-votes">Includes ${Number(product.votes_granted)} bonus vote${Number(product.votes_granted) === 1 ? "" : "s"}</p>`
+          : "";
+
+      const storyLinkText =
+        relatedStory && relatedStory.title
+          ? `<p class="shop-product-story-link"><strong>For:</strong> ${escapeHtml(relatedStory.title)}</p>`
+          : "";
+
+      const comicLinkButton =
+        relatedStory && isComicProduct(productType)
+          ? `
+            <a
+              class="btn btn-secondary shop-view-comic-btn"
+              href="/comics/story.html?id=${relatedStory.id}"
+            >
+              View Comic
+            </a>
+          `
           : "";
 
       return `
@@ -132,17 +164,27 @@ function renderProducts(products) {
           }
 
           <div class="shop-product-body">
+            <div class="shop-product-badge-row">
+              <span class="shop-product-badge ${escapeHtml(productType)}">${escapeHtml(productTypeLabel)}</span>
+            </div>
+
+            ${storyLinkText}
+
             <h3 class="shop-product-title">${safeName}</h3>
             <p class="shop-product-description">${safeDescription || "No description provided."}</p>
             <p class="shop-product-price">${priceText}</p>
             ${votesText}
-            <button
-              type="button"
-              class="shop-buy-btn"
-              data-product-id="${product.id}"
-            >
-              Buy Now
-            </button>
+
+            <div class="shop-product-actions">
+              <button
+                type="button"
+                class="btn btn-primary shop-buy-btn"
+                data-product-id="${product.id}"
+              >
+                Buy Now
+              </button>
+              ${comicLinkButton}
+            </div>
           </div>
         </article>
       `;
@@ -152,9 +194,6 @@ function renderProducts(products) {
   attachBuyButtonListeners();
 }
 
-// =========================
-// CHECKOUT
-// =========================
 function attachBuyButtonListeners() {
   document.querySelectorAll(".shop-buy-btn").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -232,9 +271,6 @@ async function handleBuyProduct(productId, buttonEl) {
   }
 }
 
-// =========================
-// BOOTSTRAP
-// =========================
 document.addEventListener("DOMContentLoaded", async () => {
   currentAccessToken = await getAccessToken();
   await loadProducts();

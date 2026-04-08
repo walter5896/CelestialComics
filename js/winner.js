@@ -10,6 +10,56 @@ function showEmptyState(winnerEmpty, winnerDetails) {
   if (winnerDetails) winnerDetails.style.display = 'none';
 }
 
+function getWinnerCta(story) {
+  if (story.story_status === 'released') {
+    return {
+      href: `/comics/story.html?id=${story.id}`,
+      text: 'Preview & Purchase Comic'
+    };
+  }
+
+  return {
+    href: `/gallery/story.html?id=${story.id}`,
+    text: 'View Concept Details'
+  };
+}
+
+function getWinnerMetaText(story) {
+  const authorText = story.author ? `By ${story.author}` : 'Author not listed';
+
+  if (story.story_status === 'released') {
+    const releaseText = story.release_date
+      ? `Released: ${new Date(story.release_date).toLocaleDateString()}`
+      : 'Released comic';
+
+    return `${authorText} • ${releaseText}`;
+  }
+
+  const productionText = story.production_stage_label
+    ? `Production Stage: ${story.production_stage_label}`
+    : 'Production Stage: In Production';
+
+  return `${authorText} • ${productionText}`;
+}
+
+function getWinnerStatusLabel(story) {
+  if (story.story_status === 'released') {
+    return story.production_stage_label || 'Released';
+  }
+
+  return story.production_stage_label || 'Winner in Production';
+}
+
+function getWinnerDescription(story) {
+  if (story.description) return story.description;
+
+  if (story.story_status === 'released') {
+    return 'This comic has been released and is now available to preview and purchase.';
+  }
+
+  return 'This winning concept is currently in production.';
+}
+
 function showWinnerState({
   winnerEmpty,
   winnerDetails,
@@ -25,26 +75,19 @@ function showWinnerState({
   if (winnerDetails) winnerDetails.style.display = 'block';
 
   if (winnerNameEl) {
-    winnerNameEl.textContent = winnerData.title || 'Untitled Concept';
+    winnerNameEl.textContent = winnerData.title || 'Untitled Project';
   }
 
   if (winnerStoryEl) {
-    winnerStoryEl.textContent =
-      winnerData.description || 'No concept description available yet.';
+    winnerStoryEl.textContent = getWinnerDescription(winnerData);
   }
 
   if (winnerMetaEl) {
-    const authorText = winnerData.author ? `By ${winnerData.author}` : 'Author not listed';
-    const productionText = winnerData.production_stage_label
-      ? `Production Stage: ${winnerData.production_stage_label}`
-      : 'Production Stage: In Production';
-
-    winnerMetaEl.textContent = `${authorText} • ${productionText}`;
+    winnerMetaEl.textContent = getWinnerMetaText(winnerData);
   }
 
   if (winnerStatusLabelEl) {
-    winnerStatusLabelEl.textContent =
-      winnerData.production_stage_label || 'Winner in Production';
+    winnerStatusLabelEl.textContent = getWinnerStatusLabel(winnerData);
   }
 
   if (winnerImageEl) {
@@ -52,7 +95,7 @@ function showWinnerState({
 
     if (imageUrl) {
       winnerImageEl.src = imageUrl;
-      winnerImageEl.alt = winnerData.title || 'Winning Concept';
+      winnerImageEl.alt = winnerData.title || 'Winning Project';
       winnerImageEl.style.display = 'block';
     } else {
       winnerImageEl.removeAttribute('src');
@@ -62,12 +105,13 @@ function showWinnerState({
   }
 
   if (winnerLinkEl) {
-    winnerLinkEl.href = `/gallery/story.html?id=${winnerData.id}`;
-    winnerLinkEl.textContent = 'View Concept Details';
+    const cta = getWinnerCta(winnerData);
+    winnerLinkEl.href = cta.href;
+    winnerLinkEl.textContent = cta.text;
   }
 }
 
-async function fetchCurrentWinnerInProduction() {
+async function fetchFeaturedWinnerProject() {
   const { data, error } = await supabase
     .from('stories')
     .select(`
@@ -78,16 +122,27 @@ async function fetchCurrentWinnerInProduction() {
       image_url,
       cover_image_url,
       story_status,
-      production_stage_label
+      production_stage_label,
+      release_date,
+      active
     `)
     .eq('active', true)
-    .eq('story_status', 'winner_in_production')
+    .in('story_status', ['winner_in_production', 'released'])
+    .order('release_date', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(10);
 
   if (error) throw error;
-  return data || null;
+
+  const stories = data || [];
+
+  const releasedStory = stories.find((story) => story.story_status === 'released');
+  if (releasedStory) return releasedStory;
+
+  const inProductionStory = stories.find(
+    (story) => story.story_status === 'winner_in_production'
+  );
+  return inProductionStory || null;
 }
 
 async function initWinnerPage() {
@@ -101,7 +156,7 @@ async function initWinnerPage() {
   const winnerStatusLabelEl = document.getElementById('winner-status-label');
 
   try {
-    const winnerData = await fetchCurrentWinnerInProduction();
+    const winnerData = await fetchFeaturedWinnerProject();
 
     if (!winnerData) {
       showEmptyState(winnerEmpty, winnerDetails);

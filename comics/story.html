@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comic | Celestial Comics</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    .comic-page {
+      padding: 2rem 0 3rem;
+    }
+
+    .comic-back {
+      margin-bottom: 1.5rem;
+    }
+
+    .comic-hero {
+      display: grid;
+      grid-template-columns: minmax(260px, 380px) 1fr;
+      gap: 2rem;
+      align-items: start;
+      margin-bottom: 2rem;
+    }
+
+    .comic-cover {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      object-fit: cover;
+    }
+
+    .comic-status-badge {
+      display: inline-block;
+      margin-bottom: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .comic-title {
+      margin-bottom: 0.5rem;
+    }
+
+    .comic-meta {
+      color: #4b5563;
+      margin-bottom: 1rem;
+    }
+
+    .comic-description {
+      color: #374151;
+      line-height: 1.7;
+      margin-bottom: 1.25rem;
+    }
+
+    .comic-purchase-box,
+    .comic-preview-box {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+      margin-bottom: 1.5rem;
+    }
+
+    .comic-purchase-box h2,
+    .comic-preview-box h2 {
+      margin-bottom: 0.75rem;
+    }
+
+    .comic-purchase-intro,
+    .comic-preview-intro {
+      color: #4b5563;
+      margin-bottom: 1rem;
+    }
+
+    .comic-product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .comic-product-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1rem;
+      background: #f9fafb;
+    }
+
+    .comic-product-type {
+      display: inline-block;
+      margin-bottom: 0.5rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #ede9fe;
+      color: #6d28d9;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .comic-product-title {
+      margin-bottom: 0.5rem;
+      font-size: 1.05rem;
+    }
+
+    .comic-product-description {
+      color: #4b5563;
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+
+    .comic-product-price {
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .comic-preview-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .comic-preview-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .comic-preview-card img {
+      width: 100%;
+      display: block;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .comic-preview-card strong {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .comic-locked-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: #111827;
+      color: #f9fafb;
+    }
+
+    .comic-locked-box p {
+      margin-bottom: 0.75rem;
+      color: #e5e7eb;
+    }
+
+    .comic-empty-state {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    .comic-error {
+      color: #b91c1c;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .comic-status-message {
+      text-align: center;
+      min-height: 1.5rem;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    @media (max-width: 900px) {
+      .comic-hero {
+        grid-template-columns: 1fr;
+      }
+
+      .comic-cover-wrap {
+        max-width: 380px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
+
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+
+      <nav class="main-nav">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="container comic-page">
+    <div class="comic-back">
+      <a href="/winner/" class="btn btn-secondary">← Back to Winner</a>
+    </div>
+
+    <p id="comic-status-message" class="comic-status-message"></p>
+
+    <div id="comic-page-content">
+      <div class="comic-empty-state">Loading comic...</div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- ENV -->
+  <script src="/js/env.js"></script>
+
+  <!-- SHARED UI / NAV -->
+  <script type="module" src="/js/utils.js"></script>
+
+  <!-- PAGE LOGIC -->
+  <script type="module" src="/js/comics-story.js"></script>
+
+  <!-- AUTH UI -->
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
+
+      document.querySelectorAll('.logout-link').forEach((el) => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+          window.location.href = '/';
+        });
+      });
+    });
+  </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
+</body>
+</html>
