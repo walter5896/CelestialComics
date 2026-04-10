@@ -54,6 +54,10 @@ function getStoryImage(story) {
   return story?.cover_image_url || story?.image_url || '';
 }
 
+function isDigitalAccessProduct(productType) {
+  return ['digital_comic', 'bundle'].includes(productType);
+}
+
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -73,6 +77,20 @@ async function getAccessToken() {
   }
 
   return data?.session?.access_token || null;
+}
+
+async function getCurrentUser() {
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error('Error loading current user:', error);
+    return null;
+  }
+
+  return user || null;
 }
 
 /* =========================
@@ -159,6 +177,21 @@ async function loadStoryProducts(storyId) {
   return data || [];
 }
 
+async function checkStoryOwnership(storyId, userId) {
+  if (!storyId || !userId) return false;
+
+  const { data, error } = await supabase
+    .from('user_story_access')
+    .select('id, access_type')
+    .eq('user_id', userId)
+    .eq('story_id', storyId)
+    .limit(1);
+
+  if (error) throw error;
+
+  return Array.isArray(data) && data.length > 0;
+}
+
 /* =========================
    CHECKOUT
 ========================= */
@@ -176,12 +209,7 @@ async function handleBuyProduct(productId, buttonEl) {
   const originalButtonText = buttonEl?.textContent || 'Buy Now';
 
   try {
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser();
-
-    if (userError) throw userError;
+    const user = await getCurrentUser();
 
     if (!user) {
       alert('Please log in before purchasing.');
@@ -239,7 +267,7 @@ async function handleBuyProduct(productId, buttonEl) {
 /* =========================
    RENDERERS
 ========================= */
-function renderProductCards(products) {
+function renderProductCards(products, ownership) {
   if (!products.length) {
     return `
       <div class="comic-empty-state">
@@ -255,6 +283,8 @@ function renderProductCards(products) {
           const safeName = escapeHtml(product.name);
           const safeDescription = escapeHtml(product.description || '');
           const priceText = formatPrice(product.price_cents);
+          const isOwnedDigitalOption =
+            ownership.hasAccess && isDigitalAccessProduct(product.product_type);
 
           return `
             <article class="comic-product-card">
@@ -262,13 +292,27 @@ function renderProductCards(products) {
               <h3 class="comic-product-title">${safeName}</h3>
               <p class="comic-product-description">${safeDescription || 'No description provided.'}</p>
               <p class="comic-product-price">${priceText}</p>
-              <button
-                type="button"
-                class="btn btn-primary comic-buy-btn"
-                data-product-id="${product.id}"
-              >
-                Buy ${safeName}
-              </button>
+              ${
+                isOwnedDigitalOption
+                  ? `
+                    <button
+                      type="button"
+                      class="btn btn-secondary comic-buy-btn"
+                      disabled
+                    >
+                      Already Owned
+                    </button>
+                  `
+                  : `
+                    <button
+                      type="button"
+                      class="btn btn-primary comic-buy-btn"
+                      data-product-id="${product.id}"
+                    >
+                      Buy ${safeName}
+                    </button>
+                  `
+              }
             </article>
           `;
         })
@@ -277,7 +321,15 @@ function renderProductCards(products) {
   `;
 }
 
-function renderPreviewPages(previewPages, story) {
+function renderPreviewPages(previewPages, story, ownership) {
+  if (ownership.hasAccess) {
+    return `
+      <div class="comic-empty-state">
+        You own this comic. Use the full reader below to access the entire story.
+      </div>
+    `;
+  }
+
   if (!story?.is_preview_enabled) {
     return `
       <div class="comic-empty-state">
@@ -311,7 +363,69 @@ function renderPreviewPages(previewPages, story) {
   `;
 }
 
-function renderComicPage({ story, previewPages, products }) {
+function renderAccessBox(story, ownership) {
+  const readerHref = `/gallery/read.html?id=${story.id}`;
+
+  if (ownership.hasAccess) {
+    return `
+      <div class="comic-locked-box">
+        <h3>Your Access</h3>
+        <p>
+          You own digital access to this comic. You can open the full reader anytime from here.
+        </p>
+        <a href="${readerHref}" class="btn btn-primary">Read Full Comic</a>
+      </div>
+    `;
+  }
+
+  if (!ownership.userLoggedIn) {
+    return `
+      <div class="comic-locked-box">
+        <h3>Full Comic Access</h3>
+        <p>
+          Log in and purchase digital access to unlock the full comic beyond the public preview.
+        </p>
+        <a href="/login/" class="btn btn-secondary">Log In</a>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="comic-locked-box">
+      <h3>Full Comic Access</h3>
+      <p>
+        You are currently viewing the public preview only. Purchase digital access to unlock the full comic reader.
+      </p>
+      <a href="${readerHref}" class="btn btn-secondary">Open Preview Reader</a>
+    </div>
+  `;
+}
+
+function renderOwnershipBanner(ownership) {
+  if (ownership.hasAccess) {
+    return `
+      <div class="comic-status-note comic-status-note--owned">
+        You already own this comic.
+      </div>
+    `;
+  }
+
+  if (!ownership.userLoggedIn) {
+    return `
+      <div class="comic-status-note">
+        Log in to purchase this comic and save ownership to your account.
+      </div>
+    `;
+  }
+
+  return `
+    <div class="comic-status-note">
+      You are viewing the public release page. Purchase digital access to unlock full reading.
+    </div>
+  `;
+}
+
+function renderComicPage({ story, previewPages, products, ownership }) {
   if (!comicPageContent) return;
 
   const safeTitle = escapeHtml(story.title || 'Untitled Comic');
@@ -337,6 +451,7 @@ function renderComicPage({ story, previewPages, products }) {
 
       <div class="comic-info">
         <span class="comic-status-badge">${stageLabel}</span>
+        ${renderOwnershipBanner(ownership)}
         <h1 class="comic-title">${safeTitle}</h1>
         <p class="comic-meta">${authorLine} • ${releaseLine}</p>
         <div class="comic-description">
@@ -346,28 +461,30 @@ function renderComicPage({ story, previewPages, products }) {
     </section>
 
     <section class="comic-purchase-box">
-      <h2>Purchase Options</h2>
+      <h2>${ownership.hasAccess ? 'Your Formats' : 'Purchase Options'}</h2>
       <p class="comic-purchase-intro">
-        Choose how you want to experience this release. Available options for this comic are shown below.
+        ${
+          ownership.hasAccess
+            ? 'You already own digital access. Additional physical or bundle options are shown below if available.'
+            : 'Choose how you want to experience this release. Available options for this comic are shown below.'
+        }
       </p>
-      ${renderProductCards(products)}
+      ${renderProductCards(products, ownership)}
     </section>
 
     <section class="comic-preview-box">
-      <h2>Preview Pages</h2>
+      <h2>${ownership.hasAccess ? 'Full Access Ready' : 'Preview Pages'}</h2>
       <p class="comic-preview-intro">
-        Read a preview of this comic below. Full digital access will require purchase once access-control logic is wired.
+        ${
+          ownership.hasAccess
+            ? 'Your account has access to the full comic. Open the reader below to continue.'
+            : 'Read a preview of this comic below. Full digital access is unlocked through purchase.'
+        }
       </p>
 
-      ${renderPreviewPages(previewPages, story)}
+      ${renderPreviewPages(previewPages, story, ownership)}
 
-      <div class="comic-locked-box">
-        <h3>Full Comic Access</h3>
-        <p>
-          You are currently viewing the public preview only. Full digital reading access will be unlocked through purchase.
-        </p>
-        <a href="/shop/" class="btn btn-secondary">Browse Shop</a>
-      </div>
+      ${renderAccessBox(story, ownership)}
     </section>
   `;
 
@@ -416,6 +533,13 @@ async function initComicStoryPage() {
       return;
     }
 
+    const currentUser = await getCurrentUser();
+
+    const ownership = {
+      userLoggedIn: !!currentUser,
+      hasAccess: currentUser ? await checkStoryOwnership(storyId, currentUser.id) : false
+    };
+
     const [previewPages, products] = await Promise.all([
       loadStoryPreviewPages(storyId, story),
       loadStoryProducts(storyId)
@@ -424,7 +548,8 @@ async function initComicStoryPage() {
     renderComicPage({
       story,
       previewPages,
-      products
+      products,
+      ownership
     });
 
     setStatus('');

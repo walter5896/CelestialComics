@@ -4,7 +4,6 @@ import { getCurrentUser } from './auth.js';
 import {
   recantVote,
   fetchSavedStories,
-  unsaveStory,
   renderStoriesForProfile,
   attachUnsaveListeners
 } from './vote.js';
@@ -17,6 +16,10 @@ const noSaved = document.getElementById('no-saved-stories');
 const roundVoteBalanceEl = document.getElementById('round-vote-balance');
 const bonusVoteBalanceEl = document.getElementById('bonus-vote-balance');
 const totalVoteBalanceEl = document.getElementById('total-vote-balance');
+
+// New owned-stories section
+const ownedContainer = document.getElementById('owned-stories-container');
+const noOwned = document.getElementById('no-owned-stories');
 
 if (
   !voteList ||
@@ -42,6 +45,37 @@ function setVoteBalances(roundVotes = 0, bonusVotes = 0) {
   roundVoteBalanceEl.textContent = String(safeRoundVotes);
   bonusVoteBalanceEl.textContent = String(safeBonusVotes);
   totalVoteBalanceEl.textContent = String(totalVotes);
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function getStoryImage(story) {
+  return story?.cover_image_url || story?.image_url || '';
+}
+
+function formatAccessType(accessType) {
+  switch (accessType) {
+    case 'bundle':
+      return 'Bundle Access';
+    case 'digital':
+      return 'Digital Access';
+    default:
+      return 'Owned';
+  }
+}
+
+function formatGrantedDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString();
 }
 
 async function fetchVoteBalances() {
@@ -153,6 +187,7 @@ async function fetchAndRenderVotes() {
     return;
   }
 
+  noVotes.style.display = 'block';
   noVotes.style.display = 'none';
   voteList.innerHTML = '';
 
@@ -201,6 +236,110 @@ async function fetchAndRenderSavedStories() {
 }
 
 /* =======================
+   OWNED STORIES
+======================= */
+
+function renderOwnedStories(ownedStories) {
+  if (!ownedContainer || !noOwned) return;
+
+  if (!ownedStories.length) {
+    ownedContainer.style.display = 'none';
+    noOwned.style.display = 'block';
+    return;
+  }
+
+  ownedContainer.style.display = 'grid';
+  noOwned.style.display = 'none';
+
+  ownedContainer.innerHTML = ownedStories
+    .map((item) => {
+      const story = item.stories || {};
+      const safeTitle = escapeHtml(story.title || 'Untitled Comic');
+      const safeAuthor = escapeHtml(story.author || 'Author not listed');
+      const safeDescription = escapeHtml(
+        story.description || 'No description available.'
+      );
+      const safeImage = escapeHtml(getStoryImage(story));
+      const accessLabel = formatAccessType(item.access_type);
+      const grantedDate = formatGrantedDate(item.granted_at);
+
+      return `
+        <article class="story-card owned-story-card">
+          ${
+            safeImage
+              ? `<img src="${safeImage}" alt="${safeTitle} cover" class="story-image" />`
+              : `<div class="story-image-placeholder">No cover available</div>`
+          }
+
+          <div class="story-card-content">
+            <span class="story-badge">${escapeHtml(accessLabel)}</span>
+            <h3>${safeTitle}</h3>
+            <p class="story-author">${safeAuthor}</p>
+            <p class="story-description">${safeDescription}</p>
+            ${
+              grantedDate
+                ? `<p class="story-meta"><strong>Added:</strong> ${escapeHtml(grantedDate)}</p>`
+                : ''
+            }
+
+            <div class="story-actions">
+              <a href="/comics/story.html?id=${story.id}" class="btn btn-secondary">
+                View Comic
+              </a>
+              <a href="/gallery/read.html?id=${story.id}" class="btn btn-primary">
+                Read Now
+              </a>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function fetchOwnedStories() {
+  const user = getCurrentUser();
+
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('user_story_access')
+    .select(`
+      id,
+      user_id,
+      story_id,
+      access_type,
+      granted_at,
+      stories (
+        id,
+        title,
+        author,
+        description,
+        image_url,
+        cover_image_url,
+        story_status,
+        active
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('granted_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching owned stories:', error);
+    return [];
+  }
+
+  return (data || []).filter(
+    (item) => item.stories && item.stories.story_status === 'released'
+  );
+}
+
+async function fetchAndRenderOwnedStories() {
+  const ownedStories = await fetchOwnedStories();
+  renderOwnedStories(ownedStories);
+}
+
+/* =======================
    INIT
 ======================= */
 
@@ -208,11 +347,13 @@ function initProfile() {
   fetchVoteBalances();
   fetchAndRenderVotes();
   fetchAndRenderSavedStories();
+  fetchAndRenderOwnedStories();
 
   supabase.auth.onAuthStateChange(() => {
     fetchVoteBalances();
     fetchAndRenderVotes();
     fetchAndRenderSavedStories();
+    fetchAndRenderOwnedStories();
   });
 }
 

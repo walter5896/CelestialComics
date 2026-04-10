@@ -6,6 +6,8 @@ const shopStatusMessage = document.getElementById("shop-status-message");
 
 let activeProducts = [];
 let currentAccessToken = null;
+let currentUser = null;
+let ownedStoryIds = new Set();
 
 function setStatus(message = "", color = "") {
   if (!shopStatusMessage) return;
@@ -22,6 +24,20 @@ async function getAccessToken() {
   }
 
   return data?.session?.access_token || null;
+}
+
+async function getCurrentUser() {
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser();
+
+  if (error) {
+    console.error("Error loading current user:", error);
+    return null;
+  }
+
+  return user || null;
 }
 
 function formatPrice(priceCents) {
@@ -57,6 +73,10 @@ function isComicProduct(productType) {
   return ["digital_comic", "paperback", "bundle"].includes(productType);
 }
 
+function isDigitalAccessProduct(productType) {
+  return ["digital_comic", "bundle"].includes(productType);
+}
+
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -65,6 +85,24 @@ async function parseJsonResponseSafely(res) {
   } catch {
     throw new Error(rawText || "Server returned an invalid response.");
   }
+}
+
+async function loadOwnedStoryAccess() {
+  if (!currentUser?.id) {
+    ownedStoryIds = new Set();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("user_story_access")
+    .select("story_id")
+    .eq("user_id", currentUser.id);
+
+  if (error) {
+    throw error;
+  }
+
+  ownedStoryIds = new Set((data || []).map((row) => row.story_id).filter(Boolean));
 }
 
 async function loadProducts() {
@@ -133,6 +171,12 @@ function renderProducts(products) {
       const productTypeLabel = prettyProductType(productType);
       const relatedStory = product.stories || null;
 
+      const userOwnsThisStory =
+        !!relatedStory?.id && ownedStoryIds.has(String(relatedStory.id));
+
+      const isOwnedDigitalOption =
+        userOwnsThisStory && isDigitalAccessProduct(productType);
+
       const votesText =
         Number(product.votes_granted) > 0
           ? `<p class="shop-product-votes">Includes ${Number(product.votes_granted)} bonus vote${Number(product.votes_granted) === 1 ? "" : "s"}</p>`
@@ -143,6 +187,11 @@ function renderProducts(products) {
           ? `<p class="shop-product-story-link"><strong>For:</strong> ${escapeHtml(relatedStory.title)}</p>`
           : "";
 
+      const ownedBadge =
+        userOwnsThisStory
+          ? `<span class="shop-product-badge owned">Owned</span>`
+          : "";
+
       const comicLinkButton =
         relatedStory && isComicProduct(productType)
           ? `
@@ -150,10 +199,31 @@ function renderProducts(products) {
               class="btn btn-secondary shop-view-comic-btn"
               href="/comics/story.html?id=${relatedStory.id}"
             >
-              View Comic
+              ${userOwnsThisStory ? "Open Comic" : "View Comic"}
             </a>
           `
           : "";
+
+      const buyButton =
+        isOwnedDigitalOption
+          ? `
+            <button
+              type="button"
+              class="btn btn-secondary shop-buy-btn"
+              disabled
+            >
+              Already Owned
+            </button>
+          `
+          : `
+            <button
+              type="button"
+              class="btn btn-primary shop-buy-btn"
+              data-product-id="${product.id}"
+            >
+              Buy Now
+            </button>
+          `;
 
       return `
         <article class="shop-product-card" data-product-id="${product.id}">
@@ -166,6 +236,7 @@ function renderProducts(products) {
           <div class="shop-product-body">
             <div class="shop-product-badge-row">
               <span class="shop-product-badge ${escapeHtml(productType)}">${escapeHtml(productTypeLabel)}</span>
+              ${ownedBadge}
             </div>
 
             ${storyLinkText}
@@ -176,13 +247,7 @@ function renderProducts(products) {
             ${votesText}
 
             <div class="shop-product-actions">
-              <button
-                type="button"
-                class="btn btn-primary shop-buy-btn"
-                data-product-id="${product.id}"
-              >
-                Buy Now
-              </button>
+              ${buyButton}
               ${comicLinkButton}
             </div>
           </div>
@@ -195,7 +260,7 @@ function renderProducts(products) {
 }
 
 function attachBuyButtonListeners() {
-  document.querySelectorAll(".shop-buy-btn").forEach((button) => {
+  document.querySelectorAll(".shop-buy-btn[data-product-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       const productId = button.dataset.productId;
       if (!productId) return;
@@ -209,14 +274,7 @@ async function handleBuyProduct(productId, buttonEl) {
   const originalButtonText = buttonEl?.textContent || "Buy Now";
 
   try {
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser();
-
-    if (userError) {
-      throw userError;
-    }
+    const user = await getCurrentUser();
 
     if (!user) {
       alert("Please log in before purchasing.");
@@ -272,6 +330,13 @@ async function handleBuyProduct(productId, buttonEl) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  currentAccessToken = await getAccessToken();
-  await loadProducts();
+  try {
+    currentAccessToken = await getAccessToken();
+    currentUser = await getCurrentUser();
+    await loadOwnedStoryAccess();
+    await loadProducts();
+  } catch (err) {
+    console.error("Error bootstrapping shop page:", err);
+    setStatus(err.message || "Failed to load shop.", "red");
+  }
 });
