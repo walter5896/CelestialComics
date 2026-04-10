@@ -88,6 +88,33 @@ async function getOrderById(orderId) {
   return data;
 }
 
+async function getOrderItemsWithProducts(orderId) {
+  const { data, error } = await supabase
+    .from('order_items')
+    .select(`
+      id,
+      order_id,
+      product_id,
+      quantity,
+      unit_price_cents,
+      votes_granted_each,
+      products (
+        id,
+        name,
+        product_type,
+        story_id,
+        active
+      )
+    `)
+    .eq('order_id', orderId);
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+}
+
 async function getFallbackVotesGranted(orderId) {
   const { data, error } = await supabase
     .from('order_items')
@@ -169,6 +196,83 @@ async function addBonusVotesToUser(userId, votesToAdd) {
   }
 
   return nextBonusBalance;
+}
+
+async function grantStoryAccessForOrder(userId, orderId) {
+  const orderItems = await getOrderItemsWithProducts(orderId);
+
+  if (!orderItems.length) {
+    return {
+      granted_count: 0,
+      granted_access: []
+    };
+  }
+
+  const entitlementRows = [];
+
+  for (const item of orderItems) {
+    const product = item.products;
+
+    if (!product) {
+      continue;
+    }
+
+    if (!product.story_id) {
+      continue;
+    }
+
+    let accessType = null;
+
+    if (product.product_type === 'digital_comic') {
+      accessType = 'digital';
+    } else if (product.product_type === 'bundle') {
+      accessType = 'bundle';
+    }
+
+    if (!accessType) {
+      continue;
+    }
+
+    entitlementRows.push({
+      user_id: userId,
+      story_id: product.story_id,
+      access_type: accessType,
+      source_order_id: orderId,
+      source_product_id: product.id
+    });
+  }
+
+  if (!entitlementRows.length) {
+    return {
+      granted_count: 0,
+      granted_access: []
+    };
+  }
+
+  const { data, error } = await supabase
+    .from('user_story_access')
+    .upsert(entitlementRows, {
+      onConflict: 'user_id,story_id,access_type',
+      ignoreDuplicates: false
+    })
+    .select(`
+      id,
+      user_id,
+      story_id,
+      access_type,
+      source_order_id,
+      source_product_id,
+      granted_at
+    `);
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    granted_count: data?.length || 0,
+    granted_access: data || []
+  };
 }
 
 // =========================
@@ -258,7 +362,8 @@ async function handleCheckoutSessionCompleted(session) {
   // FULFILL ORDER
   // =========================
   // First move order from pending -> paid.
-  // This prevents retries from double-granting bonus votes.
+  // This prevents retries from double-granting bonus votes
+  // or repeatedly issuing digital access.
   const paidOrder = await markOrderPaid(order.id, session.id);
 
   let newBonusVoteBalance = null;
@@ -267,11 +372,15 @@ async function handleCheckoutSessionCompleted(session) {
     newBonusVoteBalance = await addBonusVotesToUser(order.user_id, votesToGrant);
   }
 
+  const storyAccessResult = await grantStoryAccessForOrder(order.user_id, order.id);
+
   return {
     ok: true,
     order_id: paidOrder.id,
     bonus_votes_granted: votesToGrant,
-    new_bonus_vote_balance: newBonusVoteBalance
+    new_bonus_vote_balance: newBonusVoteBalance,
+    story_access_granted_count: storyAccessResult.granted_count,
+    story_access: storyAccessResult.granted_access
   };
 }
 
