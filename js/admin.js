@@ -88,11 +88,16 @@ const productImageFile = document.getElementById('product-image-file');
 const uploadProductImageBtn = document.getElementById('upload-product-image-btn');
 const productImageUploadMessage = document.getElementById('product-image-upload-message');
 
+const orderSection = document.getElementById('order-management-section');
+const ordersPreview = document.getElementById('orders-preview');
+const ordersStatusMsg = document.getElementById('orders-status-message');
+
 let currentUser = null;
 let currentAccessToken = null;
 let allStories = [];
 let allUsers = [];
 let allProducts = [];
+let allOrders = [];
 let editingStoryId = null;
 let editingProductId = null;
 let currentWorkingPeriod = null;
@@ -159,6 +164,28 @@ function updatePreviewImage(imgEl, url) {
     imgEl.src = '';
     imgEl.style.display = 'none';
   };
+}
+
+function formatCurrencyFromCents(value) {
+  const cents = Number(value);
+  if (!Number.isFinite(cents)) return '—';
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function getStatusBadgeClass(status) {
+  const safeStatus = String(status || '').toLowerCase();
+  return `status-badge ${safeStatus}`;
+}
+
+function prettyOrderStatus(status) {
+  switch (status) {
+    case 'pending': return 'Pending';
+    case 'paid': return 'Paid';
+    case 'processing': return 'Processing';
+    case 'fulfilled': return 'Fulfilled';
+    case 'canceled': return 'Canceled';
+    default: return status || 'Unknown';
+  }
 }
 
 function isEffectivelyClosed(period) {
@@ -2058,6 +2085,182 @@ async function handleDeactivateProduct() {
   }
 }
 
+function renderOrdersPreview(orders) {
+  if (!ordersPreview) return;
+
+  if (!orders || orders.length === 0) {
+    ordersPreview.innerHTML = '<p>No orders found yet.</p>';
+    return;
+  }
+
+  ordersPreview.innerHTML = orders.map((order) => {
+    const orderId = order.id;
+    const customerEmail = order.profiles?.email || 'Unknown email';
+    const customerName = order.profiles?.username || 'No username';
+    const orderItems = Array.isArray(order.order_items) ? order.order_items : [];
+    const noteValue = order.fulfillment_notes || '';
+
+    const itemsHtml = orderItems.length
+      ? `
+        <ul class="order-items-list">
+          ${orderItems.map((item) => {
+            const product = item.products || {};
+            const storyTitle = product.stories?.title || '';
+            return `
+              <li>
+                <strong>${product.name || 'Unnamed product'}</strong>
+                <div class="order-meta"><strong>Type:</strong> ${prettyProductType(product.product_type || 'merch')}</div>
+                <div class="order-meta"><strong>Quantity:</strong> ${item.quantity ?? 1}</div>
+                <div class="order-meta"><strong>Unit Price:</strong> ${formatCurrencyFromCents(item.unit_price_cents)}</div>
+                ${storyTitle ? `<div class="order-meta"><strong>Story:</strong> ${storyTitle}</div>` : ''}
+              </li>
+            `;
+          }).join('')}
+        </ul>
+      `
+      : '<p class="order-meta">No order items found.</p>';
+
+    return `
+      <article class="order-card" data-order-id="${orderId}">
+        <span class="${getStatusBadgeClass(order.status)}">${prettyOrderStatus(order.status)}</span>
+        <strong>Order ${orderId}</strong>
+        <div class="order-meta"><strong>Customer:</strong> ${customerEmail}</div>
+        <div class="order-meta"><strong>Username:</strong> ${customerName}</div>
+        <div class="order-meta"><strong>Fulfillment Type:</strong> ${order.fulfillment_type || 'Unknown'}</div>
+        <div class="order-meta"><strong>Total:</strong> ${formatCurrencyFromCents(order.total_cents)}</div>
+        <div class="order-meta"><strong>Bonus Votes Granted:</strong> ${Number(order.total_votes_granted) || 0}</div>
+        <div class="order-meta"><strong>Created:</strong> ${formatDateTime(order.created_at)}</div>
+        <div class="order-meta"><strong>Paid:</strong> ${formatDateTime(order.paid_at)}</div>
+        <div class="order-meta"><strong>Fulfilled:</strong> ${formatDateTime(order.fulfilled_at)}</div>
+
+        ${itemsHtml}
+
+        <div class="field-group" style="margin-top:0.75rem;">
+          <label for="order-status-${orderId}">Order Status</label>
+          <select id="order-status-${orderId}" class="order-status-select" data-order-id="${orderId}">
+            <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+            <option value="paid" ${order.status === 'paid' ? 'selected' : ''}>Paid</option>
+            <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processing</option>
+            <option value="fulfilled" ${order.status === 'fulfilled' ? 'selected' : ''}>Fulfilled</option>
+            <option value="canceled" ${order.status === 'canceled' ? 'selected' : ''}>Canceled</option>
+          </select>
+        </div>
+
+        <div class="order-note-box">
+          <label for="order-notes-${orderId}">Fulfillment Notes</label>
+          <textarea id="order-notes-${orderId}" class="order-notes-input" data-order-id="${orderId}" placeholder="Add packing / fulfillment notes...">${noteValue}</textarea>
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="save-order-btn" data-order-id="${orderId}">
+            Save Order Update
+          </button>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  attachOrderListeners();
+}
+
+async function loadOrdersPreview() {
+  try {
+    if (ordersPreview) {
+      ordersPreview.innerHTML = '<p>Loading orders...</p>';
+    }
+
+    const res = await fetch('/.netlify/functions/get-orders', {
+      method: 'GET',
+      headers: {
+        ...(currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {})
+      }
+    });
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to load orders');
+    }
+
+    allOrders = result.orders || [];
+    renderOrdersPreview(allOrders);
+
+    if (ordersStatusMsg) {
+      ordersStatusMsg.textContent = '';
+      ordersStatusMsg.style.color = '';
+    }
+  } catch (err) {
+    console.error('Error loading orders:', err);
+
+    if (ordersPreview) {
+      ordersPreview.innerHTML = '<p>Failed to load orders.</p>';
+    }
+
+    if (ordersStatusMsg) {
+      ordersStatusMsg.textContent = err.message || 'Failed to load orders.';
+      ordersStatusMsg.style.color = 'red';
+    }
+  }
+}
+
+function attachOrderListeners() {
+  document.querySelectorAll('.save-order-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const orderId = button.dataset.orderId;
+      if (!orderId) return;
+
+      const statusSelect = document.querySelector(`.order-status-select[data-order-id="${orderId}"]`);
+      const notesInput = document.querySelector(`.order-notes-input[data-order-id="${orderId}"]`);
+
+      const nextStatus = statusSelect?.value || '';
+      const fulfillmentNotes = notesInput?.value || '';
+
+      const originalText = button.textContent;
+
+      try {
+        button.disabled = true;
+        button.textContent = 'Saving...';
+
+        const res = await fetch('/.netlify/functions/update-order-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {})
+          },
+          body: JSON.stringify({
+            order_id: orderId,
+            status: nextStatus,
+            fulfillment_notes: fulfillmentNotes
+          })
+        });
+
+        const result = await parseJsonResponseSafely(res);
+
+        if (!res.ok || !result.success) {
+          throw new Error(result.error || 'Failed to update order');
+        }
+
+        if (ordersStatusMsg) {
+          ordersStatusMsg.textContent = `Order ${orderId} updated successfully.`;
+          ordersStatusMsg.style.color = 'green';
+        }
+
+        await loadOrdersPreview();
+      } catch (err) {
+        console.error('Error updating order:', err);
+
+        if (ordersStatusMsg) {
+          ordersStatusMsg.textContent = err.message || 'Failed to update order.';
+          ordersStatusMsg.style.color = 'red';
+        }
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+  });
+}
+
 export async function initAdminPanel() {
   currentUser = await getCurrentUserAsync();
 
@@ -2099,6 +2302,7 @@ export async function initAdminPanel() {
   votingSection.style.display = 'block';
   storySection.style.display = 'block';
   productSection.style.display = 'block';
+  orderSection.style.display = 'block';
 
   allUsers = users;
   renderUsersTable(users);
@@ -2106,6 +2310,7 @@ export async function initAdminPanel() {
   await loadVotingPeriod();
   await loadStoriesPreview();
   await loadProductsPreview();
+  await loadOrdersPreview();
 
   clearStoryPagesUI();
   clearProductForm();
