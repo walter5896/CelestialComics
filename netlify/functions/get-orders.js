@@ -76,8 +76,7 @@ function deriveFulfillmentType(orderItems) {
 
   if (hasDigital && hasPhysical) return 'Mixed Order';
   if (hasDigital) return 'Digital Only';
-  if (hasMerch) return 'Physical Fulfillment Needed';
-  if (hasPhysical) return 'Physical Fulfillment Needed';
+  if (hasMerch || hasPhysical) return 'Physical Fulfillment Needed';
   return 'Unknown';
 }
 
@@ -96,7 +95,7 @@ exports.handler = async (event) => {
   try {
     await getAdminUserFromToken(token);
 
-    const { data: orders, error } = await supabase
+    const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select(`
         id,
@@ -110,11 +109,6 @@ exports.handler = async (event) => {
         updated_at,
         fulfilled_at,
         fulfillment_notes,
-        profiles (
-          id,
-          email,
-          username
-        ),
         order_items (
           id,
           order_id,
@@ -137,12 +131,36 @@ exports.handler = async (event) => {
       `)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      throw error;
+    if (ordersError) {
+      throw ordersError;
+    }
+
+    const userIds = [...new Set(
+      (orders || [])
+        .map((order) => order.user_id)
+        .filter(Boolean)
+    )];
+
+    let profilesById = {};
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, username')
+        .in('id', userIds);
+
+      if (profilesError) {
+        throw profilesError;
+      }
+
+      profilesById = Object.fromEntries(
+        (profiles || []).map((profile) => [profile.id, profile])
+      );
     }
 
     const enrichedOrders = (orders || []).map((order) => ({
       ...order,
+      profiles: order.user_id ? (profilesById[order.user_id] || null) : null,
       fulfillment_type: deriveFulfillmentType(order.order_items)
     }));
 
