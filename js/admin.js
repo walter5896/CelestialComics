@@ -90,7 +90,9 @@ const productImageUploadMessage = document.getElementById('product-image-upload-
 
 const orderSection = document.getElementById('order-management-section');
 const activeOrdersPreview = document.getElementById('active-orders-preview');
-const orderHistoryPreview = document.getElementById('order-history-preview');
+const orderHistorySelect = document.getElementById('order-history-select');
+const orderHistorySummary = document.getElementById('order-history-summary');
+const orderHistoryDetail = document.getElementById('order-history-detail');
 const ordersStatusMsg = document.getElementById('orders-status-message');
 
 let currentUser = null;
@@ -1984,7 +1986,7 @@ async function handleDeleteProductImage() {
       })
     });
 
-    const result = await parseJsonResponseSafely(res);
+        const result = await parseJsonResponseSafely(res);
 
     if (!res.ok || !result.success) {
       throw new Error(result.error || 'Failed to delete product image');
@@ -2221,8 +2223,80 @@ async function handleDeactivateProduct() {
   }
 }
 
+function buildHistoryOrderLabel(order) {
+  const statusText = prettyOrderStatus(order.status);
+  const createdText = formatDateTime(order.created_at);
+  const { email, name } = getCustomerDisplay(order);
+  const shortId = String(order.id || '').slice(0, 8) || 'order';
+
+  return `${statusText} • ${name} • ${email} • ${createdText} • ${shortId}`;
+}
+
+function renderOrderHistoryEmptyState(message = 'Select a historical order to view its details.') {
+  if (!orderHistoryDetail) return;
+  orderHistoryDetail.innerHTML = `<p class="empty-orders-state">${message}</p>`;
+}
+
+function updateOrderHistorySelect(historyOrders) {
+  if (!orderHistorySelect || !orderHistorySummary) return;
+
+  const safeHistoryOrders = Array.isArray(historyOrders) ? historyOrders : [];
+  const previousValue = orderHistorySelect.value || '';
+
+  orderHistorySelect.innerHTML =
+    '<option value="">-- Select a fulfilled, canceled, or failed order --</option>';
+
+  if (!safeHistoryOrders.length) {
+    orderHistorySelect.disabled = true;
+    orderHistorySummary.textContent = 'No historical orders yet.';
+    renderOrderHistoryEmptyState('No historical orders yet.');
+    return;
+  }
+
+  safeHistoryOrders.forEach((order) => {
+    const option = document.createElement('option');
+    option.value = order.id;
+    option.textContent = buildHistoryOrderLabel(order);
+    orderHistorySelect.appendChild(option);
+  });
+
+  orderHistorySelect.disabled = false;
+  orderHistorySummary.textContent = `${safeHistoryOrders.length} historical order${safeHistoryOrders.length === 1 ? '' : 's'} available. Select one to inspect it.`;
+
+  const stillExists = safeHistoryOrders.some((order) => String(order.id) === String(previousValue));
+
+  if (stillExists) {
+    orderHistorySelect.value = previousValue;
+  } else {
+    orderHistorySelect.value = '';
+  }
+
+  renderSelectedHistoryOrder();
+}
+
+function renderSelectedHistoryOrder() {
+  if (!orderHistorySelect || !orderHistoryDetail) return;
+
+  const selectedOrderId = orderHistorySelect.value;
+
+  if (!selectedOrderId) {
+    renderOrderHistoryEmptyState('Select a historical order to view its details.');
+    return;
+  }
+
+  const selectedOrder = allOrders.find((order) => String(order.id) === String(selectedOrderId));
+
+  if (!selectedOrder) {
+    renderOrderHistoryEmptyState('That historical order could not be found.');
+    return;
+  }
+
+  orderHistoryDetail.innerHTML = renderOrderCard(selectedOrder, { history: true });
+  attachOrderListeners();
+}
+
 function renderOrdersPreview(orders) {
-  if (!activeOrdersPreview || !orderHistoryPreview) return;
+  if (!activeOrdersPreview) return;
 
   const safeOrders = Array.isArray(orders) ? orders : [];
 
@@ -2237,14 +2311,7 @@ function renderOrdersPreview(orders) {
       .join('');
   }
 
-  if (!historyOrders.length) {
-    orderHistoryPreview.innerHTML = '<p class="empty-orders-state">No historical orders yet.</p>';
-  } else {
-    orderHistoryPreview.innerHTML = historyOrders
-      .map((order) => renderOrderCard(order, { history: true }))
-      .join('');
-  }
-
+  updateOrderHistorySelect(historyOrders);
   attachOrderListeners();
 }
 
@@ -2254,9 +2321,17 @@ async function loadOrdersPreview() {
       activeOrdersPreview.innerHTML = '<p class="empty-orders-state">Loading active orders...</p>';
     }
 
-    if (orderHistoryPreview) {
-      orderHistoryPreview.innerHTML = '<p class="empty-orders-state">Loading order history...</p>';
+    if (orderHistorySummary) {
+      orderHistorySummary.textContent = 'Loading order history...';
     }
+
+    if (orderHistorySelect) {
+      orderHistorySelect.innerHTML =
+        '<option value="">-- Select a fulfilled, canceled, or failed order --</option>';
+      orderHistorySelect.disabled = true;
+    }
+
+    renderOrderHistoryEmptyState('Loading order history...');
 
     const res = await fetch('/.netlify/functions/get-orders', {
       method: 'GET',
@@ -2285,9 +2360,17 @@ async function loadOrdersPreview() {
       activeOrdersPreview.innerHTML = '<p class="empty-orders-state">Failed to load active orders.</p>';
     }
 
-    if (orderHistoryPreview) {
-      orderHistoryPreview.innerHTML = '<p class="empty-orders-state">Failed to load order history.</p>';
+    if (orderHistorySummary) {
+      orderHistorySummary.textContent = 'Failed to load order history.';
     }
+
+    if (orderHistorySelect) {
+      orderHistorySelect.innerHTML =
+        '<option value="">-- Select a fulfilled, canceled, or failed order --</option>';
+      orderHistorySelect.disabled = true;
+    }
+
+    renderOrderHistoryEmptyState('Failed to load order history.');
 
     if (ordersStatusMsg) {
       ordersStatusMsg.textContent = err.message || 'Failed to load orders.';
@@ -2298,6 +2381,10 @@ async function loadOrdersPreview() {
 
 function attachOrderListeners() {
   document.querySelectorAll('.save-order-btn').forEach((button) => {
+    if (button.dataset.listenerAttached === 'true') return;
+
+    button.dataset.listenerAttached = 'true';
+
     button.addEventListener('click', async () => {
       const orderId = button.dataset.orderId;
       if (!orderId) return;
@@ -2432,6 +2519,8 @@ export async function initAdminPanel() {
   deleteProductImageBtn?.addEventListener('click', handleDeleteProductImage);
   productImageUrl?.addEventListener('input', handleProductImageUrlInput);
   productForm?.addEventListener('submit', handleProductSubmit);
+
+  orderHistorySelect?.addEventListener('change', renderSelectedHistoryOrder);
 }
 
 document.addEventListener('DOMContentLoaded', initAdminPanel);

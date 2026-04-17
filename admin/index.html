@@ -407,6 +407,32 @@
       color: #6b7280;
     }
 
+    .history-dropdown-shell {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .history-controls {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+
+    .history-summary-text {
+      color: #4b5563;
+      font-size: 0.9rem;
+      margin-top: 0.35rem;
+    }
+
+    .history-detail-shell {
+      min-height: 120px;
+    }
+
+    .history-detail-shell .order-card {
+      margin: 0;
+    }
+
     code {
       background: #eef2ff;
       padding: 0.15rem 0.4rem;
@@ -815,10 +841,25 @@
         <div class="orders-list order-section-divider">
           <h3 class="order-section-subtitle">Order History</h3>
           <p class="order-section-description">
-            Orders that are already completed or no longer active. This includes fulfilled, canceled, and failed orders.
+            Choose a past order from the dropdown to inspect it without filling the page with every historical card at once.
           </p>
-          <div id="order-history-preview" class="orders-grid">
-            <p class="empty-orders-state">Loading order history...</p>
+
+          <div class="history-dropdown-shell">
+            <div class="history-controls">
+              <div class="field-group" style="margin-bottom:0;">
+                <label for="order-history-select">Historical Orders</label>
+                <select id="order-history-select">
+                  <option value="">-- Select a fulfilled, canceled, or failed order --</option>
+                </select>
+                <p id="order-history-summary" class="history-summary-text">
+                  Loading order history...
+                </p>
+              </div>
+            </div>
+
+            <div id="order-history-detail" class="history-detail-shell">
+              <p class="empty-orders-state">Select a historical order to view its details.</p>
+            </div>
           </div>
         </div>
       </div>
