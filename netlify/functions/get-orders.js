@@ -109,6 +109,16 @@ exports.handler = async (event) => {
         updated_at,
         fulfilled_at,
         fulfillment_notes,
+        customer_email,
+        customer_name,
+        shipping_name,
+        shipping_line1,
+        shipping_line2,
+        shipping_city,
+        shipping_state,
+        shipping_postal_code,
+        shipping_country,
+        shipping_phone,
         order_items (
           id,
           order_id,
@@ -135,11 +145,13 @@ exports.handler = async (event) => {
       throw ordersError;
     }
 
-    const userIds = [...new Set(
-      (orders || [])
-        .map((order) => order.user_id)
-        .filter(Boolean)
-    )];
+    const userIds = [
+      ...new Set(
+        (orders || [])
+          .map((order) => order.user_id)
+          .filter(Boolean)
+      )
+    ];
 
     let profilesById = {};
 
