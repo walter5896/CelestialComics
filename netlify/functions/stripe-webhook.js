@@ -71,18 +71,36 @@ function safeTrim(value) {
 
 function extractCustomerSnapshotFromSession(session) {
   const customerDetails = session?.customer_details || {};
-  const shippingDetails = session?.shipping_details || {};
-  const shippingAddress = shippingDetails?.address || {};
   const customerAddress = customerDetails?.address || {};
 
-  // Prefer explicit shipping details when present.
-  // Fall back to customer details if Stripe did not return shipping fields.
-  const chosenName = safeTrim(shippingDetails?.name) || safeTrim(customerDetails?.name);
-  const chosenPhone = safeTrim(shippingDetails?.phone) || safeTrim(customerDetails?.phone);
-  const chosenAddress =
-    shippingDetails?.address && Object.keys(shippingDetails.address).length > 0
-      ? shippingAddress
-      : customerAddress;
+  const collectedShippingDetails =
+    session?.collected_information?.shipping_details || {};
+
+  const collectedShippingAddress = collectedShippingDetails?.address || {};
+
+  const legacyShippingDetails = session?.shipping_details || {};
+  const legacyShippingAddress = legacyShippingDetails?.address || {};
+
+  // Prefer collected_information.shipping_details first,
+  // then fall back to legacy shipping_details,
+  // then finally fall back to customer_details.address.
+  const chosenName =
+    safeTrim(collectedShippingDetails?.name) ||
+    safeTrim(legacyShippingDetails?.name) ||
+    safeTrim(customerDetails?.name);
+
+  const chosenPhone =
+    safeTrim(collectedShippingDetails?.phone) ||
+    safeTrim(legacyShippingDetails?.phone) ||
+    safeTrim(customerDetails?.phone);
+
+  let chosenAddress = customerAddress;
+
+  if (collectedShippingAddress && Object.keys(collectedShippingAddress).length > 0) {
+    chosenAddress = collectedShippingAddress;
+  } else if (legacyShippingAddress && Object.keys(legacyShippingAddress).length > 0) {
+    chosenAddress = legacyShippingAddress;
+  }
 
   return {
     customer_email: safeTrim(customerDetails?.email),
