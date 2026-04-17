@@ -27,6 +27,9 @@ const supabase = createClient(
   supabaseServiceRoleKey
 );
 
+const PHYSICAL_PRODUCT_TYPES = new Set(['merch', 'paperback', 'bundle']);
+const DIGITAL_ONLY_PRODUCT_TYPES = new Set(['digital_comic']);
+
 function jsonResponse(statusCode, payload) {
   return {
     statusCode,
@@ -70,6 +73,14 @@ function mergeCartItems(cart) {
     product_id,
     quantity
   }));
+}
+
+function isPhysicalProductType(productType) {
+  return PHYSICAL_PRODUCT_TYPES.has(String(productType || '').trim());
+}
+
+function isDigitalOnlyProductType(productType) {
+  return DIGITAL_ONLY_PRODUCT_TYPES.has(String(productType || '').trim());
 }
 
 async function getAuthenticatedUser(token) {
@@ -157,6 +168,7 @@ exports.handler = async (event) => {
 
     let totalCents = 0;
     let totalVotesGranted = 0;
+    let requiresShipping = false;
 
     for (const cartItem of cart) {
       const product = productMap.get(cartItem.product_id);
@@ -175,6 +187,16 @@ exports.handler = async (event) => {
 
       if (!Number.isInteger(product.price_cents) || product.price_cents <= 0) {
         throw new Error(`Product has invalid price_cents: ${product.name}`);
+      }
+
+      const productType = String(product.product_type || 'merch').trim();
+
+      if (!isPhysicalProductType(productType) && !isDigitalOnlyProductType(productType)) {
+        throw new Error(`Unsupported product type for checkout: ${product.name}`);
+      }
+
+      if (isPhysicalProductType(productType)) {
+        requiresShipping = true;
       }
 
       const votesGrantedEach = Number(product.votes_granted) || 0;
@@ -207,7 +229,8 @@ exports.handler = async (event) => {
           total_cents: totalCents,
           total_votes_granted: totalVotesGranted,
           paid_at: null,
-          updated_at: nowIso
+          updated_at: nowIso,
+          customer_email: user.email || null
         }
       ])
       .select()
@@ -247,15 +270,17 @@ exports.handler = async (event) => {
       });
     }
 
-    const productTypeSummary = Array.from(
+    const uniqueProductTypes = Array.from(
       new Set((products || []).map((p) => p.product_type || 'merch'))
-    ).join(',');
+    );
+
+    const productTypeSummary = uniqueProductTypes.join(',');
 
     const storyIdsSummary = Array.from(
       new Set((products || []).map((p) => p.story_id).filter(Boolean))
     ).join(',');
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionConfig = {
       mode: 'payment',
       payment_method_types: ['card'],
       line_items,
@@ -270,15 +295,29 @@ exports.handler = async (event) => {
         total_cents: String(totalCents),
         total_votes_granted: String(totalVotesGranted),
         product_types: productTypeSummary,
-        story_ids: storyIdsSummary
+        story_ids: storyIdsSummary,
+        requires_shipping: requiresShipping ? 'true' : 'false'
       }
-    });
+    };
+
+    if (requiresShipping) {
+      sessionConfig.shipping_address_collection = {
+        allowed_countries: ['US', 'CA']
+      };
+
+      sessionConfig.phone_number_collection = {
+        enabled: true
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     const { error: updateError } = await supabase
       .from('orders')
       .update({
         stripe_session_id: session.id,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        customer_email: user.email || null
       })
       .eq('id', order.id);
 
@@ -295,7 +334,8 @@ exports.handler = async (event) => {
     return jsonResponse(200, {
       success: true,
       order_id: order.id,
-      url: session.url
+      url: session.url,
+      requires_shipping: requiresShipping
     });
   } catch (error) {
     console.error('Checkout function error:', error);

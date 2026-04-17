@@ -64,6 +64,40 @@ function getOrderIdFromSession(session) {
   return session?.metadata?.order_id || session?.client_reference_id || null;
 }
 
+function safeTrim(value) {
+  const str = String(value || '').trim();
+  return str || null;
+}
+
+function extractCustomerSnapshotFromSession(session) {
+  const customerDetails = session?.customer_details || {};
+  const shippingDetails = session?.shipping_details || {};
+  const shippingAddress = shippingDetails?.address || {};
+  const customerAddress = customerDetails?.address || {};
+
+  // Prefer explicit shipping details when present.
+  // Fall back to customer details if Stripe did not return shipping fields.
+  const chosenName = safeTrim(shippingDetails?.name) || safeTrim(customerDetails?.name);
+  const chosenPhone = safeTrim(shippingDetails?.phone) || safeTrim(customerDetails?.phone);
+  const chosenAddress =
+    shippingDetails?.address && Object.keys(shippingDetails.address).length > 0
+      ? shippingAddress
+      : customerAddress;
+
+  return {
+    customer_email: safeTrim(customerDetails?.email),
+    customer_name: safeTrim(customerDetails?.name),
+    shipping_name: chosenName,
+    shipping_line1: safeTrim(chosenAddress?.line1),
+    shipping_line2: safeTrim(chosenAddress?.line2),
+    shipping_city: safeTrim(chosenAddress?.city),
+    shipping_state: safeTrim(chosenAddress?.state),
+    shipping_postal_code: safeTrim(chosenAddress?.postal_code),
+    shipping_country: safeTrim(chosenAddress?.country),
+    shipping_phone: chosenPhone
+  };
+}
+
 async function getOrderById(orderId) {
   const { data, error } = await supabase
     .from('orders')
@@ -76,7 +110,17 @@ async function getOrderById(orderId) {
       total_votes_granted,
       created_at,
       paid_at,
-      updated_at
+      updated_at,
+      customer_email,
+      customer_name,
+      shipping_name,
+      shipping_line1,
+      shipping_line2,
+      shipping_city,
+      shipping_state,
+      shipping_postal_code,
+      shipping_country,
+      shipping_phone
     `)
     .eq('id', orderId)
     .single();
@@ -147,17 +191,29 @@ async function markOrderCanceled(orderId) {
   }
 }
 
-async function markOrderPaid(orderId, stripeSessionId) {
+async function markOrderPaid(orderId, stripeSessionId, customerSnapshot) {
   const nowIso = new Date().toISOString();
+
+  const updatePayload = {
+    status: 'paid',
+    stripe_session_id: stripeSessionId,
+    paid_at: nowIso,
+    updated_at: nowIso,
+    customer_email: customerSnapshot?.customer_email || null,
+    customer_name: customerSnapshot?.customer_name || null,
+    shipping_name: customerSnapshot?.shipping_name || null,
+    shipping_line1: customerSnapshot?.shipping_line1 || null,
+    shipping_line2: customerSnapshot?.shipping_line2 || null,
+    shipping_city: customerSnapshot?.shipping_city || null,
+    shipping_state: customerSnapshot?.shipping_state || null,
+    shipping_postal_code: customerSnapshot?.shipping_postal_code || null,
+    shipping_country: customerSnapshot?.shipping_country || null,
+    shipping_phone: customerSnapshot?.shipping_phone || null
+  };
 
   const { data, error } = await supabase
     .from('orders')
-    .update({
-      status: 'paid',
-      stripe_session_id: stripeSessionId,
-      paid_at: nowIso,
-      updated_at: nowIso
-    })
+    .update(updatePayload)
     .eq('id', orderId)
     .eq('status', 'pending')
     .select()
@@ -358,13 +414,12 @@ async function handleCheckoutSessionCompleted(session) {
     votesToGrant = await getFallbackVotesGranted(order.id);
   }
 
+  const customerSnapshot = extractCustomerSnapshotFromSession(session);
+
   // =========================
   // FULFILL ORDER
   // =========================
-  // First move order from pending -> paid.
-  // This prevents retries from double-granting bonus votes
-  // or repeatedly issuing digital access.
-  const paidOrder = await markOrderPaid(order.id, session.id);
+  const paidOrder = await markOrderPaid(order.id, session.id, customerSnapshot);
 
   let newBonusVoteBalance = null;
 
@@ -380,7 +435,10 @@ async function handleCheckoutSessionCompleted(session) {
     bonus_votes_granted: votesToGrant,
     new_bonus_vote_balance: newBonusVoteBalance,
     story_access_granted_count: storyAccessResult.granted_count,
-    story_access: storyAccessResult.granted_access
+    story_access: storyAccessResult.granted_access,
+    customer_email: paidOrder.customer_email,
+    shipping_name: paidOrder.shipping_name,
+    shipping_country: paidOrder.shipping_country
   };
 }
 
