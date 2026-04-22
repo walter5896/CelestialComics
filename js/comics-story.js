@@ -1,11 +1,22 @@
 // /js/comics-story.js
 import { supabase } from './supabase.js';
+import { getCurrentUserAsync, waitForAuthReady } from './auth.js';
+import {
+  setSelectedStoryId,
+  setStories,
+  setProducts,
+  setOwnedStoryAccess,
+  getOwnedStoryIds
+} from './state.js';
 
 /* =========================
    DOM REFERENCES
 ========================= */
 const comicPageContent = document.getElementById('comic-page-content');
 const comicStatusMessage = document.getElementById('comic-status-message');
+
+let comicStoryInitialized = false;
+let comicBuyClickHandlerAttached = false;
 
 /* =========================
    HELPERS
@@ -30,9 +41,20 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function encodeId(value) {
+  return encodeURIComponent(String(value ?? ''));
+}
+
 function formatPrice(priceCents) {
-  if (!Number.isInteger(priceCents)) return 'Price unavailable';
-  return `$${(priceCents / 100).toFixed(2)}`;
+  if (!Number.isInteger(Number(priceCents))) return 'Price unavailable';
+  return `$${(Number(priceCents) / 100).toFixed(2)}`;
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString();
 }
 
 function prettyProductType(type) {
@@ -55,7 +77,7 @@ function getStoryImage(story) {
 }
 
 function isDigitalAccessProduct(productType) {
-  return ['digital_comic', 'bundle'].includes(productType);
+  return ['digital_comic', 'bundle'].includes(String(productType || ''));
 }
 
 async function parseJsonResponseSafely(res) {
@@ -77,20 +99,6 @@ async function getAccessToken() {
   }
 
   return data?.session?.access_token || null;
-}
-
-async function getCurrentUser() {
-  const {
-    data: { user },
-    error
-  } = await supabase.auth.getUser();
-
-  if (error) {
-    console.error('Error loading current user:', error);
-    return null;
-  }
-
-  return user || null;
 }
 
 /* =========================
@@ -167,52 +175,94 @@ async function loadStoryProducts(storyId) {
       active,
       product_type,
       story_id,
-      votes_granted
+      votes_granted,
+      created_at
     `)
     .eq('active', true)
     .eq('story_id', storyId)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+
+  const safeProducts = data || [];
+  setProducts(safeProducts);
+  return safeProducts;
 }
 
-async function checkStoryOwnership(storyId, userId) {
-  if (!storyId || !userId) return false;
+async function loadOwnedStoryAccessForCurrentUser() {
+  const user = await getCurrentUserAsync();
+
+  if (!user?.id) {
+    setOwnedStoryAccess([]);
+    return [];
+  }
 
   const { data, error } = await supabase
     .from('user_story_access')
-    .select('id, access_type')
-    .eq('user_id', userId)
-    .eq('story_id', storyId)
-    .limit(1);
+    .select(`
+      id,
+      user_id,
+      story_id,
+      access_type,
+      granted_at
+    `)
+    .eq('user_id', user.id)
+    .order('granted_at', { ascending: false });
 
   if (error) throw error;
 
-  return Array.isArray(data) && data.length > 0;
+  const safeAccessRows = data || [];
+  setOwnedStoryAccess(safeAccessRows);
+  return safeAccessRows;
+}
+
+async function buildOwnershipContext(storyId) {
+  const user = await getCurrentUserAsync();
+
+  if (!user) {
+    return {
+      userLoggedIn: false,
+      hasAccess: false
+    };
+  }
+
+  await loadOwnedStoryAccessForCurrentUser();
+
+  const ownedStoryIds = getOwnedStoryIds().map(String);
+
+  return {
+    userLoggedIn: true,
+    hasAccess: ownedStoryIds.includes(String(storyId))
+  };
 }
 
 /* =========================
    CHECKOUT
 ========================= */
 function attachBuyButtonListeners() {
-  document.querySelectorAll('.comic-buy-btn').forEach((button) => {
-    button.addEventListener('click', async () => {
-      const productId = button.dataset.productId;
-      if (!productId) return;
-      await handleBuyProduct(productId, button);
-    });
+  if (!comicPageContent || comicBuyClickHandlerAttached) return;
+
+  comicPageContent.addEventListener('click', async (event) => {
+    const button = event.target.closest('.comic-buy-btn[data-product-id]');
+    if (!button) return;
+
+    const productId = button.dataset.productId;
+    if (!productId) return;
+
+    await handleBuyProduct(productId, button);
   });
+
+  comicBuyClickHandlerAttached = true;
 }
 
 async function handleBuyProduct(productId, buttonEl) {
   const originalButtonText = buttonEl?.textContent || 'Buy Now';
 
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserAsync();
 
     if (!user) {
-      alert('Please log in before purchasing.');
+      setStatus('Please log in before purchasing.', 'red');
       return;
     }
 
@@ -255,8 +305,7 @@ async function handleBuyProduct(productId, buttonEl) {
   } catch (err) {
     console.error('Error during checkout:', err);
     setStatus(err.message || 'Checkout failed.', 'red');
-    alert(err.message || 'Checkout failed.');
-  } finally {
+
     if (buttonEl) {
       buttonEl.disabled = false;
       buttonEl.textContent = originalButtonText;
@@ -282,6 +331,7 @@ function renderProductCards(products, ownership) {
         .map((product) => {
           const safeName = escapeHtml(product.name);
           const safeDescription = escapeHtml(product.description || '');
+          const safeProductId = escapeHtml(product.id);
           const priceText = formatPrice(product.price_cents);
           const isOwnedDigitalOption =
             ownership.hasAccess && isDigitalAccessProduct(product.product_type);
@@ -307,7 +357,7 @@ function renderProductCards(products, ownership) {
                     <button
                       type="button"
                       class="btn btn-primary comic-buy-btn"
-                      data-product-id="${product.id}"
+                      data-product-id="${safeProductId}"
                     >
                       Buy ${safeName}
                     </button>
@@ -350,11 +400,15 @@ function renderPreviewPages(previewPages, story, ownership) {
     <div class="comic-preview-grid">
       ${previewPages
         .map((page) => {
+          const safeImage = escapeHtml(page.image_url || '');
+          const safeCaption = escapeHtml(page.caption || 'Preview page');
+          const safePageNumber = escapeHtml(page.page_number);
+
           return `
             <article class="comic-preview-card">
-              <img src="${escapeHtml(page.image_url || '')}" alt="Preview page ${page.page_number}">
-              <strong>Preview Page ${page.page_number}</strong>
-              <p>${escapeHtml(page.caption || 'Preview page')}</p>
+              <img src="${safeImage}" alt="Preview page ${safePageNumber}">
+              <strong>Preview Page ${safePageNumber}</strong>
+              <p>${safeCaption}</p>
             </article>
           `;
         })
@@ -364,7 +418,7 @@ function renderPreviewPages(previewPages, story, ownership) {
 }
 
 function renderAccessBox(story, ownership) {
-  const readerHref = `/gallery/read.html?id=${story.id}`;
+  const readerHref = `/gallery/read.html?id=${encodeId(story.id)}`;
 
   if (ownership.hasAccess) {
     return `
@@ -435,8 +489,9 @@ function renderComicPage({ story, previewPages, products, ownership }) {
   const stageLabel = escapeHtml(story.production_stage_label || 'Released');
 
   const authorLine = safeAuthor ? `By ${safeAuthor}` : 'Author not listed';
-  const releaseLine = story.release_date
-    ? `Released: ${new Date(story.release_date).toLocaleDateString()}`
+  const formattedReleaseDate = formatDate(story.release_date);
+  const releaseLine = formattedReleaseDate
+    ? `Released: ${formattedReleaseDate}`
     : 'Released comic';
 
   comicPageContent.innerHTML = `
@@ -487,8 +542,6 @@ function renderComicPage({ story, previewPages, products, ownership }) {
       ${renderAccessBox(story, ownership)}
     </section>
   `;
-
-  attachBuyButtonListeners();
 }
 
 function renderNotFoundState() {
@@ -515,30 +568,36 @@ function renderErrorState(message) {
    BOOTSTRAP
 ========================= */
 async function initComicStoryPage() {
+  if (comicStoryInitialized) return;
+  comicStoryInitialized = true;
+
   const storyId = getQueryParam('id');
 
   if (!storyId) {
+    setSelectedStoryId(null);
     renderErrorState('No comic ID was provided.');
     return;
   }
 
   try {
+    await waitForAuthReady();
+
+    setSelectedStoryId(String(storyId));
     setStatus('Loading comic...', '#374151');
 
     const story = await loadReleasedStory(storyId);
 
     if (!story) {
+      setStories([]);
+      setProducts([]);
       setStatus('');
       renderNotFoundState();
       return;
     }
 
-    const currentUser = await getCurrentUser();
+    setStories([story]);
 
-    const ownership = {
-      userLoggedIn: !!currentUser,
-      hasAccess: currentUser ? await checkStoryOwnership(storyId, currentUser.id) : false
-    };
+    const ownership = await buildOwnershipContext(storyId);
 
     const [previewPages, products] = await Promise.all([
       loadStoryPreviewPages(storyId, story),
@@ -552,6 +611,7 @@ async function initComicStoryPage() {
       ownership
     });
 
+    attachBuyButtonListeners();
     setStatus('');
   } catch (err) {
     console.error('Error loading released comic page:', err);

@@ -1,6 +1,20 @@
 // /js/singleStoryRestrict.js
 import { fetchUserVotes } from './vote.js';
 
+function getPublicVoteCount(voteBtn) {
+  const count = Number(voteBtn?.dataset?.voteCount);
+  return Number.isFinite(count) && count >= 0 ? count : 0;
+}
+
+function setVoteButtonState(voteBtn, { disabled, text, voted = false }) {
+  if (!voteBtn) return;
+
+  voteBtn.disabled = !!disabled;
+  voteBtn.textContent = text || 'Voting Unavailable';
+  voteBtn.classList.toggle('voted', !!voted);
+  voteBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+}
+
 /**
  * Restrict voting on a single story page based on story status.
  * story: the story object loaded on the page
@@ -9,32 +23,77 @@ import { fetchUserVotes } from './vote.js';
 export async function restrictSingleStoryVoting(story, voteBtn) {
   if (!story || !voteBtn) return;
 
-  const userVotes = await fetchUserVotes();
-  const storyId = String(story.id);
+  const storyId = String(story.id || '');
+  const publicVoteCount = getPublicVoteCount(voteBtn);
 
-  const existingVote = userVotes.find(v => String(v.story_id) === storyId);
-  const userVoteCount = existingVote ? Number(existingVote.vote_count) || 0 : 0;
+  if (!storyId) {
+    setVoteButtonState(voteBtn, {
+      disabled: true,
+      text: 'Voting Unavailable'
+    });
+    return;
+  }
 
-  switch (story.voting_status) {
-    case 'closed':
-      voteBtn.disabled = true;
-      voteBtn.textContent = `Voting Closed (${voteBtn.dataset.voteCount || 0})`;
-      break;
+  // If the story itself is not part of the active vote pool,
+  // do not allow voting even if a stale voting_status value exists.
+  if (story.story_status !== 'active_vote') {
+    setVoteButtonState(voteBtn, {
+      disabled: true,
+      text: `Voting Unavailable (${publicVoteCount})`
+    });
+    return;
+  }
 
-    case 'upcoming':
-      voteBtn.disabled = true;
-      voteBtn.textContent = 'Voting Starts Soon';
-      break;
+  try {
+    const userVotes = await fetchUserVotes();
+    const existingVote = Array.isArray(userVotes)
+      ? userVotes.find((v) => String(v.story_id) === storyId)
+      : null;
 
-    case 'open':
-      voteBtn.disabled = false;
-      voteBtn.textContent = userVoteCount > 0
-        ? `Add Vote (${voteBtn.dataset.voteCount || 0})`
-        : `Vote (${voteBtn.dataset.voteCount || 0})`;
-      break;
+    const userVoteCount = existingVote ? Number(existingVote.vote_count) || 0 : 0;
+    const isVoted = userVoteCount > 0;
 
-    default:
-      voteBtn.disabled = true;
-      voteBtn.textContent = 'Voting Unavailable';
+    switch (story.voting_status) {
+      case 'closed':
+        setVoteButtonState(voteBtn, {
+          disabled: true,
+          text: `Voting Closed (${publicVoteCount})`,
+          voted: false
+        });
+        break;
+
+      case 'upcoming':
+        setVoteButtonState(voteBtn, {
+          disabled: true,
+          text: 'Voting Starts Soon',
+          voted: false
+        });
+        break;
+
+      case 'open':
+        setVoteButtonState(voteBtn, {
+          disabled: false,
+          text: isVoted
+            ? `Add Vote (${publicVoteCount})`
+            : `Vote (${publicVoteCount})`,
+          voted: isVoted
+        });
+        break;
+
+      default:
+        setVoteButtonState(voteBtn, {
+          disabled: true,
+          text: 'Voting Unavailable',
+          voted: false
+        });
+    }
+  } catch (error) {
+    console.error('Error restricting single story voting:', error);
+
+    setVoteButtonState(voteBtn, {
+      disabled: true,
+      text: 'Voting Unavailable',
+      voted: false
+    });
   }
 }

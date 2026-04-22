@@ -1,35 +1,52 @@
-// auth-signup.js
+// /js/auth-signup.js
 import { supabase } from './supabase.js';
-import { updateUI } from './auth.js'; // Keep UI in sync after signup
 
 /**
  * Sign up a new user with email and password.
- * Returns true if successful, false otherwise.
+ * Returns a structured result object.
  */
 export async function signup(email, password) {
   try {
+    const trimmedEmail = String(email || '').trim();
+    const safePassword = String(password || '');
+
+    if (!trimmedEmail || !safePassword) {
+      return {
+        success: false,
+        error: 'Email and password are required.'
+      };
+    }
+
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password
+      email: trimmedEmail,
+      password: safePassword
     });
 
     if (error) {
       console.error('Signup error:', error.message);
-      alert(`Sign up failed: ${error.message}`);
-      return false;
+      return {
+        success: false,
+        error: error.message
+      };
     }
 
-    alert('Sign up successful! Please check your email to confirm your account.');
+    const needsEmailConfirmation =
+      !data?.session && !!data?.user;
 
-    // If user is auto-logged in, update the UI
-    if (data.user) {
-      updateUI();
-    }
-
-    return true;
+    return {
+      success: true,
+      user: data?.user ?? null,
+      session: data?.session ?? null,
+      needsEmailConfirmation,
+      message: needsEmailConfirmation
+        ? 'Sign up successful! Please check your email to confirm your account.'
+        : 'Sign up successful!'
+    };
   } catch (err) {
     console.error('Unexpected signup error:', err);
-    alert('Unexpected signup error. Please try again.');
-    return false;
+    return {
+      success: false,
+      error: 'Unexpected signup error. Please try again.'
+    };
   }
 }
