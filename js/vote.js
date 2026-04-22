@@ -1,6 +1,36 @@
 // /js/vote.js
 import { supabase } from './supabase.js';
 import { getCurrentUserAsync } from './auth.js';
+import {
+  setVoteBalances,
+  setVotingPeriod,
+  clearVotingPeriod
+} from './state.js';
+
+/* =======================
+   GENERIC HELPERS
+======================= */
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function encodeId(value) {
+  return encodeURIComponent(String(value ?? ''));
+}
+
+function getStoryImage(story) {
+  return story?.cover_image_url || story?.image_url || '';
+}
+
+function isPositiveInteger(value) {
+  return Number.isInteger(value) && value > 0;
+}
 
 /* =======================
    VOTING PERIOD HELPERS
@@ -14,6 +44,7 @@ function isEffectivelyClosed(period) {
   const now = new Date();
   const end = new Date(period.end_time);
 
+  if (Number.isNaN(end.getTime())) return true;
   return now > end;
 }
 
@@ -26,7 +57,26 @@ function isEffectivelyOpen(period) {
   const start = new Date(period.start_time);
   const end = new Date(period.end_time);
 
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
   return now >= start && now <= end;
+}
+
+function deriveVotingStatus(period) {
+  if (!period) return 'closed';
+  if (period.finalized_at) return 'closed';
+  if (period.closed_at) return 'closed';
+
+  const now = new Date();
+  const start = new Date(period.start_time);
+  const end = new Date(period.end_time);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 'closed';
+  }
+
+  if (now < start) return 'upcoming';
+  if (now >= start && now <= end) return 'open';
+  return 'closed';
 }
 
 async function fetchCurrentVotingPeriod() {
@@ -48,10 +98,19 @@ async function fetchCurrentVotingPeriod() {
 
   if (error) {
     console.error('Error fetching current voting period:', error);
+    clearVotingPeriod();
     return null;
   }
 
-  return data?.[0] || null;
+  const period = data?.[0] || null;
+
+  if (period) {
+    setVotingPeriod(period);
+  } else {
+    clearVotingPeriod();
+  }
+
+  return period;
 }
 
 async function fetchOpenVotingPeriod() {
@@ -72,25 +131,18 @@ async function fetchOpenVotingPeriod() {
 
   if (error) {
     console.error('Error fetching open voting period:', error);
+    clearVotingPeriod();
     return null;
   }
 
   const periods = data || [];
-  return periods.find(isEffectivelyOpen) || null;
-}
+  const openPeriod = periods.find(isEffectivelyOpen) || null;
 
-function deriveVotingStatus(period) {
-  if (!period) return 'closed';
-  if (period.finalized_at) return 'closed';
-  if (period.closed_at) return 'closed';
+  if (openPeriod) {
+    setVotingPeriod(openPeriod);
+  }
 
-  const now = new Date();
-  const start = new Date(period.start_time);
-  const end = new Date(period.end_time);
-
-  if (now < start) return 'upcoming';
-  if (now >= start && now <= end) return 'open';
-  return 'closed';
+  return openPeriod;
 }
 
 /* =======================
@@ -99,55 +151,46 @@ function deriveVotingStatus(period) {
 
 async function fetchUserProfileBalances() {
   const user = await getCurrentUserAsync();
+
   if (!user) {
-    return {
-      round: 0,
-      bonus: 0,
-      total: 0
-    };
+    const emptyBalances = { round: 0, bonus: 0, total: 0 };
+    setVoteBalances({
+      voteBalance: 0,
+      bonusVoteBalance: 0
+    });
+    return emptyBalances;
   }
 
   const { data, error } = await supabase
     .from('profiles')
     .select('vote_balance, bonus_vote_balance')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error fetching user balances:', error);
-    return {
-      round: 0,
-      bonus: 0,
-      total: 0
-    };
+
+    const emptyBalances = { round: 0, bonus: 0, total: 0 };
+    setVoteBalances({
+      voteBalance: 0,
+      bonusVoteBalance: 0
+    });
+    return emptyBalances;
   }
 
   const round = Number(data?.vote_balance) || 0;
   const bonus = Number(data?.bonus_vote_balance) || 0;
+
+  setVoteBalances({
+    voteBalance: round,
+    bonusVoteBalance: bonus
+  });
 
   return {
     round,
     bonus,
     total: round + bonus
   };
-}
-
-async function updateUserProfileBalances(userId, roundVotes, bonusVotes) {
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      vote_balance: roundVotes,
-      bonus_vote_balance: bonusVotes
-    })
-    .eq('id', userId);
-
-  if (error) {
-    throw error;
-  }
-}
-
-function getStoryImage(story) {
-  return story.cover_image_url || story.image_url || '';
 }
 
 /* =======================
@@ -208,11 +251,7 @@ export async function fetchStoriesWithVotes() {
 
     if (storiesError) throw storiesError;
 
-    let votesQuery = supabase.from('votes').select('story_id, vote_count');
-
-    if (currentVotingPeriodId) {
-      votesQuery = votesQuery.eq('voting_period_id', currentVotingPeriodId);
-    } else {
+    if (!currentVotingPeriodId) {
       return (stories || []).map((story) => ({
         ...story,
         vote_count: 0,
@@ -220,7 +259,10 @@ export async function fetchStoriesWithVotes() {
       }));
     }
 
-    const { data: votesData, error: votesError } = await votesQuery;
+    const { data: votesData, error: votesError } = await supabase
+      .from('votes')
+      .select('story_id, vote_count')
+      .eq('voting_period_id', currentVotingPeriodId);
 
     if (votesError) throw votesError;
 
@@ -249,19 +291,14 @@ export async function fetchUserVotes() {
   const currentPeriod = await fetchCurrentVotingPeriod();
   const currentVotingPeriodId = currentPeriod?.id || null;
 
+  if (!currentVotingPeriodId) return [];
+
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('votes')
       .select('story_id, vote_count, voting_period_id')
-      .eq('user_id', user.id);
-
-    if (currentVotingPeriodId) {
-      query = query.eq('voting_period_id', currentVotingPeriodId);
-    } else {
-      return [];
-    }
-
-    const { data, error } = await query;
+      .eq('user_id', user.id)
+      .eq('voting_period_id', currentVotingPeriodId);
 
     if (error) {
       console.error('Error fetching user votes:', error);
@@ -314,193 +351,110 @@ export async function fetchSavedStories() {
 export async function submitVote(storyId, amount = 1) {
   const user = await getCurrentUserAsync();
   if (!user) {
-    alert('You must be logged in to vote!');
-    return { success: false, reason: 'not_logged_in' };
-  }
-
-  const openVotingPeriod = await fetchOpenVotingPeriod();
-  if (!openVotingPeriod) {
-    return { success: false, reason: 'voting_closed' };
-  }
-
-  const votingPeriodId = openVotingPeriod.id;
-
-  const voteAmount = Number(amount);
-  if (!Number.isInteger(voteAmount) || voteAmount <= 0) {
-    return { success: false, reason: 'invalid_amount' };
-  }
-
-  const balances = await fetchUserProfileBalances();
-
-  if (balances.total < voteAmount) {
-    alert(`You do not have enough votes. Total available votes: ${balances.total}`);
     return {
       success: false,
-      reason: 'insufficient_balance',
-      balance: balances.total
+      reason: 'not_logged_in',
+      message: 'You must be logged in to vote.'
     };
   }
 
-  const { data: existingVote, error: existingVoteError } = await supabase
-    .from('votes')
-    .select('id, vote_count, voting_period_id')
-    .eq('user_id', user.id)
-    .eq('story_id', storyId)
-    .eq('voting_period_id', votingPeriodId)
-    .maybeSingle();
-
-  if (existingVoteError) {
-    console.error('Error checking existing vote:', existingVoteError);
-    return { success: false, reason: 'vote_lookup_failed' };
+  const voteAmount = Number(amount);
+  if (!isPositiveInteger(voteAmount)) {
+    return {
+      success: false,
+      reason: 'invalid_amount',
+      message: 'Invalid vote amount.'
+    };
   }
 
-  if (existingVote) {
-    const newVoteCount = (Number(existingVote.vote_count) || 0) + voteAmount;
+  const { data, error } = await supabase.rpc('submit_vote_secure', {
+    p_story_id: storyId,
+    p_amount: voteAmount
+  });
 
-    const { error: updateVoteError } = await supabase
-      .from('votes')
-      .update({ vote_count: newVoteCount })
-      .eq('id', existingVote.id);
+  if (error) {
+    console.error('submit_vote_secure error:', error);
+    return {
+      success: false,
+      reason: 'rpc_error',
+      message: error.message || 'Could not submit vote.'
+    };
+  }
 
-    if (updateVoteError) {
-      console.error('Error updating vote count:', updateVoteError);
-      return { success: false, reason: 'vote_update_failed' };
-    }
-  } else {
-    const { error: insertVoteError } = await supabase
-      .from('votes')
-      .insert([
-        {
-          user_id: user.id,
-          story_id: storyId,
-          vote_count: voteAmount,
-          voting_period_id: votingPeriodId
-        }
-      ]);
+  if (data?.success) {
+    setVoteBalances({
+      voteBalance: data.round_balance ?? 0,
+      bonusVoteBalance: data.bonus_balance ?? 0
+    });
 
-    if (insertVoteError) {
-      console.error('Error inserting vote:', insertVoteError);
-      return { success: false, reason: 'vote_insert_failed' };
+    if (data.voting_period_id) {
+      await fetchCurrentVotingPeriod();
     }
   }
 
-  const roundToSpend = Math.min(balances.round, voteAmount);
-  const bonusToSpend = voteAmount - roundToSpend;
-
-  const newRoundBalance = balances.round - roundToSpend;
-  const newBonusBalance = balances.bonus - bonusToSpend;
-
-  try {
-    await updateUserProfileBalances(user.id, newRoundBalance, newBonusBalance);
-  } catch (balanceError) {
-    console.error('Error updating vote balances:', balanceError);
-    return { success: false, reason: 'balance_update_failed' };
-  }
-
-  return {
-    success: true,
-    amount: voteAmount,
-    round_balance: newRoundBalance,
-    bonus_balance: newBonusBalance,
-    total_balance: newRoundBalance + newBonusBalance,
-    voting_period_id: votingPeriodId
+  return data || {
+    success: false,
+    reason: 'unknown',
+    message: 'Unexpected vote response.'
   };
 }
 
 export async function recantVote(storyId, amount = 1) {
   const user = await getCurrentUserAsync();
   if (!user) {
-    return { success: false, reason: 'not_logged_in' };
+    return {
+      success: false,
+      reason: 'not_logged_in',
+      message: 'You must be logged in.'
+    };
   }
-
-  const openVotingPeriod = await fetchOpenVotingPeriod();
-  if (!openVotingPeriod) {
-    return { success: false, reason: 'voting_closed' };
-  }
-
-  const votingPeriodId = openVotingPeriod.id;
 
   const recantAmount = Number(amount);
-  if (!Number.isInteger(recantAmount) || recantAmount <= 0) {
-    return { success: false, reason: 'invalid_amount' };
+  if (!isPositiveInteger(recantAmount)) {
+    return {
+      success: false,
+      reason: 'invalid_amount',
+      message: 'Invalid recant amount.'
+    };
   }
 
-  const { data: existingVote, error: voteError } = await supabase
-    .from('votes')
-    .select('id, vote_count, voting_period_id')
-    .eq('user_id', user.id)
-    .eq('story_id', storyId)
-    .eq('voting_period_id', votingPeriodId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('recant_vote_secure', {
+    p_story_id: storyId,
+    p_amount: recantAmount
+  });
 
-  if (voteError) {
-    console.error('Error fetching existing vote for recant:', voteError);
-    return { success: false, reason: 'vote_lookup_failed' };
+  if (error) {
+    console.error('recant_vote_secure error:', error);
+    return {
+      success: false,
+      reason: 'rpc_error',
+      message: error.message || 'Could not recant vote.'
+    };
   }
 
-  if (!existingVote) {
-    return { success: false, reason: 'no_vote_found' };
-  }
+  if (data?.success) {
+    setVoteBalances({
+      voteBalance: data.round_balance ?? 0,
+      bonusVoteBalance: data.bonus_balance ?? 0
+    });
 
-  const currentVoteCount = Number(existingVote.vote_count) || 0;
-  if (currentVoteCount < recantAmount) {
-    return { success: false, reason: 'recant_amount_too_high' };
-  }
-
-  const remainingVoteCount = currentVoteCount - recantAmount;
-
-  if (remainingVoteCount === 0) {
-    const { error: deleteError } = await supabase
-      .from('votes')
-      .delete()
-      .eq('id', existingVote.id);
-
-    if (deleteError) {
-      console.error('Error deleting vote row:', deleteError);
-      return { success: false, reason: 'vote_delete_failed' };
-    }
-  } else {
-    const { error: updateError } = await supabase
-      .from('votes')
-      .update({ vote_count: remainingVoteCount })
-      .eq('id', existingVote.id);
-
-    if (updateError) {
-      console.error('Error reducing vote count:', updateError);
-      return { success: false, reason: 'vote_update_failed' };
+    if (data.voting_period_id) {
+      await fetchCurrentVotingPeriod();
     }
   }
 
-  const balances = await fetchUserProfileBalances();
-
-  const ROUND_VOTE_CAP = 5;
-  const availableRoundSpace = Math.max(0, ROUND_VOTE_CAP - balances.round);
-  const roundToRefund = Math.min(recantAmount, availableRoundSpace);
-  const bonusToRefund = recantAmount - roundToRefund;
-
-  const newRoundBalance = balances.round + roundToRefund;
-  const newBonusBalance = balances.bonus + bonusToRefund;
-
-  try {
-    await updateUserProfileBalances(user.id, newRoundBalance, newBonusBalance);
-  } catch (balanceError) {
-    console.error('Error restoring vote balances:', balanceError);
-    return { success: false, reason: 'balance_update_failed' };
-  }
-
-  return {
-    success: true,
-    amount: recantAmount,
-    round_balance: newRoundBalance,
-    bonus_balance: newBonusBalance,
-    total_balance: newRoundBalance + newBonusBalance,
-    voting_period_id: votingPeriodId
+  return data || {
+    success: false,
+    reason: 'unknown',
+    message: 'Unexpected recant response.'
   };
 }
 
 export async function saveStory(storyId) {
   const user = await getCurrentUserAsync();
-  if (!user) return { success: false, reason: 'not_logged_in' };
+  if (!user) {
+    return { success: false, reason: 'not_logged_in', message: 'You must be logged in.' };
+  }
 
   const { error } = await supabase
     .from('saved_stories')
@@ -508,11 +462,11 @@ export async function saveStory(storyId) {
 
   if (error) {
     if (error.code === '23505') {
-      return { success: false, reason: 'already_saved' };
+      return { success: false, reason: 'already_saved', message: 'Story already saved.' };
     }
 
     console.error('Error saving story:', error);
-    return { success: false, reason: 'save_failed' };
+    return { success: false, reason: 'save_failed', message: 'Could not save story.' };
   }
 
   return { success: true };
@@ -520,7 +474,9 @@ export async function saveStory(storyId) {
 
 export async function unsaveStory(storyId) {
   const user = await getCurrentUserAsync();
-  if (!user) return { success: false, reason: 'not_logged_in' };
+  if (!user) {
+    return { success: false, reason: 'not_logged_in', message: 'You must be logged in.' };
+  }
 
   const { error } = await supabase
     .from('saved_stories')
@@ -530,7 +486,7 @@ export async function unsaveStory(storyId) {
 
   if (error) {
     console.error('Error unsaving story:', error);
-    return { success: false, reason: 'unsave_failed' };
+    return { success: false, reason: 'unsave_failed', message: 'Could not unsave story.' };
   }
 
   return { success: true };
@@ -547,13 +503,17 @@ export function renderStoriesForHome(stories, containerId = 'story-grid') {
   container.innerHTML = '';
 
   stories.forEach((story) => {
+    const safeTitle = escapeHtml(story.title);
+    const safeImage = escapeHtml(getStoryImage(story));
+    const safeStoryId = encodeId(story.id);
+
     const card = document.createElement('article');
     card.className = 'story-card';
     card.innerHTML = `
-      <img src="${getStoryImage(story)}" alt="${story.title}" />
-      <h3>${story.title}</h3>
+      <img src="${safeImage}" alt="${safeTitle}" />
+      <h3>${safeTitle}</h3>
       <div class="story-actions">
-        <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
+        <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
       </div>
     `;
     container.appendChild(card);
@@ -567,13 +527,17 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
   container.innerHTML = '';
 
   stories.forEach((story) => {
+    const safeTitle = escapeHtml(story.title);
+    const safeImage = escapeHtml(getStoryImage(story));
+    const safeStoryId = encodeId(story.id);
+
     const card = document.createElement('article');
     card.className = 'story-card';
     card.innerHTML = `
-      <img src="${getStoryImage(story)}" alt="${story.title}" />
-      <h3>${story.title}</h3>
+      <img src="${safeImage}" alt="${safeTitle}" />
+      <h3>${safeTitle}</h3>
       <div class="story-actions">
-        <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
+        <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
       </div>
     `;
     container.appendChild(card);
@@ -587,21 +551,24 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
   container.innerHTML = '';
 
   stories.forEach((story) => {
-    const card = document.createElement('article');
-    card.className = 'story-card';
+    const safeTitle = escapeHtml(story.title);
+    const safeImage = escapeHtml(getStoryImage(story));
+    const safeStoryId = encodeId(story.id);
     const voteCount = Number(story.vote_count) || 0;
 
+    const card = document.createElement('article');
+    card.className = 'story-card';
     card.innerHTML = `
-      <img src="${getStoryImage(story)}" alt="${story.title}" />
-      <h3>${story.title}</h3>
+      <img src="${safeImage}" alt="${safeTitle}" />
+      <h3>${safeTitle}</h3>
       <div class="story-actions">
         <button
           class="btn btn-primary vote-btn"
-          data-story-id="${story.id}"
+          data-story-id="${safeStoryId}"
           data-vote-count="${voteCount}">
           Vote (${voteCount})
         </button>
-        <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
+        <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
       </div>
     `;
 
@@ -617,17 +584,22 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
     votedContainer.innerHTML = '';
 
     votedStories.forEach((story) => {
+      const safeTitle = escapeHtml(story.title);
+      const safeImage = escapeHtml(getStoryImage(story));
+      const safeStoryId = encodeId(story.id);
+      const userVoteCount = Number(story.user_vote_count) || 0;
+
       const card = document.createElement('article');
       card.className = 'story-card';
       card.innerHTML = `
-        <img src="${getStoryImage(story)}" alt="${story.title}" />
-        <h3>${story.title}</h3>
-        <p>You cast ${story.user_vote_count || 0} vote(s)</p>
+        <img src="${safeImage}" alt="${safeTitle}" />
+        <h3>${safeTitle}</h3>
+        <p>You cast ${userVoteCount} vote(s)</p>
         <div class="story-actions">
-          <button class="btn btn-primary recant-btn" data-story-id="${story.id}">
+          <button class="btn btn-primary recant-btn" data-story-id="${safeStoryId}">
             Recant 1 Vote
           </button>
-          <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
+          <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
         </div>
       `;
       votedContainer.appendChild(card);
@@ -638,16 +610,20 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
     savedContainer.innerHTML = '';
 
     savedStories.forEach((story) => {
+      const safeTitle = escapeHtml(story.title);
+      const safeImage = escapeHtml(getStoryImage(story));
+      const safeStoryId = encodeId(story.id);
+
       const card = document.createElement('article');
       card.className = 'story-card';
       card.innerHTML = `
-        <img src="${getStoryImage(story)}" alt="${story.title}" />
-        <h3>${story.title}</h3>
+        <img src="${safeImage}" alt="${safeTitle}" />
+        <h3>${safeTitle}</h3>
         <div class="story-actions">
-          <button class="btn btn-secondary unsave-btn" data-story-id="${story.id}">
+          <button class="btn btn-secondary unsave-btn" data-story-id="${safeStoryId}">
             Unsave
           </button>
-          <a href="/gallery/story.html?id=${story.id}" class="btn btn-link">Read More</a>
+          <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
         </div>
       `;
       savedContainer.appendChild(card);
@@ -691,8 +667,13 @@ export function updateVoteButtons(userVotes, stories) {
   });
 }
 
-export function attachVoteListeners(containerId = 'story-grid') {
+export function attachVoteListeners(containerId = 'story-grid', options = {}) {
+  const { onSuccess = null, reloadOnSuccess = true } = options;
+
   document.querySelectorAll(`#${containerId} .vote-btn`).forEach((btn) => {
+    if (btn.dataset.listenerAttached === 'true') return;
+    btn.dataset.listenerAttached = 'true';
+
     btn.addEventListener('click', async () => {
       if (btn.disabled) return;
 
@@ -705,22 +686,34 @@ export function attachVoteListeners(containerId = 'story-grid') {
         const result = await submitVote(storyId, 1);
 
         if (result.success) {
-          location.reload();
-          return;
+          if (typeof onSuccess === 'function') {
+            await onSuccess(result);
+            return;
+          }
+
+          if (reloadOnSuccess) {
+            window.location.reload();
+            return;
+          }
         }
 
         btn.textContent = originalText;
         btn.disabled = false;
 
-        if (result.reason === 'voting_closed') {
-          alert('Voting is closed right now.');
+        if (result.reason === 'not_logged_in') {
+          alert(result.message || 'You must be logged in to vote.');
+        } else if (result.reason === 'voting_closed') {
+          alert(result.message || 'Voting is closed right now.');
         } else if (result.reason === 'insufficient_balance') {
-          alert('You do not have enough votes.');
+          alert(result.message || 'You do not have enough votes.');
+        } else {
+          alert(result.message || 'Could not submit vote.');
         }
       } catch (err) {
         console.error('Vote click error:', err);
         btn.disabled = false;
         btn.textContent = originalText;
+        alert('Could not submit vote.');
       }
     });
   });
@@ -728,6 +721,9 @@ export function attachVoteListeners(containerId = 'story-grid') {
 
 export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = []) {
   document.querySelectorAll(`#${containerId} .save-btn`).forEach((btn) => {
+    if (btn.dataset.listenerAttached === 'true') return;
+    btn.dataset.listenerAttached = 'true';
+
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const alreadySaved = savedStoryIds.includes(String(storyId));
@@ -752,8 +748,13 @@ export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = 
   });
 }
 
-export function attachRecantListeners(containerId) {
+export function attachRecantListeners(containerId, options = {}) {
+  const { onSuccess = null, reloadOnSuccess = true } = options;
+
   document.querySelectorAll(`#${containerId} .recant-btn`).forEach((btn) => {
+    if (btn.dataset.listenerAttached === 'true') return;
+    btn.dataset.listenerAttached = 'true';
+
     btn.addEventListener('click', async () => {
       if (btn.disabled) return;
 
@@ -766,17 +767,24 @@ export function attachRecantListeners(containerId) {
         const res = await recantVote(storyId, 1);
 
         if (res.success) {
-          location.reload();
-          return;
+          if (typeof onSuccess === 'function') {
+            await onSuccess(res);
+            return;
+          }
+
+          if (reloadOnSuccess) {
+            window.location.reload();
+            return;
+          }
         }
 
         btn.disabled = false;
         btn.textContent = originalText;
 
         if (res.reason === 'voting_closed') {
-          alert('Voting is closed. You can no longer recant votes for this round.');
+          alert(res.message || 'Voting is closed. You can no longer recant votes for this round.');
         } else {
-          alert('Could not recant vote.');
+          alert(res.message || 'Could not recant vote.');
         }
       } catch (err) {
         console.error('Recant click error:', err);
@@ -788,12 +796,30 @@ export function attachRecantListeners(containerId) {
   });
 }
 
-export function attachUnsaveListeners(containerId) {
+export function attachUnsaveListeners(containerId, options = {}) {
+  const { onSuccess = null, reloadOnSuccess = true } = options;
+
   document.querySelectorAll(`#${containerId} .unsave-btn`).forEach((btn) => {
+    if (btn.dataset.listenerAttached === 'true') return;
+    btn.dataset.listenerAttached = 'true';
+
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
       const res = await unsaveStory(storyId);
-      if (res.success) location.reload();
+
+      if (!res.success) {
+        alert(res.message || 'Could not unsave story.');
+        return;
+      }
+
+      if (typeof onSuccess === 'function') {
+        await onSuccess(res, storyId);
+        return;
+      }
+
+      if (reloadOnSuccess) {
+        window.location.reload();
+      }
     });
   });
 }

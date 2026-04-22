@@ -1,6 +1,12 @@
 // /js/profile.js
 import { supabase } from './supabase.js';
-import { getCurrentUser } from './auth.js';
+import { getCurrentUserAsync } from './auth.js';
+import {
+  getState,
+  subscribe,
+  setVoteBalances as setSharedVoteBalances,
+  setOwnedStoryAccess
+} from './state.js';
 import {
   recantVote,
   fetchSavedStories,
@@ -17,7 +23,6 @@ const roundVoteBalanceEl = document.getElementById('round-vote-balance');
 const bonusVoteBalanceEl = document.getElementById('bonus-vote-balance');
 const totalVoteBalanceEl = document.getElementById('total-vote-balance');
 
-// New owned-stories section
 const ownedContainer = document.getElementById('owned-stories-container');
 const noOwned = document.getElementById('no-owned-stories');
 
@@ -37,14 +42,8 @@ if (
    HELPERS
 ======================= */
 
-function setVoteBalances(roundVotes = 0, bonusVotes = 0) {
-  const safeRoundVotes = Number(roundVotes) || 0;
-  const safeBonusVotes = Number(bonusVotes) || 0;
-  const totalVotes = safeRoundVotes + safeBonusVotes;
-
-  roundVoteBalanceEl.textContent = String(safeRoundVotes);
-  bonusVoteBalanceEl.textContent = String(safeBonusVotes);
-  totalVoteBalanceEl.textContent = String(totalVotes);
+function setDisplay(el, value) {
+  if (el) el.style.display = value;
 }
 
 function escapeHtml(value) {
@@ -78,11 +77,47 @@ function formatGrantedDate(value) {
   return date.toLocaleDateString();
 }
 
-async function fetchVoteBalances() {
-  const user = getCurrentUser();
+function renderVoteBalancesFromState() {
+  const { voteBalance = 0, bonusVoteBalance = 0 } = getState();
+  const safeRoundVotes = Number(voteBalance) || 0;
+  const safeBonusVotes = Number(bonusVoteBalance) || 0;
+  const totalVotes = safeRoundVotes + safeBonusVotes;
+
+  roundVoteBalanceEl.textContent = String(safeRoundVotes);
+  bonusVoteBalanceEl.textContent = String(safeBonusVotes);
+  totalVoteBalanceEl.textContent = String(totalVotes);
+}
+
+function renderLoggedOutVotes() {
+  voteList.innerHTML = '';
+  setDisplay(noVotes, 'block');
+}
+
+function renderLoggedOutSavedStories() {
+  savedContainer.innerHTML = '';
+  setDisplay(savedContainer, 'none');
+  setDisplay(noSaved, 'block');
+}
+
+function renderLoggedOutOwnedStories() {
+  if (!ownedContainer || !noOwned) return;
+  ownedContainer.innerHTML = '';
+  setDisplay(ownedContainer, 'none');
+  setDisplay(noOwned, 'block');
+}
+
+/* =======================
+   STATE SYNC
+======================= */
+
+async function syncVoteBalancesToState() {
+  const user = await getCurrentUserAsync();
 
   if (!user) {
-    setVoteBalances(0, 0);
+    setSharedVoteBalances({
+      voteBalance: 0,
+      bonusVoteBalance: 0
+    });
     return;
   }
 
@@ -94,14 +129,17 @@ async function fetchVoteBalances() {
 
   if (error) {
     console.error('Error fetching vote balances:', error);
-    setVoteBalances(0, 0);
+    setSharedVoteBalances({
+      voteBalance: 0,
+      bonusVoteBalance: 0
+    });
     return;
   }
 
-  setVoteBalances(
-    data?.vote_balance ?? 0,
-    data?.bonus_vote_balance ?? 0
-  );
+  setSharedVoteBalances({
+    voteBalance: data?.vote_balance ?? 0,
+    bonusVoteBalance: data?.bonus_vote_balance ?? 0
+  });
 }
 
 async function fetchCurrentVotingPeriod() {
@@ -129,6 +167,10 @@ function isOpenVotingPeriod(period) {
   const start = new Date(period.start_time);
   const end = new Date(period.end_time);
 
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return false;
+  }
+
   return now >= start && now <= end;
 }
 
@@ -137,7 +179,7 @@ function isOpenVotingPeriod(period) {
 ======================= */
 
 async function fetchCurrentRoundVotes() {
-  const user = getCurrentUser();
+  const user = await getCurrentUserAsync();
   if (!user) return [];
 
   const currentPeriod = await fetchCurrentVotingPeriod();
@@ -176,19 +218,24 @@ async function fetchCurrentRoundVotes() {
 }
 
 async function fetchAndRenderVotes() {
+  const user = await getCurrentUserAsync();
+
+  if (!user) {
+    renderLoggedOutVotes();
+    return;
+  }
+
   const currentPeriod = await fetchCurrentVotingPeriod();
   const roundIsOpen = isOpenVotingPeriod(currentPeriod);
-
   const voteRows = await fetchCurrentRoundVotes();
 
   if (!voteRows.length) {
     voteList.innerHTML = '';
-    noVotes.style.display = 'block';
+    setDisplay(noVotes, 'block');
     return;
   }
 
-  noVotes.style.display = 'block';
-  noVotes.style.display = 'none';
+  setDisplay(noVotes, 'none');
   voteList.innerHTML = '';
 
   voteRows.forEach((voteRow) => {
@@ -198,10 +245,10 @@ async function fetchAndRenderVotes() {
     const count = Number(voteRow.vote_count) || 0;
 
     li.innerHTML = `
-      <span>${title} — You cast ${count} vote(s) this round</span>
+      <span>${escapeHtml(title)} — You cast ${count} vote(s) this round</span>
       ${
         roundIsOpen
-          ? `<button class="recant-btn" data-story-id="${voteRow.story_id}">Recant 1 Vote</button>`
+          ? `<button class="recant-btn" data-story-id="${escapeHtml(voteRow.story_id)}">Recant 1 Vote</button>`
           : `<button type="button" disabled>Round Closed</button>`
       }
     `;
@@ -215,16 +262,24 @@ async function fetchAndRenderVotes() {
 ======================= */
 
 async function fetchAndRenderSavedStories() {
-  const { success, data } = await fetchSavedStories();
+  const user = await getCurrentUserAsync();
 
-  if (!success || data.length === 0) {
-    savedContainer.style.display = 'none';
-    noSaved.style.display = 'block';
+  if (!user) {
+    renderLoggedOutSavedStories();
     return;
   }
 
-  savedContainer.style.display = 'grid';
-  noSaved.style.display = 'none';
+  const { success, data } = await fetchSavedStories();
+
+  if (!success || !Array.isArray(data) || data.length === 0) {
+    savedContainer.innerHTML = '';
+    setDisplay(savedContainer, 'none');
+    setDisplay(noSaved, 'block');
+    return;
+  }
+
+  setDisplay(savedContainer, 'grid');
+  setDisplay(noSaved, 'none');
 
   const storiesWithSavedFlag = data.map((story) => ({
     ...story,
@@ -242,14 +297,15 @@ async function fetchAndRenderSavedStories() {
 function renderOwnedStories(ownedStories) {
   if (!ownedContainer || !noOwned) return;
 
-  if (!ownedStories.length) {
-    ownedContainer.style.display = 'none';
-    noOwned.style.display = 'block';
+  if (!Array.isArray(ownedStories) || !ownedStories.length) {
+    ownedContainer.innerHTML = '';
+    setDisplay(ownedContainer, 'none');
+    setDisplay(noOwned, 'block');
     return;
   }
 
-  ownedContainer.style.display = 'grid';
-  noOwned.style.display = 'none';
+  setDisplay(ownedContainer, 'grid');
+  setDisplay(noOwned, 'none');
 
   ownedContainer.innerHTML = ownedStories
     .map((item) => {
@@ -262,6 +318,7 @@ function renderOwnedStories(ownedStories) {
       const safeImage = escapeHtml(getStoryImage(story));
       const accessLabel = formatAccessType(item.access_type);
       const grantedDate = formatGrantedDate(item.granted_at);
+      const safeStoryId = encodeURIComponent(story.id || '');
 
       return `
         <article class="story-card owned-story-card">
@@ -283,10 +340,10 @@ function renderOwnedStories(ownedStories) {
             }
 
             <div class="story-actions">
-              <a href="/comics/story.html?id=${story.id}" class="btn btn-secondary">
+              <a href="/comics/story.html?id=${safeStoryId}" class="btn btn-secondary">
                 View Comic
               </a>
-              <a href="/gallery/read.html?id=${story.id}" class="btn btn-primary">
+              <a href="/gallery/read.html?id=${safeStoryId}" class="btn btn-primary">
                 Read Now
               </a>
             </div>
@@ -298,9 +355,12 @@ function renderOwnedStories(ownedStories) {
 }
 
 async function fetchOwnedStories() {
-  const user = getCurrentUser();
+  const user = await getCurrentUserAsync();
 
-  if (!user) return [];
+  if (!user) {
+    setOwnedStoryAccess([]);
+    return [];
+  }
 
   const { data, error } = await supabase
     .from('user_story_access')
@@ -326,10 +386,14 @@ async function fetchOwnedStories() {
 
   if (error) {
     console.error('Error fetching owned stories:', error);
+    setOwnedStoryAccess([]);
     return [];
   }
 
-  return (data || []).filter(
+  const safeRows = Array.isArray(data) ? data : [];
+  setOwnedStoryAccess(safeRows);
+
+  return safeRows.filter(
     (item) => item.stories && item.stories.story_status === 'released'
   );
 }
@@ -340,20 +404,51 @@ async function fetchAndRenderOwnedStories() {
 }
 
 /* =======================
+   ORCHESTRATION
+======================= */
+
+async function refreshProfilePageData() {
+  const user = await getCurrentUserAsync();
+
+  if (!user) {
+    setSharedVoteBalances({
+      voteBalance: 0,
+      bonusVoteBalance: 0
+    });
+    setOwnedStoryAccess([]);
+
+    renderVoteBalancesFromState();
+    renderLoggedOutVotes();
+    renderLoggedOutSavedStories();
+    renderLoggedOutOwnedStories();
+    return;
+  }
+
+  await syncVoteBalancesToState();
+  renderVoteBalancesFromState();
+
+  await Promise.all([
+    fetchAndRenderVotes(),
+    fetchAndRenderSavedStories(),
+    fetchAndRenderOwnedStories()
+  ]);
+}
+
+/* =======================
    INIT
 ======================= */
 
-function initProfile() {
-  fetchVoteBalances();
-  fetchAndRenderVotes();
-  fetchAndRenderSavedStories();
-  fetchAndRenderOwnedStories();
+async function initProfile() {
+  renderVoteBalancesFromState();
 
-  supabase.auth.onAuthStateChange(() => {
-    fetchVoteBalances();
-    fetchAndRenderVotes();
-    fetchAndRenderSavedStories();
-    fetchAndRenderOwnedStories();
+  subscribe(() => {
+    renderVoteBalancesFromState();
+  });
+
+  await refreshProfilePageData();
+
+  window.addEventListener('user-changed', () => {
+    refreshProfilePageData();
   });
 }
 
@@ -369,11 +464,11 @@ document.addEventListener('click', async (e) => {
 
   if (result.success) {
     alert('Vote recanted!');
-    fetchVoteBalances();
-    fetchAndRenderVotes();
+    await syncVoteBalancesToState();
+    await fetchAndRenderVotes();
   } else if (result.reason === 'voting_closed') {
     alert('Voting is closed. You can no longer recant votes this round.');
-    fetchAndRenderVotes();
+    await fetchAndRenderVotes();
   } else {
     alert('Could not recant vote.');
   }
