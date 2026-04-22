@@ -18,22 +18,35 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 const stripe = new Stripe(stripeSecretKey);
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-const VALID_PRODUCT_TYPES = ['merch', 'digital_comic', 'paperback', 'bundle'];
+const VALID_PRODUCT_TYPES = new Set(['merch', 'digital_comic', 'paperback', 'bundle']);
 
-function buildJsonResponse(statusCode, payload) {
+function jsonResponse(statusCode, payload) {
   return {
     statusCode,
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(payload)
   };
 }
 
+function parseRequestBody(body) {
+  try {
+    return JSON.parse(body || '{}');
+  } catch {
+    throw new Error('Invalid JSON body');
+  }
+}
+
 function normalizeBoolean(value, fallback = true) {
   if (typeof value === 'boolean') return value;
+
   if (typeof value === 'string') {
     const lowered = value.trim().toLowerCase();
     if (lowered === 'true') return true;
     if (lowered === 'false') return false;
   }
+
   return fallback;
 }
 
@@ -51,11 +64,40 @@ function normalizeNullableString(value) {
 function normalizeProductType(value) {
   const type = String(value || 'merch').trim();
 
-  if (!VALID_PRODUCT_TYPES.includes(type)) {
-    throw new Error(`Invalid product_type. Must be one of: ${VALID_PRODUCT_TYPES.join(', ')}`);
+  if (!VALID_PRODUCT_TYPES.has(type)) {
+    throw new Error(
+      `Invalid product_type. Must be one of: ${Array.from(VALID_PRODUCT_TYPES).join(', ')}`
+    );
   }
 
   return type;
+}
+
+async function getAdminUserFromToken(token) {
+  const {
+    data: { user },
+    error: userError
+  } = await supabase.auth.getUser(token);
+
+  if (userError || !user) {
+    throw new Error('Invalid user token');
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (!profile || profile.role !== 'admin') {
+    throw new Error('Admin access required');
+  }
+
+  return user;
 }
 
 async function validateStoryReference(storyId, productType) {
@@ -70,7 +112,10 @@ async function validateStoryReference(storyId, productType) {
     .eq('id', storyId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
+
   if (!story) {
     throw new Error('Referenced story was not found.');
   }
@@ -138,54 +183,53 @@ function validateProductPayload(body) {
   };
 }
 
-async function getAdminUserFromToken(token) {
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser(token);
-
-  if (userError || !user) {
-    throw new Error('Invalid user token');
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, role')
-    .eq('id', user.id)
+async function requireExistingProduct(productId) {
+  const { data: existingProduct, error } = await supabase
+    .from('products')
+    .select(`
+      id,
+      name,
+      description,
+      price_cents,
+      stripe_product_id,
+      stripe_price_id,
+      image_url,
+      active,
+      votes_granted,
+      product_type,
+      story_id
+    `)
+    .eq('id', productId)
     .single();
 
-  if (profileError) {
-    throw profileError;
+  if (error || !existingProduct) {
+    throw new Error('Product not found.');
   }
 
-  if (!profile || profile.role !== 'admin') {
-    throw new Error('Admin access required');
+  if (!existingProduct.stripe_product_id) {
+    throw new Error('Existing product is missing stripe_product_id.');
   }
 
-  return user;
+  return existingProduct;
 }
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return buildJsonResponse(405, { error: 'Method not allowed' });
+    return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   const authHeader = event.headers.authorization || event.headers.Authorization;
   const token = authHeader?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
-    return buildJsonResponse(401, { error: 'Missing auth token' });
+    return jsonResponse(401, { error: 'Missing auth token' });
   }
+
+  let createdStripePriceId = null;
 
   try {
     const adminUser = await getAdminUserFromToken(token);
-
-    let body = {};
-    try {
-      body = JSON.parse(event.body || '{}');
-    } catch {
-      return buildJsonResponse(400, { error: 'Invalid JSON body' });
-    }
+    const body = parseRequestBody(event.body);
 
     const {
       product_id,
@@ -200,35 +244,10 @@ exports.handler = async (event) => {
     } = validateProductPayload(body);
 
     const linkedStory = await validateStoryReference(story_id, product_type);
+    const existingProduct = await requireExistingProduct(product_id);
 
-    const { data: existingProduct, error: fetchError } = await supabase
-      .from('products')
-      .select(`
-        id,
-        name,
-        description,
-        price_cents,
-        stripe_product_id,
-        stripe_price_id,
-        image_url,
-        active,
-        votes_granted,
-        product_type,
-        story_id
-      `)
-      .eq('id', product_id)
-      .single();
-
-    if (fetchError || !existingProduct) {
-      throw new Error('Product not found.');
-    }
-
-    if (!existingProduct.stripe_product_id) {
-      throw new Error('Existing product is missing stripe_product_id.');
-    }
-
-    let nextStripePriceId = existingProduct.stripe_price_id;
     const priceChanged = Number(existingProduct.price_cents) !== Number(price_cents);
+    let nextStripePriceId = existingProduct.stripe_price_id;
 
     await stripe.products.update(existingProduct.stripe_product_id, {
       name,
@@ -253,22 +272,14 @@ exports.handler = async (event) => {
         metadata: {
           product_type,
           story_id: story_id || '',
+          story_title: linkedStory?.title || '',
           votes_granted: String(votes_granted),
           supabase_updated_by: adminUser.id
         }
       });
 
+      createdStripePriceId = newStripePrice.id;
       nextStripePriceId = newStripePrice.id;
-
-      if (existingProduct.stripe_price_id) {
-        try {
-          await stripe.prices.update(existingProduct.stripe_price_id, {
-            active: false
-          });
-        } catch (archivePriceError) {
-          console.error('update-product old price archive warning:', archivePriceError);
-        }
-      }
     } else if (existingProduct.stripe_price_id) {
       try {
         await stripe.prices.update(existingProduct.stripe_price_id, {
@@ -301,7 +312,17 @@ exports.handler = async (event) => {
       throw updateError;
     }
 
-    return buildJsonResponse(200, {
+    if (priceChanged && existingProduct.stripe_price_id) {
+      try {
+        await stripe.prices.update(existingProduct.stripe_price_id, {
+          active: false
+        });
+      } catch (archivePriceError) {
+        console.error('update-product old price archive warning:', archivePriceError);
+      }
+    }
+
+    return jsonResponse(200, {
       success: true,
       product: updatedProduct,
       price_changed: priceChanged,
@@ -312,8 +333,40 @@ exports.handler = async (event) => {
   } catch (error) {
     console.error('update-product error:', error);
 
-    return buildJsonResponse(500, {
-      error: error.message || 'Server error'
+    if (createdStripePriceId) {
+      try {
+        await stripe.prices.update(createdStripePriceId, {
+          active: false
+        });
+      } catch (rollbackError) {
+        console.error('update-product price rollback warning:', rollbackError);
+      }
+    }
+
+    const message = error?.message || 'Server error';
+    const statusCode =
+      message === 'Missing auth token' ? 401 :
+      message === 'Invalid user token' ? 401 :
+      message === 'Admin access required' ? 403 :
+      message === 'Invalid JSON body' ? 400 :
+      message === 'product_id is required.' ? 400 :
+      message === 'Product name is required.' ? 400 :
+      message === 'Product description is required.' ? 400 :
+      message === 'price_cents must be a positive integer.' ? 400 :
+      message === 'votes_granted must be a non-negative integer.' ? 400 :
+      message === 'image_url must be an absolute URL or site-relative path.' ? 400 :
+      message === 'Merch products should not have a story_id attached.' ? 400 :
+      message === 'Comic-format products should not grant bonus votes.' ? 400 :
+      message === 'story_id is required for digital_comic, paperback, and bundle products.' ? 400 :
+      message === 'Referenced story was not found.' ? 404 :
+      message === 'Comic-format products can only be attached to released stories.' ? 400 :
+      message === 'Product not found.' ? 404 :
+      message === 'Existing product is missing stripe_product_id.' ? 500 :
+      message.startsWith('Invalid product_type.') ? 400 :
+      500;
+
+    return jsonResponse(statusCode, {
+      error: message
     });
   }
 };

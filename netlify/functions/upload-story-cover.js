@@ -1,10 +1,13 @@
-// /.netlify/functions/upload-story-cover.js
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('Missing Supabase environment variables.');
+}
+
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 const STORY_COVERS_BUCKET = 'story-covers';
 const ALLOWED_MIME_TYPES = new Set([
@@ -15,14 +18,22 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
-// =========================
-// HELPERS
-// =========================
 function jsonResponse(statusCode, payload) {
   return {
     statusCode,
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(payload)
   };
+}
+
+function parseRequestBody(body) {
+  try {
+    return JSON.parse(body || '{}');
+  } catch {
+    throw new Error('Invalid JSON body.');
+  }
 }
 
 function sanitizeFileName(fileName) {
@@ -37,7 +48,7 @@ function getFileExtension(fileName, fileType) {
   const safeName = String(fileName || '').toLowerCase();
 
   if (safeName.includes('.')) {
-    const ext = safeName.split('.').pop().replace(/[^a-z0-9]/g, '');
+    const ext = safeName.split('.').pop()?.replace(/[^a-z0-9]/g, '');
     if (ext) return ext;
   }
 
@@ -57,15 +68,63 @@ function getFileExtension(fileName, fileType) {
 
 function decodeBase64File(fileBase64) {
   try {
-    return Buffer.from(fileBase64, 'base64');
+    const buffer = Buffer.from(String(fileBase64 || ''), 'base64');
+
+    if (!buffer.length) {
+      throw new Error('Decoded file is empty.');
+    }
+
+    return buffer;
   } catch {
     throw new Error('Invalid base64 file data.');
   }
 }
 
-// =========================
-// MAIN HANDLER
-// =========================
+async function requireAdminUser(token) {
+  const {
+    data: { user },
+    error: userError
+  } = await supabase.auth.getUser(token);
+
+  if (userError || !user) {
+    throw new Error('Invalid user token');
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (!profile || profile.role !== 'admin') {
+    throw new Error('Admin access required');
+  }
+
+  return user;
+}
+
+async function requireStory(storyId) {
+  const { data: story, error } = await supabase
+    .from('stories')
+    .select('id, cover_image_url, cover_image_path')
+    .eq('id', storyId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!story) {
+    throw new Error('Story not found');
+  }
+
+  return story;
+}
+
 export async function handler(event) {
   if (event.httpMethod !== 'POST') {
     return jsonResponse(405, { error: 'Method not allowed' });
@@ -78,42 +137,12 @@ export async function handler(event) {
     return jsonResponse(401, { error: 'Missing auth token' });
   }
 
-  let newlyUploadedPath = null;
+  let uploadedPath = null;
 
   try {
-    // =========================
-    // AUTH / ADMIN CHECK
-    // =========================
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser(token);
+    await requireAdminUser(token);
 
-    if (userError || !user) {
-      return jsonResponse(401, { error: 'Invalid user token' });
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError) throw profileError;
-
-    if (!profile || profile.role !== 'admin') {
-      return jsonResponse(403, { error: 'Admin access required' });
-    }
-
-    // =========================
-    // BODY PARSE
-    // =========================
-    let body = {};
-    try {
-      body = JSON.parse(event.body || '{}');
-    } catch {
-      return jsonResponse(400, { error: 'Invalid JSON body' });
-    }
+    const body = parseRequestBody(event.body);
 
     const story_id = String(body.story_id || '').trim();
     const file_name = String(body.file_name || '').trim();
@@ -132,27 +161,8 @@ export async function handler(event) {
       });
     }
 
-    // =========================
-    // VERIFY STORY EXISTS
-    // =========================
-    const { data: story, error: storyError } = await supabase
-      .from('stories')
-      .select('id, cover_image_url, cover_image_path')
-      .eq('id', story_id)
-      .single();
-
-    if (storyError || !story) {
-      return jsonResponse(404, { error: 'Story not found' });
-    }
-
-    // =========================
-    // DECODE / VALIDATE FILE
-    // =========================
+    const story = await requireStory(story_id);
     const fileBuffer = decodeBase64File(file_base64);
-
-    if (!fileBuffer || !fileBuffer.length) {
-      return jsonResponse(400, { error: 'Decoded file is empty.' });
-    }
 
     if (fileBuffer.length > MAX_FILE_SIZE_BYTES) {
       return jsonResponse(400, {
@@ -160,18 +170,11 @@ export async function handler(event) {
       });
     }
 
-    // =========================
-    // BUILD STORAGE PATH
-    // =========================
     const safeFileName = sanitizeFileName(file_name);
     const extension = getFileExtension(safeFileName, file_type);
-    const timestamp = Date.now();
-    const storagePath = `${story_id}/cover-${timestamp}.${extension}`;
-    newlyUploadedPath = storagePath;
+    const storagePath = `${story_id}/cover-${Date.now()}.${extension}`;
+    uploadedPath = storagePath;
 
-    // =========================
-    // UPLOAD TO STORAGE
-    // =========================
     const { error: uploadError } = await supabase.storage
       .from(STORY_COVERS_BUCKET)
       .upload(storagePath, fileBuffer, {
@@ -180,11 +183,10 @@ export async function handler(event) {
         cacheControl: '3600'
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      throw uploadError;
+    }
 
-    // =========================
-    // GET PUBLIC URL
-    // =========================
     const { data: publicUrlData } = supabase.storage
       .from(STORY_COVERS_BUCKET)
       .getPublicUrl(storagePath);
@@ -195,9 +197,6 @@ export async function handler(event) {
       throw new Error('Failed to generate public image URL.');
     }
 
-    // =========================
-    // UPDATE STORY ROW
-    // =========================
     const { data: updatedStory, error: updateError } = await supabase
       .from('stories')
       .update({
@@ -208,15 +207,11 @@ export async function handler(event) {
       .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      throw updateError;
+    }
 
-    // =========================
-    // DELETE OLD COVER (BEST EFFORT)
-    // =========================
-    if (
-      story.cover_image_path &&
-      story.cover_image_path !== storagePath
-    ) {
+    if (story.cover_image_path && story.cover_image_path !== storagePath) {
       try {
         await supabase.storage
           .from(STORY_COVERS_BUCKET)
@@ -235,21 +230,26 @@ export async function handler(event) {
   } catch (err) {
     console.error('upload-story-cover error:', err);
 
-    // =========================
-    // BEST-EFFORT ROLLBACK
-    // =========================
-    if (newlyUploadedPath) {
+    if (uploadedPath) {
       try {
         await supabase.storage
           .from(STORY_COVERS_BUCKET)
-          .remove([newlyUploadedPath]);
+          .remove([uploadedPath]);
       } catch (rollbackError) {
         console.error('upload-story-cover rollback warning:', rollbackError);
       }
     }
 
-    return jsonResponse(500, {
-      error: err.message || 'Server error'
-    });
+    const message = err?.message || 'Server error';
+    const statusCode =
+      message === 'Invalid user token' ? 401 :
+      message === 'Admin access required' ? 403 :
+      message === 'Story not found' ? 404 :
+      message === 'Invalid JSON body.' ? 400 :
+      message === 'Invalid base64 file data.' ? 400 :
+      message === 'Decoded file is empty.' ? 400 :
+      500;
+
+    return jsonResponse(statusCode, { error: message });
   }
 }
