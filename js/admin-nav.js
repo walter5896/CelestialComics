@@ -1,47 +1,46 @@
 // /js/admin-nav.js
-import { supabase } from './supabase.js';
-import { getCurrentUserAsync } from './auth.js';
+import { waitForAuthReady } from './auth.js';
+import { getState, subscribe } from './state.js';
 
-/**
- * Checks if the current user is an admin and shows/hides all admin nav links.
- */
-async function updateAdminLink() {
+let adminNavInitialized = false;
+let unsubscribeAdminNav = null;
+
+function setAdminLinksVisible(isVisible) {
   const adminLinks = document.querySelectorAll('.admin-link');
   if (!adminLinks.length) return;
 
-  try {
-    const currentUser = await getCurrentUserAsync();
-
-    if (!currentUser) {
-      adminLinks.forEach(link => {
-        link.style.display = 'none';
-      });
-      return;
-    }
-
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', currentUser.id)
-      .single();
-
-    if (error) throw error;
-
-    const isAdmin = profile?.role === 'admin';
-
-    adminLinks.forEach(link => {
-      link.style.display = isAdmin ? 'inline-block' : 'none';
-    });
-  } catch (err) {
-    console.error('Failed to fetch current user role:', err);
-    adminLinks.forEach(link => {
-      link.style.display = 'none';
-    });
-  }
+  adminLinks.forEach((link) => {
+    link.style.display = isVisible ? 'inline-block' : 'none';
+  });
 }
 
-// Run on initial page load
-document.addEventListener('DOMContentLoaded', updateAdminLink);
+/**
+ * Uses shared auth/profile state to show or hide all admin nav links.
+ */
+function updateAdminLinkVisibility() {
+  const { currentUser, profile, isAdmin } = getState();
 
-// Re-run whenever auth changes
-window.addEventListener('user-changed', updateAdminLink);
+  if (!currentUser || !profile) {
+    setAdminLinksVisible(false);
+    return;
+  }
+
+  setAdminLinksVisible(!!isAdmin);
+}
+
+async function initAdminNav() {
+  if (adminNavInitialized) return;
+  adminNavInitialized = true;
+
+  await waitForAuthReady();
+  updateAdminLinkVisibility();
+
+  unsubscribeAdminNav = subscribe(() => {
+    updateAdminLinkVisibility();
+  });
+
+  // Keep backward compatibility with older page flows that still emit this.
+  window.addEventListener('user-changed', updateAdminLinkVisibility);
+}
+
+document.addEventListener('DOMContentLoaded', initAdminNav);
