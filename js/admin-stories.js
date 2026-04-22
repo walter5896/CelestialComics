@@ -9,6 +9,7 @@ import {
 
 let storiesModuleInitialized = false;
 let storyPagesDeleteHandlerAttached = false;
+let storySaveInFlight = false;
 
 let allStories = [];
 let editingStoryId = null;
@@ -25,6 +26,35 @@ function setAllStoriesState(nextStories, ctx) {
   if (typeof ctx.setAllStories === 'function') {
     ctx.setAllStories(allStories);
   }
+}
+
+function getCurrentSelectedStoryId(ctx) {
+  return ctx.storySelect?.value || editingStoryId || '';
+}
+
+function parseReleaseDateValue(value) {
+  const safeValue = String(value || '').trim();
+  if (!safeValue) return null;
+
+  const parsed = new Date(safeValue);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error('Release date is invalid.');
+  }
+
+  return parsed.toISOString();
+}
+
+function setSaveButtonState(saveStoryBtn, isBusy, isEditing) {
+  if (!saveStoryBtn) return;
+
+  saveStoryBtn.disabled = !!isBusy;
+
+  if (isBusy) {
+    saveStoryBtn.textContent = isEditing ? 'Updating...' : 'Creating...';
+    return;
+  }
+
+  saveStoryBtn.textContent = isEditing ? 'Update Story' : 'Create Story';
 }
 
 export function getAllStories() {
@@ -76,6 +106,7 @@ export function clearStoryForm(ctx) {
   } = ctx;
 
   editingStoryId = null;
+  storySaveInFlight = false;
 
   if (storySelect) storySelect.value = '';
   storyForm?.reset();
@@ -90,7 +121,8 @@ export function clearStoryForm(ctx) {
   if (storyBundleAvailable) storyBundleAvailable.checked = false;
   if (storyReleaseDate) storyReleaseDate.value = '';
 
-  if (saveStoryBtn) saveStoryBtn.textContent = 'Create Story';
+  setSaveButtonState(saveStoryBtn, false, false);
+
   if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
   if (deleteCoverBtn) deleteCoverBtn.style.display = 'none';
 
@@ -126,6 +158,8 @@ export async function populateStoryForm(story, ctx) {
     storyMsg,
     storySelect
   } = ctx;
+
+  if (!story) return;
 
   editingStoryId = story.id;
 
@@ -171,14 +205,15 @@ export async function populateStoryForm(story, ctx) {
 
   if (storyCoverFile) storyCoverFile.value = '';
 
-  if (saveStoryBtn) saveStoryBtn.textContent = 'Update Story';
+  setSaveButtonState(saveStoryBtn, false, true);
+
   if (deleteStoryBtn) deleteStoryBtn.style.display = 'inline-block';
 
   if (deleteCoverBtn) {
     deleteCoverBtn.style.display = story.cover_image_url ? 'inline-block' : 'none';
   }
 
-  setStatus(storyMsg, '', '');
+  setStatus(storyMsg, 'Editing existing story.', '#2563eb');
 
   if (storySelect) {
     storySelect.value = story.id;
@@ -190,6 +225,8 @@ export async function populateStoryForm(story, ctx) {
 function renderStoriesPreview(ctx) {
   const { storiesPreview, storySelect } = ctx;
   if (!storiesPreview) return;
+
+  const selectedIdToPreserve = getCurrentSelectedStoryId(ctx);
 
   storiesPreview.innerHTML = '';
 
@@ -233,6 +270,13 @@ function renderStoriesPreview(ctx) {
 
     storiesPreview.appendChild(card);
   });
+
+  if (storySelect && selectedIdToPreserve) {
+    const exists = allStories.some((story) => String(story.id) === String(selectedIdToPreserve));
+    if (exists) {
+      storySelect.value = selectedIdToPreserve;
+    }
+  }
 
   if (typeof ctx.populateReleasedStoryOptions === 'function') {
     ctx.populateReleasedStoryOptions();
@@ -415,17 +459,19 @@ export async function handleCoverUpload(ctx) {
       storyCoverFile.value = '';
     }
 
+    const preservedStoryId = editingStoryId;
+
     await loadStoriesPreview(ctx);
 
     const refreshedStory = allStories.find(
-      (story) => String(story.id) === String(editingStoryId)
+      (story) => String(story.id) === String(preservedStoryId)
     );
 
     if (refreshedStory) {
       await populateStoryForm(refreshedStory, ctx);
 
       if (storySelect) {
-        storySelect.value = editingStoryId;
+        storySelect.value = preservedStoryId;
       }
     }
   } catch (err) {
@@ -466,6 +512,8 @@ export async function handleDeleteCoverImage(ctx) {
       deleteCoverBtn.textContent = 'Deleting...';
     }
 
+    const preservedStoryId = editingStoryId;
+
     const res = await fetch('/.netlify/functions/delete-story-cover', {
       method: 'POST',
       headers: {
@@ -473,7 +521,7 @@ export async function handleDeleteCoverImage(ctx) {
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
-        story_id: editingStoryId
+        story_id: preservedStoryId
       })
     });
 
@@ -494,14 +542,14 @@ export async function handleDeleteCoverImage(ctx) {
     await loadStoriesPreview(ctx);
 
     const refreshedStory = allStories.find(
-      (story) => String(story.id) === String(editingStoryId)
+      (story) => String(story.id) === String(preservedStoryId)
     );
 
     if (refreshedStory) {
       await populateStoryForm(refreshedStory, ctx);
 
       if (storySelect) {
-        storySelect.value = editingStoryId;
+        storySelect.value = preservedStoryId;
       }
     } else {
       clearStoryForm(ctx);
@@ -628,6 +676,7 @@ async function handleDeleteStoryPage(pageId, button, ctx) {
   } catch (err) {
     console.error('Error deleting story page:', err);
     alert(err.message || 'Failed to delete story page.');
+  } finally {
     button.disabled = false;
     button.textContent = 'Delete Page';
   }
@@ -657,6 +706,8 @@ export async function handleDeleteStory(ctx) {
       deleteStoryBtn.textContent = 'Deleting...';
     }
 
+    const storyIdToDelete = editingStoryId;
+
     const res = await fetch('/.netlify/functions/delete-story', {
       method: 'POST',
       headers: {
@@ -664,7 +715,7 @@ export async function handleDeleteStory(ctx) {
         Authorization: `Bearer ${token}`
       },
       body: JSON.stringify({
-        story_id: editingStoryId
+        story_id: storyIdToDelete
       })
     });
 
@@ -710,12 +761,14 @@ export async function handleStorySubmit(event, ctx) {
     storySelect
   } = ctx;
 
-  setStatus(storyMsg, '', '');
+  if (storySaveInFlight) return;
+  storySaveInFlight = true;
 
-  if (saveStoryBtn) {
-    saveStoryBtn.disabled = true;
-    saveStoryBtn.textContent = editingStoryId ? 'Updating...' : 'Creating...';
-  }
+  const storyIdBeforeSave = editingStoryId;
+  const wasEditing = !!storyIdBeforeSave;
+
+  setStatus(storyMsg, '', '');
+  setSaveButtonState(saveStoryBtn, true, wasEditing);
 
   try {
     const title = storyTitle?.value.trim() || '';
@@ -730,9 +783,7 @@ export async function handleStorySubmit(event, ctx) {
     const is_digital_purchase_available = !!storyDigitalAvailable?.checked;
     const is_paperback_available = !!storyPaperbackAvailable?.checked;
     const bundle_purchase_available = !!storyBundleAvailable?.checked;
-    const release_date = storyReleaseDate?.value
-      ? new Date(storyReleaseDate.value).toISOString()
-      : null;
+    const release_date = parseReleaseDateValue(storyReleaseDate?.value);
 
     if (!title) {
       throw new Error('Title is required.');
@@ -752,72 +803,53 @@ export async function handleStorySubmit(event, ctx) {
     }
 
     const selectedStory = allStories.find(
-      (story) => String(story.id) === String(editingStoryId)
+      (story) => String(story.id) === String(storyIdBeforeSave)
     );
 
     const cover_image_url = selectedStory?.cover_image_url || null;
 
-    let res;
+    const payload = {
+      title,
+      author,
+      cover_image_url,
+      description,
+      active,
+      story_status,
+      production_stage_label,
+      is_preview_enabled,
+      preview_page_count,
+      is_digital_purchase_available,
+      is_paperback_available,
+      bundle_purchase_available,
+      release_date
+    };
 
-    if (editingStoryId) {
-      res = await fetch('/.netlify/functions/update-story', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          story_id: editingStoryId,
-          title,
-          author,
-          cover_image_url,
-          description,
-          active,
-          story_status,
-          production_stage_label,
-          is_preview_enabled,
-          preview_page_count,
-          is_digital_purchase_available,
-          is_paperback_available,
-          bundle_purchase_available,
-          release_date
-        })
-      });
-    } else {
-      res = await fetch('/.netlify/functions/create-story', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          title,
-          author,
-          cover_image_url,
-          description,
-          active,
-          story_status,
-          production_stage_label,
-          is_preview_enabled,
-          preview_page_count,
-          is_digital_purchase_available,
-          is_paperback_available,
-          bundle_purchase_available,
-          release_date
-        })
-      });
-    }
+    const endpoint = wasEditing
+      ? '/.netlify/functions/update-story'
+      : '/.netlify/functions/create-story';
+
+    const requestBody = wasEditing
+      ? { story_id: storyIdBeforeSave, ...payload }
+      : payload;
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
 
     const result = await parseJsonResponseSafely(res);
 
     if (!res.ok) {
       throw new Error(
-        result.error || (editingStoryId ? 'Failed to update story' : 'Failed to create story')
+        result.error || (wasEditing ? 'Failed to update story' : 'Failed to create story')
       );
     }
 
-    const wasEditing = !!editingStoryId;
-    const returnedStoryId = result.story?.id || null;
+    const resultingStoryId = result.story?.id || storyIdBeforeSave || null;
 
     setStatus(
       storyMsg,
@@ -825,32 +857,31 @@ export async function handleStorySubmit(event, ctx) {
       'green'
     );
 
-    clearStoryForm(ctx);
     await loadStoriesPreview(ctx);
 
-    if (!wasEditing && returnedStoryId) {
-      editingStoryId = returnedStoryId;
-
-      if (storySelect) {
-        storySelect.value = returnedStoryId;
-      }
-
-      const createdStory = allStories.find(
-        (story) => String(story.id) === String(returnedStoryId)
+    if (resultingStoryId) {
+      const refreshedStory = allStories.find(
+        (story) => String(story.id) === String(resultingStoryId)
       );
 
-      if (createdStory) {
-        await populateStoryForm(createdStory, ctx);
+      if (refreshedStory) {
+        await populateStoryForm(refreshedStory, ctx);
+
+        if (storySelect) {
+          storySelect.value = resultingStoryId;
+        }
+      } else {
+        clearStoryForm(ctx);
       }
+    } else {
+      clearStoryForm(ctx);
     }
   } catch (err) {
     console.error('Error saving story:', err);
     setStatus(storyMsg, err.message || 'Failed to save story.', 'red');
   } finally {
-    if (saveStoryBtn) {
-      saveStoryBtn.disabled = false;
-      saveStoryBtn.textContent = editingStoryId ? 'Update Story' : 'Create Story';
-    }
+    storySaveInFlight = false;
+    setSaveButtonState(saveStoryBtn, false, !!editingStoryId);
   }
 }
 
