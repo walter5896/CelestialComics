@@ -1,11 +1,32 @@
 // /js/supabase.js
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-const supabaseUrl = window.__env?.PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = window.__env?.PUBLIC_SUPABASE_ANON_KEY;
+function getRequiredEnv(name) {
+  const value = window.__env?.[name];
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error("Supabase PUBLIC env vars missing!");
+  if (!value || typeof value !== 'string' || !value.trim()) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+
+  return value.trim();
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+function createSupabaseBrowserClient() {
+  const supabaseUrl = getRequiredEnv('PUBLIC_SUPABASE_URL');
+  const supabaseAnonKey = getRequiredEnv('PUBLIC_SUPABASE_ANON_KEY');
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
+}
+
+export const supabase =
+  window.__supabaseClient || createSupabaseBrowserClient();
+
+if (!window.__supabaseClient) {
+  window.__supabaseClient = supabase;
+}
