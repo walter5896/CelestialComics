@@ -250,25 +250,43 @@ function renderStoriesPreview(ctx) {
   const { storiesPreview, storySelect } = ctx;
   if (!storiesPreview) return;
 
+  console.log('[stories] renderStoriesPreview start', {
+    totalStories: allStories.length
+  });
+
   const selectedIdToPreserve = getCurrentSelectedStoryId(ctx);
 
+  console.log('[stories] before clearing preview/select');
   storiesPreview.innerHTML = '';
 
   if (storySelect) {
     storySelect.innerHTML = '<option value="">-- Create New Story --</option>';
   }
+  console.log('[stories] after clearing preview/select');
 
   if (!allStories.length) {
+    console.log('[stories] no stories case');
     storiesPreview.innerHTML = '<p>No stories yet.</p>';
 
-    if (typeof ctx.populateReleasedStoryOptions === 'function') {
-      ctx.populateReleasedStoryOptions();
-    }
+    console.log('[stories] populateReleasedStoryOptions temporarily disabled (no stories case)');
+    // TEMPORARILY DISABLED FOR DEBUGGING:
+    // if (typeof ctx.populateReleasedStoryOptions === 'function') {
+    //   ctx.populateReleasedStoryOptions();
+    // }
 
     return;
   }
 
-  allStories.forEach((story) => {
+  console.log('[stories] before story loop');
+
+  allStories.forEach((story, index) => {
+    if (index === 0) {
+      console.log('[stories] first story loop item', {
+        id: story.id,
+        title: story.title
+      });
+    }
+
     if (storySelect) {
       const option = document.createElement('option');
       option.value = story.id;
@@ -295,6 +313,8 @@ function renderStoriesPreview(ctx) {
     storiesPreview.appendChild(card);
   });
 
+  console.log('[stories] after story loop');
+
   if (storySelect && selectedIdToPreserve) {
     const exists = allStories.some((story) => String(story.id) === String(selectedIdToPreserve));
     if (exists) {
@@ -302,15 +322,22 @@ function renderStoriesPreview(ctx) {
     }
   }
 
-  if (typeof ctx.populateReleasedStoryOptions === 'function') {
-    ctx.populateReleasedStoryOptions();
-  }
+  console.log('[stories] populateReleasedStoryOptions temporarily disabled');
+  // TEMPORARILY DISABLED FOR DEBUGGING:
+  // if (typeof ctx.populateReleasedStoryOptions === 'function') {
+  //   ctx.populateReleasedStoryOptions();
+  // }
+
+  console.log('[stories] renderStoriesPreview end');
 }
 
 export async function loadStoriesPreview(ctx) {
   const { storiesPreview } = ctx;
 
   try {
+    console.log('[stories] loadStoriesPreview start');
+
+    console.log('[stories] before supabase stories query');
     const { data: stories, error } = await ctx.supabase
       .from('stories')
       .select(`
@@ -333,16 +360,28 @@ export async function loadStoriesPreview(ctx) {
       `)
       .order('created_at', { ascending: false });
 
+    console.log('[stories] after supabase stories query', {
+      hasError: !!error,
+      count: stories?.length || 0
+    });
+
     if (error) throw error;
 
+    console.log('[stories] before setAllStoriesState');
     setAllStoriesState(stories || [], ctx);
+    console.log('[stories] after setAllStoriesState');
+
+    console.log('[stories] before renderStoriesPreview');
     renderStoriesPreview(ctx);
+    console.log('[stories] after renderStoriesPreview');
   } catch (err) {
     console.error('Error loading stories preview:', err);
 
     if (storiesPreview) {
       storiesPreview.innerHTML = '<p>Failed to load stories.</p>';
     }
+  } finally {
+    console.log('[stories] loadStoriesPreview finally');
   }
 }
 
