@@ -781,8 +781,7 @@ export async function handleStorySubmit(event, ctx) {
     storyBundleAvailable,
     storyReleaseDate,
     saveStoryBtn,
-    storyMsg,
-    storySelect
+    storyMsg
   } = ctx;
 
   if (storySaveInFlight) return;
@@ -793,6 +792,10 @@ export async function handleStorySubmit(event, ctx) {
 
   setStatus(storyMsg, '', '');
   setSaveButtonState(saveStoryBtn, true, wasEditing);
+  console.log('[story] submit started', {
+    storyIdBeforeSave,
+    wasEditing
+  });
 
   try {
     const title = storyTitle?.value.trim() || '';
@@ -808,6 +811,21 @@ export async function handleStorySubmit(event, ctx) {
     const is_paperback_available = !!storyPaperbackAvailable?.checked;
     const bundle_purchase_available = !!storyBundleAvailable?.checked;
     const release_date = parseReleaseDateValue(storyReleaseDate?.value);
+
+    console.log('[story] parsed form values', {
+      title,
+      author,
+      descriptionLength: description.length,
+      active,
+      story_status,
+      production_stage_label,
+      is_preview_enabled,
+      preview_page_count,
+      is_digital_purchase_available,
+      is_paperback_available,
+      bundle_purchase_available,
+      release_date
+    });
 
     if (!title) {
       throw new Error('Title is required.');
@@ -862,29 +880,60 @@ export async function handleStorySubmit(event, ctx) {
       });
     };
 
+    console.log('[story] before getAccessToken');
     let token = await ctx.getAccessToken();
+    console.log('[story] after getAccessToken', {
+      hasToken: !!token
+    });
+
     if (!token) {
       throw new Error('No active session found.');
     }
 
+    console.log('[story] before fetch', {
+      endpoint,
+      wasEditing,
+      requestBody
+    });
+
     let res = await makeRequest(token);
 
+    console.log('[story] after fetch', {
+      status: res.status,
+      ok: res.ok
+    });
+
     if (res.status === 401 && ctx.supabase?.auth?.refreshSession) {
+      console.log('[story] got 401, attempting refreshSession retry');
+
       const {
         data: refreshedData,
         error: refreshError
       } = await ctx.supabase.auth.refreshSession();
 
+      console.log('[story] refreshSession retry result', {
+        hasSession: !!refreshedData?.session,
+        hasToken: !!refreshedData?.session?.access_token,
+        error: refreshError?.message || null
+      });
+
       if (!refreshError) {
         const refreshedToken = refreshedData?.session?.access_token || null;
 
         if (refreshedToken) {
+          console.log('[story] before retry fetch');
           res = await makeRequest(refreshedToken);
+          console.log('[story] after retry fetch', {
+            status: res.status,
+            ok: res.ok
+          });
         }
       }
     }
 
+    console.log('[story] before parseJsonResponseSafely');
     const result = await parseJsonResponseSafely(res);
+    console.log('[story] after parseJsonResponseSafely', result);
 
     if (!res.ok) {
       throw new Error(
@@ -896,9 +945,18 @@ export async function handleStorySubmit(event, ctx) {
       ? 'Story updated successfully!'
       : 'Story created successfully!';
 
+    console.log('[story] before loadStoriesPreview');
     await loadStoriesPreview(ctx);
+    console.log('[story] after loadStoriesPreview');
+
+    console.log('[story] before clearStoryForm');
     clearStoryForm(ctx);
+    console.log('[story] after clearStoryForm');
+
     setStatus(storyMsg, successMessage, 'green');
+    console.log('[story] success status set', {
+      successMessage
+    });
   } catch (err) {
     console.error('Error saving story:', err);
 
@@ -909,8 +967,19 @@ export async function handleStorySubmit(event, ctx) {
 
     setStatus(storyMsg, message, 'red');
   } finally {
+    console.log('[story] finally reached', {
+      editingStoryId,
+      storySaveInFlight
+    });
+
     storySaveInFlight = false;
     setSaveButtonState(saveStoryBtn, false, !!editingStoryId);
+
+    console.log('[story] finally completed', {
+      editingStoryId,
+      storySaveInFlight,
+      buttonText: saveStoryBtn?.textContent || null
+    });
   }
 }
 
