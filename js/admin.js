@@ -142,7 +142,6 @@ let adminInitialized = false;
 let logoutBound = false;
 let currentUser = null;
 let allUsers = [];
-let sessionRecoveryPromise = null;
 
 /* =========================
    UI HELPERS
@@ -199,7 +198,7 @@ function bindLogout() {
 }
 
 async function fetchUsersForAdminCheck() {
-  const token = await getAccessToken({ forceRefresh: true });
+  const token = await getAccessToken();
   if (!token) {
     throw new Error('No active session found.');
   }
@@ -218,26 +217,6 @@ async function fetchUsersForAdminCheck() {
   }
 
   return Array.isArray(result) ? result : [];
-}
-
-async function recoverAdminSessionOnReturn() {
-  if (sessionRecoveryPromise) {
-    return sessionRecoveryPromise;
-  }
-
-  sessionRecoveryPromise = (async () => {
-    try {
-      await getAccessToken({ forceRefresh: true });
-    } catch (err) {
-      console.error('Session recovery error:', err);
-    }
-  })();
-
-  try {
-    await sessionRecoveryPromise;
-  } finally {
-    sessionRecoveryPromise = null;
-  }
 }
 
 /* =========================
@@ -353,8 +332,6 @@ async function initAdminPanel() {
   setStatus('Loading admin panel...', '#374151');
 
   try {
-    await recoverAdminSessionOnReturn();
-
     currentUser = await getCurrentUserAsync();
 
     if (!currentUser) {
@@ -399,15 +376,5 @@ async function initAdminPanel() {
     setStatus(error.message || 'Failed to load admin panel.', 'red');
   }
 }
-
-window.addEventListener('focus', async () => {
-  await recoverAdminSessionOnReturn();
-});
-
-document.addEventListener('visibilitychange', async () => {
-  if (!document.hidden) {
-    await recoverAdminSessionOnReturn();
-  }
-});
 
 document.addEventListener('DOMContentLoaded', initAdminPanel);
