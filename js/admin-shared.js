@@ -1,15 +1,50 @@
 // /js/admin-shared.js
 import { supabase } from './supabase.js';
 
-export async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
+export async function getAccessToken(options = {}) {
+  const { forceRefresh = false } = options;
+  const REFRESH_BUFFER_SECONDS = 90;
 
-  if (error) {
-    console.error('Error getting session:', error);
+  try {
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error('Error getting session:', error);
+      return null;
+    }
+
+    let session = data?.session ?? null;
+
+    if (!session) {
+      return null;
+    }
+
+    const expiresAt = Number(session.expires_at || 0);
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+
+    const shouldRefresh =
+      forceRefresh ||
+      (expiresAt > 0 && expiresAt - nowInSeconds <= REFRESH_BUFFER_SECONDS);
+
+    if (shouldRefresh) {
+      const {
+        data: refreshedData,
+        error: refreshError
+      } = await supabase.auth.refreshSession();
+
+      if (refreshError) {
+        console.error('Error refreshing session:', refreshError);
+        return null;
+      }
+
+      session = refreshedData?.session ?? null;
+    }
+
+    return session?.access_token || null;
+  } catch (err) {
+    console.error('Unexpected error getting access token:', err);
     return null;
   }
-
-  return data?.session?.access_token || null;
 }
 
 export async function parseJsonResponseSafely(res) {
