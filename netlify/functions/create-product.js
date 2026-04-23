@@ -1,5 +1,3 @@
-// /.netlify/functions/create-product.js
-
 const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -18,22 +16,35 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 const stripe = new Stripe(stripeSecretKey);
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-const VALID_PRODUCT_TYPES = ['merch', 'digital_comic', 'paperback', 'bundle'];
+const VALID_PRODUCT_TYPES = new Set(['merch', 'digital_comic', 'paperback', 'bundle']);
 
-function buildJsonResponse(statusCode, payload) {
+function jsonResponse(statusCode, payload) {
   return {
     statusCode,
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(payload)
   };
 }
 
+function parseRequestBody(body) {
+  try {
+    return JSON.parse(body || '{}');
+  } catch {
+    throw new Error('Invalid JSON body');
+  }
+}
+
 function normalizeBoolean(value, fallback = true) {
   if (typeof value === 'boolean') return value;
+
   if (typeof value === 'string') {
     const lowered = value.trim().toLowerCase();
     if (lowered === 'true') return true;
     if (lowered === 'false') return false;
   }
+
   return fallback;
 }
 
@@ -51,11 +62,40 @@ function normalizeNullableString(value) {
 function normalizeProductType(value) {
   const type = String(value || 'merch').trim();
 
-  if (!VALID_PRODUCT_TYPES.includes(type)) {
-    throw new Error(`Invalid product_type. Must be one of: ${VALID_PRODUCT_TYPES.join(', ')}`);
+  if (!VALID_PRODUCT_TYPES.has(type)) {
+    throw new Error(
+      `Invalid product_type. Must be one of: ${Array.from(VALID_PRODUCT_TYPES).join(', ')}`
+    );
   }
 
   return type;
+}
+
+async function getAdminUserFromToken(token) {
+  const {
+    data: { user },
+    error: userError
+  } = await supabase.auth.getUser(token);
+
+  if (userError || !user) {
+    throw new Error('Invalid user token');
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (!profile || profile.role !== 'admin') {
+    throw new Error('Admin access required');
+  }
+
+  return user;
 }
 
 async function validateStoryReference(storyId, productType) {
@@ -70,7 +110,10 @@ async function validateStoryReference(storyId, productType) {
     .eq('id', storyId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
+
   if (!story) {
     throw new Error('Referenced story was not found.');
   }
@@ -132,56 +175,23 @@ function validateProductPayload(body) {
   };
 }
 
-async function getAdminUserFromToken(token) {
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser(token);
-
-  if (userError || !user) {
-    throw new Error('Invalid user token');
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) {
-    throw profileError;
-  }
-
-  if (!profile || profile.role !== 'admin') {
-    throw new Error('Admin access required');
-  }
-
-  return user;
-}
-
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return buildJsonResponse(405, { error: 'Method not allowed' });
+    return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   const authHeader = event.headers.authorization || event.headers.Authorization;
   const token = authHeader?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
-    return buildJsonResponse(401, { error: 'Missing auth token' });
+    return jsonResponse(401, { error: 'Missing auth token' });
   }
 
   let createdStripeProductId = null;
 
   try {
     const adminUser = await getAdminUserFromToken(token);
-
-    let body = {};
-    try {
-      body = JSON.parse(event.body || '{}');
-    } catch {
-      return buildJsonResponse(400, { error: 'Invalid JSON body' });
-    }
+    const body = parseRequestBody(event.body);
 
     const {
       name,
@@ -220,6 +230,7 @@ exports.handler = async (event) => {
       metadata: {
         product_type,
         story_id: story_id || '',
+        story_title: linkedStory?.title || '',
         votes_granted: String(votes_granted),
         supabase_created_by: adminUser.id
       }
@@ -249,7 +260,7 @@ exports.handler = async (event) => {
       throw insertError;
     }
 
-    return buildJsonResponse(200, {
+    return jsonResponse(200, {
       success: true,
       product: insertedProduct,
       message: 'Product created successfully.'
@@ -267,8 +278,27 @@ exports.handler = async (event) => {
       }
     }
 
-    return buildJsonResponse(500, {
-      error: error.message || 'Server error'
+    const message = error?.message || 'Server error';
+    const statusCode =
+      message === 'Missing auth token' ? 401 :
+      message === 'Invalid user token' ? 401 :
+      message === 'Admin access required' ? 403 :
+      message === 'Invalid JSON body' ? 400 :
+      message === 'Product name is required.' ? 400 :
+      message === 'Product description is required.' ? 400 :
+      message === 'price_cents must be a positive integer.' ? 400 :
+      message === 'votes_granted must be a non-negative integer.' ? 400 :
+      message === 'image_url must be an absolute URL or site-relative path.' ? 400 :
+      message === 'Merch products should not have a story_id attached.' ? 400 :
+      message === 'Comic-format products should not grant bonus votes.' ? 400 :
+      message === 'story_id is required for digital_comic, paperback, and bundle products.' ? 400 :
+      message === 'Referenced story was not found.' ? 404 :
+      message === 'Comic-format products can only be attached to released stories.' ? 400 :
+      message.startsWith('Invalid product_type.') ? 400 :
+      500;
+
+    return jsonResponse(statusCode, {
+      error: message
     });
   }
 };

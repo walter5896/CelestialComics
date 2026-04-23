@@ -14,10 +14,38 @@ let storySaveInFlight = false;
 let allStories = [];
 let editingStoryId = null;
 
+const REQUEST_TIMEOUT_MS = 15000;
+
 function setStatus(el, message = '', color = '') {
   if (!el) return;
   el.textContent = message;
   el.style.color = color;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function getFreshAdminToken(ctx) {
+  return ctx.getAccessToken({ forceRefresh: true });
+}
+
+function getFriendlyRequestError(err, fallbackMessage) {
+  if (err?.name === 'AbortError') {
+    return 'Request timed out. Refresh the page and try again.';
+  }
+
+  return err?.message || fallbackMessage;
 }
 
 function setAllStoriesState(nextStories, ctx) {
@@ -413,7 +441,7 @@ export async function handleCoverUpload(ctx) {
       throw new Error('Please choose an image file first.');
     }
 
-    const token = await ctx.getAccessToken();
+    const token = await getFreshAdminToken(ctx);
     if (!token) {
       throw new Error('No active session found.');
     }
@@ -425,7 +453,7 @@ export async function handleCoverUpload(ctx) {
 
     const file_base64 = await fileToBase64(file);
 
-    const res = await fetch('/.netlify/functions/upload-story-cover', {
+    const res = await fetchWithTimeout('/.netlify/functions/upload-story-cover', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -476,7 +504,11 @@ export async function handleCoverUpload(ctx) {
     }
   } catch (err) {
     console.error('Error uploading cover image:', err);
-    setStatus(coverUploadMessage, err.message || 'Failed to upload cover image.', 'red');
+    setStatus(
+      coverUploadMessage,
+      getFriendlyRequestError(err, 'Failed to upload cover image.'),
+      'red'
+    );
   } finally {
     if (uploadCoverBtn) {
       uploadCoverBtn.disabled = false;
@@ -502,7 +534,7 @@ export async function handleDeleteCoverImage(ctx) {
     const confirmed = confirm('Delete this cover image?');
     if (!confirmed) return;
 
-    const token = await ctx.getAccessToken();
+    const token = await getFreshAdminToken(ctx);
     if (!token) {
       throw new Error('No active session found.');
     }
@@ -514,7 +546,7 @@ export async function handleDeleteCoverImage(ctx) {
 
     const preservedStoryId = editingStoryId;
 
-    const res = await fetch('/.netlify/functions/delete-story-cover', {
+    const res = await fetchWithTimeout('/.netlify/functions/delete-story-cover', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -556,7 +588,11 @@ export async function handleDeleteCoverImage(ctx) {
     }
   } catch (err) {
     console.error('Error deleting cover image:', err);
-    setStatus(coverUploadMessage, err.message || 'Failed to delete cover image.', 'red');
+    setStatus(
+      coverUploadMessage,
+      getFriendlyRequestError(err, 'Failed to delete cover image.'),
+      'red'
+    );
   } finally {
     if (deleteCoverBtn) {
       deleteCoverBtn.disabled = false;
@@ -587,7 +623,7 @@ export async function handleStoryPageUpload(event, ctx) {
       throw new Error('Please choose a page image first.');
     }
 
-    const token = await ctx.getAccessToken();
+    const token = await getFreshAdminToken(ctx);
     if (!token) {
       throw new Error('No active session found.');
     }
@@ -599,7 +635,7 @@ export async function handleStoryPageUpload(event, ctx) {
 
     const file_base64 = await fileToBase64(file);
 
-    const res = await fetch('/.netlify/functions/upload-story-page', {
+    const res = await fetchWithTimeout('/.netlify/functions/upload-story-page', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -633,7 +669,11 @@ export async function handleStoryPageUpload(event, ctx) {
     await loadStoryPages(editingStoryId, ctx);
   } catch (err) {
     console.error('Error uploading story page:', err);
-    setStatus(storyPageStatusMsg, err.message || 'Failed to upload story page.', 'red');
+    setStatus(
+      storyPageStatusMsg,
+      getFriendlyRequestError(err, 'Failed to upload story page.'),
+      'red'
+    );
   } finally {
     if (uploadStoryPageBtn) {
       uploadStoryPageBtn.disabled = false;
@@ -649,7 +689,7 @@ async function handleDeleteStoryPage(pageId, button, ctx) {
   if (!confirmed) return;
 
   try {
-    const token = await ctx.getAccessToken();
+    const token = await getFreshAdminToken(ctx);
     if (!token) {
       throw new Error('No active session found.');
     }
@@ -657,7 +697,7 @@ async function handleDeleteStoryPage(pageId, button, ctx) {
     button.disabled = true;
     button.textContent = 'Deleting...';
 
-    const res = await fetch('/.netlify/functions/delete-story-page', {
+    const res = await fetchWithTimeout('/.netlify/functions/delete-story-page', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -675,7 +715,7 @@ async function handleDeleteStoryPage(pageId, button, ctx) {
     await loadStoryPages(editingStoryId, ctx);
   } catch (err) {
     console.error('Error deleting story page:', err);
-    alert(err.message || 'Failed to delete story page.');
+    alert(getFriendlyRequestError(err, 'Failed to delete story page.'));
   } finally {
     button.disabled = false;
     button.textContent = 'Delete Page';
@@ -696,7 +736,7 @@ export async function handleDeleteStory(ctx) {
   if (!confirmed) return;
 
   try {
-    const token = await ctx.getAccessToken();
+    const token = await getFreshAdminToken(ctx);
     if (!token) {
       throw new Error('No active session found.');
     }
@@ -708,7 +748,7 @@ export async function handleDeleteStory(ctx) {
 
     const storyIdToDelete = editingStoryId;
 
-    const res = await fetch('/.netlify/functions/delete-story', {
+    const res = await fetchWithTimeout('/.netlify/functions/delete-story', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -731,7 +771,11 @@ export async function handleDeleteStory(ctx) {
     await loadStoriesPreview(ctx);
   } catch (err) {
     console.error('Error deleting story:', err);
-    setStatus(storyMsg, err.message || 'Failed to delete story.', 'red');
+    setStatus(
+      storyMsg,
+      getFriendlyRequestError(err, 'Failed to delete story.'),
+      'red'
+    );
   } finally {
     if (deleteStoryBtn) {
       deleteStoryBtn.disabled = false;
@@ -797,7 +841,7 @@ export async function handleStorySubmit(event, ctx) {
       throw new Error('Preview page count must be 0 or greater.');
     }
 
-    const token = await ctx.getAccessToken();
+    const token = await getFreshAdminToken(ctx);
     if (!token) {
       throw new Error('No active session found.');
     }
@@ -832,7 +876,7 @@ export async function handleStorySubmit(event, ctx) {
       ? { story_id: storyIdBeforeSave, ...payload }
       : payload;
 
-    const res = await fetch(endpoint, {
+    const res = await fetchWithTimeout(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -878,7 +922,11 @@ export async function handleStorySubmit(event, ctx) {
     }
   } catch (err) {
     console.error('Error saving story:', err);
-    setStatus(storyMsg, err.message || 'Failed to save story.', 'red');
+    setStatus(
+      storyMsg,
+      getFriendlyRequestError(err, 'Failed to save story.'),
+      'red'
+    );
   } finally {
     storySaveInFlight = false;
     setSaveButtonState(saveStoryBtn, false, !!editingStoryId);
