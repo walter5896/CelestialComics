@@ -2,14 +2,39 @@
 import { supabase } from './supabase.js';
 
 export async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
+  console.log('[auth] getAccessToken start', {
+    hidden: document.hidden,
+    visibilityState: document.visibilityState,
+    time: new Date().toISOString()
+  });
 
-  if (error) {
-    console.error('Error getting session:', error);
+  const started = performance.now();
+
+  const sessionPromise = supabase.auth.getSession();
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('getSession timeout after 5000ms')), 5000);
+  });
+
+  try {
+    const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+
+    console.log('[auth] getSession resolved', {
+      ms: Math.round(performance.now() - started),
+      hasSession: !!data?.session,
+      hasToken: !!data?.session?.access_token,
+      error: error?.message || null
+    });
+
+    if (error) {
+      console.error('Error getting session:', error);
+      return null;
+    }
+
+    return data?.session?.access_token || null;
+  } catch (err) {
+    console.error('[auth] getSession failed/hung', err);
     return null;
   }
-
-  return data?.session?.access_token || null;
 }
 
 export async function parseJsonResponseSafely(res) {
