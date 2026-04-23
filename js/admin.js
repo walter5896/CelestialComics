@@ -142,7 +142,6 @@ let adminInitialized = false;
 let logoutBound = false;
 let currentUser = null;
 let allUsers = [];
-let sessionRecoveryInFlight = false;
 
 /* =========================
    UI HELPERS
@@ -218,19 +217,6 @@ async function fetchUsersForAdminCheck() {
   }
 
   return Array.isArray(result) ? result : [];
-}
-
-async function recoverAdminSessionOnReturn() {
-  if (sessionRecoveryInFlight) return;
-  sessionRecoveryInFlight = true;
-
-  try {
-    await getAccessToken({ forceRefresh: true });
-  } catch (err) {
-    console.error('Session recovery error:', err);
-  } finally {
-    sessionRecoveryInFlight = false;
-  }
 }
 
 /* =========================
@@ -390,15 +376,5 @@ async function initAdminPanel() {
     setStatus(error.message || 'Failed to load admin panel.', 'red');
   }
 }
-
-window.addEventListener('focus', () => {
-  recoverAdminSessionOnReturn();
-});
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    recoverAdminSessionOnReturn();
-  }
-});
 
 document.addEventListener('DOMContentLoaded', initAdminPanel);
