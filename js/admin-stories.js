@@ -14,10 +14,34 @@ let storySaveInFlight = false;
 let allStories = [];
 let editingStoryId = null;
 
+const REQUEST_TIMEOUT_MS = 15000;
+
 function setStatus(el, message = '', color = '') {
   if (!el) return;
   el.textContent = message;
   el.style.color = color;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function getFriendlyRequestError(err, fallbackMessage) {
+  if (err?.name === 'AbortError') {
+    return 'Request timed out. Refresh the page and try again.';
+  }
+
+  return err?.message || fallbackMessage;
 }
 
 function setAllStoriesState(nextStories, ctx) {
@@ -797,11 +821,6 @@ export async function handleStorySubmit(event, ctx) {
       throw new Error('Preview page count must be 0 or greater.');
     }
 
-    const token = await ctx.getAccessToken();
-    if (!token) {
-      throw new Error('No active session found.');
-    }
-
     const selectedStory = allStories.find(
       (story) => String(story.id) === String(storyIdBeforeSave)
     );
@@ -832,14 +851,38 @@ export async function handleStorySubmit(event, ctx) {
       ? { story_id: storyIdBeforeSave, ...payload }
       : payload;
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(requestBody)
-    });
+    const makeRequest = async (token) => {
+      return fetchWithTimeout(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+    };
+
+    let token = await ctx.getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
+
+    let res = await makeRequest(token);
+
+    if (res.status === 401 && ctx.supabase?.auth?.refreshSession) {
+      const {
+        data: refreshedData,
+        error: refreshError
+      } = await ctx.supabase.auth.refreshSession();
+
+      if (!refreshError) {
+        const refreshedToken = refreshedData?.session?.access_token || null;
+
+        if (refreshedToken) {
+          res = await makeRequest(refreshedToken);
+        }
+      }
+    }
 
     const result = await parseJsonResponseSafely(res);
 
@@ -849,36 +892,22 @@ export async function handleStorySubmit(event, ctx) {
       );
     }
 
-    const resultingStoryId = result.story?.id || storyIdBeforeSave || null;
-
-    setStatus(
-      storyMsg,
-      wasEditing ? 'Story updated successfully!' : 'Story created successfully!',
-      'green'
-    );
+    const successMessage = wasEditing
+      ? 'Story updated successfully!'
+      : 'Story created successfully!';
 
     await loadStoriesPreview(ctx);
-
-    if (resultingStoryId) {
-      const refreshedStory = allStories.find(
-        (story) => String(story.id) === String(resultingStoryId)
-      );
-
-      if (refreshedStory) {
-        await populateStoryForm(refreshedStory, ctx);
-
-        if (storySelect) {
-          storySelect.value = resultingStoryId;
-        }
-      } else {
-        clearStoryForm(ctx);
-      }
-    } else {
-      clearStoryForm(ctx);
-    }
+    clearStoryForm(ctx);
+    setStatus(storyMsg, successMessage, 'green');
   } catch (err) {
     console.error('Error saving story:', err);
-    setStatus(storyMsg, err.message || 'Failed to save story.', 'red');
+
+    const message =
+      err?.name === 'AbortError'
+        ? 'Request timed out. Refresh the page and try again.'
+        : (err.message || 'Failed to save story.');
+
+    setStatus(storyMsg, message, 'red');
   } finally {
     storySaveInFlight = false;
     setSaveButtonState(saveStoryBtn, false, !!editingStoryId);
