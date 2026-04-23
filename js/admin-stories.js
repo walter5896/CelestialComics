@@ -250,43 +250,25 @@ function renderStoriesPreview(ctx) {
   const { storiesPreview, storySelect } = ctx;
   if (!storiesPreview) return;
 
-  console.log('[stories] renderStoriesPreview start', {
-    totalStories: allStories.length
-  });
-
   const selectedIdToPreserve = getCurrentSelectedStoryId(ctx);
 
-  console.log('[stories] before clearing preview/select');
   storiesPreview.innerHTML = '';
 
   if (storySelect) {
     storySelect.innerHTML = '<option value="">-- Create New Story --</option>';
   }
-  console.log('[stories] after clearing preview/select');
 
   if (!allStories.length) {
-    console.log('[stories] no stories case');
     storiesPreview.innerHTML = '<p>No stories yet.</p>';
 
-    console.log('[stories] populateReleasedStoryOptions temporarily disabled (no stories case)');
-    // TEMPORARILY DISABLED FOR DEBUGGING:
-    // if (typeof ctx.populateReleasedStoryOptions === 'function') {
-    //   ctx.populateReleasedStoryOptions();
-    // }
+    if (typeof ctx.populateReleasedStoryOptions === 'function') {
+      ctx.populateReleasedStoryOptions();
+    }
 
     return;
   }
 
-  console.log('[stories] before story loop');
-
-  allStories.forEach((story, index) => {
-    if (index === 0) {
-      console.log('[stories] first story loop item', {
-        id: story.id,
-        title: story.title
-      });
-    }
-
+  allStories.forEach((story) => {
     if (storySelect) {
       const option = document.createElement('option');
       option.value = story.id;
@@ -313,8 +295,6 @@ function renderStoriesPreview(ctx) {
     storiesPreview.appendChild(card);
   });
 
-  console.log('[stories] after story loop');
-
   if (storySelect && selectedIdToPreserve) {
     const exists = allStories.some((story) => String(story.id) === String(selectedIdToPreserve));
     if (exists) {
@@ -322,66 +302,62 @@ function renderStoriesPreview(ctx) {
     }
   }
 
-  console.log('[stories] populateReleasedStoryOptions temporarily disabled');
-  // TEMPORARILY DISABLED FOR DEBUGGING:
-  // if (typeof ctx.populateReleasedStoryOptions === 'function') {
-  //   ctx.populateReleasedStoryOptions();
-  // }
-
-  console.log('[stories] renderStoriesPreview end');
+  if (typeof ctx.populateReleasedStoryOptions === 'function') {
+    ctx.populateReleasedStoryOptions();
+  }
 }
 
 export async function loadStoriesPreview(ctx) {
   const { storiesPreview } = ctx;
 
   try {
-    console.log('[stories] loadStoriesPreview start');
+    let token = await ctx.getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
 
-    console.log('[stories] before supabase stories query');
-    const { data: stories, error } = await ctx.supabase
-      .from('stories')
-      .select(`
-        id,
-        title,
-        author,
-        description,
-        cover_image_url,
-        cover_image_path,
-        active,
-        created_at,
-        story_status,
-        production_stage_label,
-        is_preview_enabled,
-        preview_page_count,
-        is_digital_purchase_available,
-        is_paperback_available,
-        bundle_purchase_available,
-        release_date
-      `)
-      .order('created_at', { ascending: false });
+    const makeRequest = async (accessToken) => {
+      return fetchWithTimeout('/.netlify/functions/get-stories', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+    };
 
-    console.log('[stories] after supabase stories query', {
-      hasError: !!error,
-      count: stories?.length || 0
-    });
+    let res = await makeRequest(token);
 
-    if (error) throw error;
+    if (res.status === 401 && ctx.supabase?.auth?.refreshSession) {
+      const {
+        data: refreshedData,
+        error: refreshError
+      } = await ctx.supabase.auth.refreshSession();
 
-    console.log('[stories] before setAllStoriesState');
-    setAllStoriesState(stories || [], ctx);
-    console.log('[stories] after setAllStoriesState');
+      if (!refreshError) {
+        const refreshedToken = refreshedData?.session?.access_token || null;
 
-    console.log('[stories] before renderStoriesPreview');
+        if (refreshedToken) {
+          res = await makeRequest(refreshedToken);
+        }
+      }
+    }
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to load stories.');
+    }
+
+    const stories = Array.isArray(result.stories) ? result.stories : [];
+
+    setAllStoriesState(stories, ctx);
     renderStoriesPreview(ctx);
-    console.log('[stories] after renderStoriesPreview');
   } catch (err) {
     console.error('Error loading stories preview:', err);
 
     if (storiesPreview) {
       storiesPreview.innerHTML = '<p>Failed to load stories.</p>';
     }
-  } finally {
-    console.log('[stories] loadStoriesPreview finally');
   }
 }
 
@@ -831,10 +807,6 @@ export async function handleStorySubmit(event, ctx) {
 
   setStatus(storyMsg, '', '');
   setSaveButtonState(saveStoryBtn, true, wasEditing);
-  console.log('[story] submit started', {
-    storyIdBeforeSave,
-    wasEditing
-  });
 
   try {
     const title = storyTitle?.value.trim() || '';
@@ -850,21 +822,6 @@ export async function handleStorySubmit(event, ctx) {
     const is_paperback_available = !!storyPaperbackAvailable?.checked;
     const bundle_purchase_available = !!storyBundleAvailable?.checked;
     const release_date = parseReleaseDateValue(storyReleaseDate?.value);
-
-    console.log('[story] parsed form values', {
-      title,
-      author,
-      descriptionLength: description.length,
-      active,
-      story_status,
-      production_stage_label,
-      is_preview_enabled,
-      preview_page_count,
-      is_digital_purchase_available,
-      is_paperback_available,
-      bundle_purchase_available,
-      release_date
-    });
 
     if (!title) {
       throw new Error('Title is required.');
@@ -919,60 +876,29 @@ export async function handleStorySubmit(event, ctx) {
       });
     };
 
-    console.log('[story] before getAccessToken');
     let token = await ctx.getAccessToken();
-    console.log('[story] after getAccessToken', {
-      hasToken: !!token
-    });
-
     if (!token) {
       throw new Error('No active session found.');
     }
 
-    console.log('[story] before fetch', {
-      endpoint,
-      wasEditing,
-      requestBody
-    });
-
     let res = await makeRequest(token);
 
-    console.log('[story] after fetch', {
-      status: res.status,
-      ok: res.ok
-    });
-
     if (res.status === 401 && ctx.supabase?.auth?.refreshSession) {
-      console.log('[story] got 401, attempting refreshSession retry');
-
       const {
         data: refreshedData,
         error: refreshError
       } = await ctx.supabase.auth.refreshSession();
 
-      console.log('[story] refreshSession retry result', {
-        hasSession: !!refreshedData?.session,
-        hasToken: !!refreshedData?.session?.access_token,
-        error: refreshError?.message || null
-      });
-
       if (!refreshError) {
         const refreshedToken = refreshedData?.session?.access_token || null;
 
         if (refreshedToken) {
-          console.log('[story] before retry fetch');
           res = await makeRequest(refreshedToken);
-          console.log('[story] after retry fetch', {
-            status: res.status,
-            ok: res.ok
-          });
         }
       }
     }
 
-    console.log('[story] before parseJsonResponseSafely');
     const result = await parseJsonResponseSafely(res);
-    console.log('[story] after parseJsonResponseSafely', result);
 
     if (!res.ok) {
       throw new Error(
@@ -984,41 +910,17 @@ export async function handleStorySubmit(event, ctx) {
       ? 'Story updated successfully!'
       : 'Story created successfully!';
 
-    console.log('[story] before loadStoriesPreview');
     await loadStoriesPreview(ctx);
-    console.log('[story] after loadStoriesPreview');
-
-    console.log('[story] before clearStoryForm');
     clearStoryForm(ctx);
-    console.log('[story] after clearStoryForm');
-
     setStatus(storyMsg, successMessage, 'green');
-    console.log('[story] success status set', {
-      successMessage
-    });
   } catch (err) {
     console.error('Error saving story:', err);
 
-    const message =
-      err?.name === 'AbortError'
-        ? 'Request timed out. Refresh the page and try again.'
-        : (err.message || 'Failed to save story.');
-
+    const message = getFriendlyRequestError(err, 'Failed to save story.');
     setStatus(storyMsg, message, 'red');
   } finally {
-    console.log('[story] finally reached', {
-      editingStoryId,
-      storySaveInFlight
-    });
-
     storySaveInFlight = false;
     setSaveButtonState(saveStoryBtn, false, !!editingStoryId);
-
-    console.log('[story] finally completed', {
-      editingStoryId,
-      storySaveInFlight,
-      buttonText: saveStoryBtn?.textContent || null
-    });
   }
 }
 
