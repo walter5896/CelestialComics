@@ -1,50 +1,15 @@
 // /js/admin-shared.js
 import { supabase } from './supabase.js';
 
-export async function getAccessToken(options = {}) {
-  const { forceRefresh = false } = options;
-  const REFRESH_BUFFER_SECONDS = 60;
+export async function getAccessToken() {
+  const { data, error } = await supabase.auth.getSession();
 
-  try {
-    const { data, error } = await supabase.auth.getSession();
-
-    if (error) {
-      console.error('Error getting session:', error);
-      return null;
-    }
-
-    let session = data?.session ?? null;
-
-    if (!session) {
-      return null;
-    }
-
-    const expiresAt = Number(session.expires_at || 0);
-    const nowInSeconds = Math.floor(Date.now() / 1000);
-
-    const shouldRefresh =
-      forceRefresh ||
-      (expiresAt > 0 && expiresAt - nowInSeconds <= REFRESH_BUFFER_SECONDS);
-
-    if (shouldRefresh) {
-      const {
-        data: refreshedData,
-        error: refreshError
-      } = await supabase.auth.refreshSession();
-
-      if (refreshError) {
-        console.error('Error refreshing session:', refreshError);
-        return null;
-      }
-
-      session = refreshedData?.session ?? session;
-    }
-
-    return session?.access_token || null;
-  } catch (err) {
-    console.error('Unexpected error getting access token:', err);
+  if (error) {
+    console.error('Error getting session:', error);
     return null;
   }
+
+  return data?.session?.access_token || null;
 }
 
 export async function parseJsonResponseSafely(res) {
@@ -89,7 +54,6 @@ export function updatePreviewImage(imgEl, url) {
   if (!safeUrl) {
     imgEl.src = '';
     imgEl.style.display = 'none';
-    imgEl.removeAttribute('alt');
     return;
   }
 
@@ -212,23 +176,13 @@ export function fileToBase64(file) {
     reader.onload = () => {
       try {
         const result = String(reader.result || '');
-        const base64 = result.split(',')[1];
-
-        if (!base64) {
-          reject(new Error('Failed to read file as base64.'));
-          return;
-        }
-
-        resolve(base64);
+        resolve(result.split(',')[1]);
       } catch (err) {
         reject(err);
       }
     };
 
-    reader.onerror = () => {
-      reject(reader.error || new Error('Failed to read file.'));
-    };
-
+    reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
