@@ -374,28 +374,52 @@ export async function loadStoryPages(storyId, ctx) {
       storyPagesPreview.innerHTML = '<p>Loading story pages...</p>';
     }
 
-    const { data: pages, error } = await ctx.supabase
-      .from('story_pages')
-      .select(`
-        id,
-        story_id,
-        page_number,
-        image_url,
-        image_path,
-        caption,
-        created_at,
-        is_preview_page
-      `)
-      .eq('story_id', storyId)
-      .order('page_number', { ascending: true });
+    let token = await ctx.getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
 
-    if (error) throw error;
+    const makeRequest = async (accessToken) => {
+      const params = new URLSearchParams({ story_id: storyId });
+
+      return fetchWithTimeout(`/.netlify/functions/get-story-pages?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+    };
+
+    let res = await makeRequest(token);
+
+    if (res.status === 401 && ctx.supabase?.auth?.refreshSession) {
+      const {
+        data: refreshedData,
+        error: refreshError
+      } = await ctx.supabase.auth.refreshSession();
+
+      if (!refreshError) {
+        const refreshedToken = refreshedData?.session?.access_token || null;
+
+        if (refreshedToken) {
+          res = await makeRequest(refreshedToken);
+        }
+      }
+    }
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to load story pages.');
+    }
+
+    const pages = Array.isArray(result.pages) ? result.pages : [];
 
     if (!storyPagesPreview) return;
 
     storyPagesPreview.innerHTML = '';
 
-    if (!pages || !pages.length) {
+    if (!pages.length) {
       storyPagesPreview.innerHTML = '<p>No pages uploaded yet for this story.</p>';
       return;
     }

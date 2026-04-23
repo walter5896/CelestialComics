@@ -12,10 +12,34 @@ let votingModuleInitialized = false;
 let currentWorkingPeriod = null;
 let currentTieStories = [];
 
+const REQUEST_TIMEOUT_MS = 15000;
+
 function setStatus(el, message = '', color = '') {
   if (!el) return;
   el.textContent = message;
   el.style.color = color;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function getFriendlyRequestError(err, fallbackMessage) {
+  if (err?.name === 'AbortError') {
+    return 'Request timed out. Refresh the page and try again.';
+  }
+
+  return err?.message || fallbackMessage;
 }
 
 export function getCurrentWorkingPeriod() {
@@ -135,6 +159,7 @@ export function renderFinalizedWinnerSummary(period, winnerTitle = null, ctx) {
   const resolvedWinnerTitle =
     winnerTitle ||
     period.winner_title ||
+    period.winner_story?.title ||
     (period.winner_id ? 'Unknown' : 'No winner');
 
   finalizedWinnerSummary.innerHTML = `
@@ -150,7 +175,6 @@ export function renderFinalizedWinnerSummary(period, winnerTitle = null, ctx) {
 
 export async function loadVotingPeriod(ctx) {
   const {
-    supabase,
     votingStart,
     votingEnd,
     closeVotingBtn,
@@ -158,25 +182,44 @@ export async function loadVotingPeriod(ctx) {
   } = ctx;
 
   try {
-    const { data: currentPeriods, error: currentError } = await supabase
-      .from('voting_periods')
-      .select(`
-        id,
-        start_time,
-        end_time,
-        status,
-        closed_at,
-        finalized_at,
-        winner_id,
-        winning_vote_count
-      `)
-      .is('finalized_at', null)
-      .order('id', { ascending: false })
-      .limit(1);
+    let token = await ctx.getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
 
-    if (currentError) throw currentError;
+    const makeRequest = async (accessToken) => {
+      return fetchWithTimeout('/.netlify/functions/get-voting-period', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+    };
 
-    currentWorkingPeriod = currentPeriods?.[0] || null;
+    let res = await makeRequest(token);
+
+    if (res.status === 401 && ctx.supabase?.auth?.refreshSession) {
+      const {
+        data: refreshedData,
+        error: refreshError
+      } = await ctx.supabase.auth.refreshSession();
+
+      if (!refreshError) {
+        const refreshedToken = refreshedData?.session?.access_token || null;
+
+        if (refreshedToken) {
+          res = await makeRequest(refreshedToken);
+        }
+      }
+    }
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to load voting period');
+    }
+
+    currentWorkingPeriod = result.current_period || null;
 
     if (currentWorkingPeriod) {
       if (votingStart) votingStart.value = formatForDateTimeLocal(currentWorkingPeriod.start_time);
@@ -188,37 +231,12 @@ export async function loadVotingPeriod(ctx) {
 
     renderCurrentRoundSummary(currentWorkingPeriod, ctx);
 
-    const { data: finalizedPeriods, error: finalizedError } = await supabase
-      .from('voting_periods')
-      .select(`
-        id,
-        start_time,
-        end_time,
-        status,
-        closed_at,
-        finalized_at,
-        winner_id,
-        winning_vote_count
-      `)
-      .not('finalized_at', 'is', null)
-      .order('finalized_at', { ascending: false })
-      .limit(1);
-
-    if (finalizedError) throw finalizedError;
-
-    const latestFinalized = finalizedPeriods?.[0] || null;
-
-    if (latestFinalized?.winner_id) {
-      const { data: winnerStory } = await supabase
-        .from('stories')
-        .select('title')
-        .eq('id', latestFinalized.winner_id)
-        .maybeSingle();
-
-      renderFinalizedWinnerSummary(latestFinalized, winnerStory?.title || null, ctx);
-    } else {
-      renderFinalizedWinnerSummary(latestFinalized, null, ctx);
-    }
+    const latestFinalized = result.latest_finalized_period || null;
+    renderFinalizedWinnerSummary(
+      latestFinalized,
+      latestFinalized?.winner_story?.title || null,
+      ctx
+    );
 
     const currentStatus = deriveRoundStatus(currentWorkingPeriod);
 
