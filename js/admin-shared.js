@@ -1,38 +1,136 @@
 // /js/admin-shared.js
 import { supabase } from './supabase.js';
 
-export async function getAccessToken() {
-  console.log('[auth] getAccessToken start', {
-    hidden: document.hidden,
-    visibilityState: document.visibilityState,
-    time: new Date().toISOString()
-  });
+let cachedSession = null;
+let sessionPrimed = false;
+let primePromise = null;
+let refreshPromise = null;
 
-  const started = performance.now();
-
-  const sessionPromise = supabase.auth.getSession();
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('getSession timeout after 5000ms')), 5000);
+supabase.auth.onAuthStateChange((_event, session) => {
+  cachedSession = session ?? null;
+  sessionPrimed = true;
+  console.log('[auth] onAuthStateChange', {
+    hasSession: !!session,
+    hasToken: !!session?.access_token
   });
+});
+
+async function primeSessionCache() {
+  if (primePromise) return primePromise;
+
+  primePromise = (async () => {
+    try {
+      console.log('[auth] primeSessionCache start');
+
+      const { data, error } = await supabase.auth.getSession();
+
+      console.log('[auth] primeSessionCache resolved', {
+        hasSession: !!data?.session,
+        hasToken: !!data?.session?.access_token,
+        error: error?.message || null
+      });
+
+      if (error) {
+        console.error('Error getting session:', error);
+        return null;
+      }
+
+      cachedSession = data?.session ?? null;
+      sessionPrimed = true;
+      return cachedSession;
+    } catch (err) {
+      console.error('[auth] primeSessionCache failed', err);
+      return null;
+    } finally {
+      primePromise = null;
+    }
+  })();
+
+  return primePromise;
+}
+
+async function refreshSessionCache() {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      console.log('[auth] refreshSessionCache start');
+
+      const { data, error } = await supabase.auth.refreshSession();
+
+      console.log('[auth] refreshSessionCache resolved', {
+        hasSession: !!data?.session,
+        hasToken: !!data?.session?.access_token,
+        error: error?.message || null
+      });
+
+      if (error) {
+        console.error('Error refreshing session:', error);
+        return null;
+      }
+
+      cachedSession = data?.session ?? cachedSession;
+      sessionPrimed = true;
+      return cachedSession;
+    } catch (err) {
+      console.error('[auth] refreshSessionCache failed', err);
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+export async function getAccessToken(options = {}) {
+  const {
+    forceRefresh = false,
+    refreshBufferSeconds = 60
+  } = options;
 
   try {
-    const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
-
-    console.log('[auth] getSession resolved', {
-      ms: Math.round(performance.now() - started),
-      hasSession: !!data?.session,
-      hasToken: !!data?.session?.access_token,
-      error: error?.message || null
+    console.log('[auth] getAccessToken start', {
+      hidden: document.hidden,
+      visibilityState: document.visibilityState,
+      hasCachedSession: !!cachedSession,
+      hasCachedToken: !!cachedSession?.access_token,
+      sessionPrimed,
+      forceRefresh
     });
 
-    if (error) {
-      console.error('Error getting session:', error);
+    if (!sessionPrimed) {
+      await primeSessionCache();
+    }
+
+    if (forceRefresh) {
+      const refreshedSession = await refreshSessionCache();
+      return refreshedSession?.access_token || cachedSession?.access_token || null;
+    }
+
+    let token = cachedSession?.access_token || null;
+
+    if (!token) {
+      const session = await primeSessionCache();
+      token = session?.access_token || null;
+    }
+
+    if (!token) {
+      console.warn('[auth] getAccessToken returning null token');
       return null;
     }
 
-    return data?.session?.access_token || null;
+    const expiresAt = Number(cachedSession?.expires_at || 0);
+    const nowInSeconds = Math.floor(Date.now() / 1000);
+
+    if (expiresAt > 0 && expiresAt - nowInSeconds <= refreshBufferSeconds) {
+      const refreshedSession = await refreshSessionCache();
+      return refreshedSession?.access_token || token;
+    }
+
+    return token;
   } catch (err) {
-    console.error('[auth] getSession failed/hung', err);
+    console.error('[auth] getAccessToken unexpected failure', err);
     return null;
   }
 }
