@@ -11,10 +11,34 @@ let productsModuleInitialized = false;
 let allProducts = [];
 let editingProductId = null;
 
+const REQUEST_TIMEOUT_MS = 15000;
+
 function setStatus(el, message = '', color = '') {
   if (!el) return;
   el.textContent = message;
   el.style.color = color;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function getFriendlyRequestError(err, fallbackMessage) {
+  if (err?.name === 'AbortError') {
+    return 'Request timed out. Refresh the page and try again.';
+  }
+
+  return err?.message || fallbackMessage;
 }
 
 function getSafeStories(ctx) {
@@ -249,33 +273,46 @@ export async function loadProductsPreview(ctx) {
   const { productSelect, productsPreview } = ctx;
 
   try {
-    const { data: products, error } = await ctx.supabase
-      .from('products')
-      .select(`
-        id,
-        name,
-        description,
-        price_cents,
-        stripe_product_id,
-        stripe_price_id,
-        image_url,
-        image_path,
-        active,
-        votes_granted,
-        product_type,
-        story_id,
-        created_at,
-        updated_at,
-        stories (
-          id,
-          title
-        )
-      `)
-      .order('created_at', { ascending: false });
+    let token = await ctx.getAccessToken();
+    if (!token) {
+      throw new Error('No active session found.');
+    }
 
-    if (error) throw error;
+    const makeRequest = async (accessToken) => {
+      return fetchWithTimeout('/.netlify/functions/get-products', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+    };
 
-    setAllProductsState(products || [], ctx);
+    let res = await makeRequest(token);
+
+    if (res.status === 401 && ctx.supabase?.auth?.refreshSession) {
+      const {
+        data: refreshedData,
+        error: refreshError
+      } = await ctx.supabase.auth.refreshSession();
+
+      if (!refreshError) {
+        const refreshedToken = refreshedData?.session?.access_token || null;
+
+        if (refreshedToken) {
+          res = await makeRequest(refreshedToken);
+        }
+      }
+    }
+
+    const result = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to load products.');
+    }
+
+    const products = Array.isArray(result.products) ? result.products : [];
+
+    setAllProductsState(products, ctx);
 
     if (productSelect) {
       productSelect.innerHTML = '<option value="">-- Create New Product --</option>';
@@ -631,7 +668,7 @@ export async function handleProductSubmit(event, ctx) {
     }
   } catch (err) {
     console.error('Error saving product:', err);
-    setStatus(productStatusMsg, err.message || 'Failed to save product.', 'red');
+    setStatus(productStatusMsg, getFriendlyRequestError(err, 'Failed to save product.'), 'red');
   } finally {
     if (saveProductBtn) {
       saveProductBtn.disabled = false;
@@ -713,7 +750,7 @@ export async function handleDeactivateProduct(ctx) {
     }
   } catch (err) {
     console.error('Error deactivating product:', err);
-    setStatus(productStatusMsg, err.message || 'Failed to deactivate product.', 'red');
+    setStatus(productStatusMsg, getFriendlyRequestError(err, 'Failed to deactivate product.'), 'red');
   } finally {
     if (deactivateProductBtn) {
       deactivateProductBtn.disabled = false;
