@@ -9,6 +9,7 @@ let refreshPromise = null;
 supabase.auth.onAuthStateChange((_event, session) => {
   cachedSession = session ?? null;
   sessionPrimed = true;
+
   console.log('[auth] onAuthStateChange', {
     hasSession: !!session,
     hasToken: !!session?.access_token
@@ -37,6 +38,12 @@ async function primeSessionCache() {
 
       cachedSession = data?.session ?? null;
       sessionPrimed = true;
+
+      console.log('[auth] primeSessionCache returning', {
+        hasSession: !!cachedSession,
+        hasToken: !!cachedSession?.access_token
+      });
+
       return cachedSession;
     } catch (err) {
       console.error('[auth] primeSessionCache failed', err);
@@ -71,6 +78,12 @@ async function refreshSessionCache() {
 
       cachedSession = data?.session ?? cachedSession;
       sessionPrimed = true;
+
+      console.log('[auth] refreshSessionCache returning', {
+        hasSession: !!cachedSession,
+        hasToken: !!cachedSession?.access_token
+      });
+
       return cachedSession;
     } catch (err) {
       console.error('[auth] refreshSessionCache failed', err);
@@ -100,33 +113,81 @@ export async function getAccessToken(options = {}) {
     });
 
     if (!sessionPrimed) {
+      console.log('[auth] getAccessToken awaiting primeSessionCache');
       await primeSessionCache();
+      console.log('[auth] getAccessToken finished awaiting primeSessionCache', {
+        hasCachedSession: !!cachedSession,
+        hasCachedToken: !!cachedSession?.access_token
+      });
     }
 
     if (forceRefresh) {
+      console.log('[auth] getAccessToken forceRefresh -> refreshSessionCache');
       const refreshedSession = await refreshSessionCache();
-      return refreshedSession?.access_token || cachedSession?.access_token || null;
+      const refreshedToken =
+        refreshedSession?.access_token || cachedSession?.access_token || null;
+
+      console.log('[auth] returning forceRefresh token', {
+        hasToken: !!refreshedToken,
+        hasCachedSession: !!cachedSession
+      });
+
+      if (!refreshedToken) {
+        console.warn('[auth] returning null token after forceRefresh');
+      }
+
+      return refreshedToken;
     }
 
     let token = cachedSession?.access_token || null;
 
+    console.log('[auth] initial cached token check', {
+      hasToken: !!token,
+      hasCachedSession: !!cachedSession
+    });
+
     if (!token) {
+      console.log('[auth] no cached token -> awaiting primeSessionCache again');
       const session = await primeSessionCache();
       token = session?.access_token || null;
+
+      console.log('[auth] token after second prime attempt', {
+        hasToken: !!token,
+        hasSession: !!session
+      });
     }
 
     if (!token) {
-      console.warn('[auth] getAccessToken returning null token');
+      console.warn('[auth] returning null token');
       return null;
     }
 
     const expiresAt = Number(cachedSession?.expires_at || 0);
     const nowInSeconds = Math.floor(Date.now() / 1000);
 
+    console.log('[auth] token expiry check', {
+      expiresAt,
+      nowInSeconds,
+      secondsRemaining: expiresAt > 0 ? expiresAt - nowInSeconds : null
+    });
+
     if (expiresAt > 0 && expiresAt - nowInSeconds <= refreshBufferSeconds) {
+      console.log('[auth] token near expiry -> refreshSessionCache');
       const refreshedSession = await refreshSessionCache();
-      return refreshedSession?.access_token || token;
+      const refreshedToken = refreshedSession?.access_token || token;
+
+      console.log('[auth] returning refreshed near-expiry token', {
+        hasToken: !!refreshedToken,
+        hasCachedSession: !!cachedSession
+      });
+
+      return refreshedToken;
     }
+
+    console.log('[auth] returning cached token', {
+      hasToken: !!token,
+      hasCachedSession: !!cachedSession
+    });
 
     return token;
   } catch (err) {
