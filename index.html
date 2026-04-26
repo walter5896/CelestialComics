@@ -5,6 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Celestial Comics | Home</title>
   <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    .homepage-feature {
+      padding: 3rem 0;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    .homepage-feature-shell {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .homepage-feature-media {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .homepage-feature-image-frame {
+      width: 100%;
+      min-height: 320px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .homepage-feature-image-frame img {
+      width: 100%;
+      height: 100%;
+      max-height: 480px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .homepage-feature-copy {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .homepage-feature-eyebrow {
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.8;
+    }
+
+    .homepage-feature-title {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1.05;
+    }
+
+    .homepage-feature-description {
+      font-size: 1.05rem;
+      max-width: 60ch;
+      color: rgba(248, 250, 252, 0.9);
+    }
+
+    .homepage-feature-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .homepage-secondary-visuals {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+
+    .homepage-secondary-image-card {
+      background: #111827;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 0.75rem;
+    }
+
+    .homepage-secondary-image-card h3 {
+      margin: 0 0 0.75rem;
+      font-size: 1rem;
+      color: #f8fafc;
+    }
+
+    .homepage-secondary-image-frame {
+      width: 100%;
+      min-height: 260px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .homepage-secondary-image-frame img {
+      width: 100%;
+      height: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .homepage-fallback-note {
+      font-size: 0.95rem;
+      color: rgba(248, 250, 252, 0.72);
+    }
+
+    .hidden-homepage-asset {
+      display: none !important;
+    }
+
+    @media (max-width: 768px) {
+      .homepage-feature {
+        padding: 2.25rem 0;
+      }
+
+      .homepage-feature-image-frame {
+        min-height: 240px;
+      }
+
+      .homepage-secondary-image-frame {
+        min-height: 220px;
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- HEADER -->
@@ -35,16 +167,43 @@
 
   <!-- MAIN CONTENT -->
   <main class="page-container">
-    <!-- HERO SECTION -->
-    <section class="hero">
-      <div class="container hero-container">
-        <h1 class="hero-title">Welcome to Celestial Comics</h1>
-        <p class="hero-subtitle">
-          Discover amazing stories, vote in active rounds, and follow the latest community progress.
-        </p>
-        <div class="hero-cta">
-          <a href="/vote/" class="btn btn-primary">Vote Now</a>
-          <a href="/gallery/" class="btn btn-secondary">Explore Stories</a>
+    <!-- HOMEPAGE CMS FEATURE -->
+    <section class="homepage-feature">
+      <div class="container homepage-feature-shell">
+        <div class="homepage-feature-media">
+          <div id="homepage-hero-image-shell" class="homepage-feature-image-frame hidden-homepage-asset">
+            <img id="homepage-hero-image" src="" alt="Featured homepage artwork" />
+          </div>
+
+          <p id="homepage-hero-image-fallback" class="homepage-fallback-note">
+            Featured homepage image will appear here once added from the admin panel.
+          </p>
+        </div>
+
+        <div class="homepage-feature-copy">
+          <p class="homepage-feature-eyebrow">Celestial Comics</p>
+
+          <h1 id="homepage-hero-title" class="homepage-feature-title">
+            Current Winner
+          </h1>
+
+          <p id="homepage-hero-description" class="homepage-feature-description">
+            Update this text from the admin panel.
+          </p>
+
+          <div class="homepage-feature-actions">
+            <a id="homepage-hero-cta" href="#" class="btn btn-primary">Keep Reading</a>
+            <a href="/gallery/" class="btn btn-secondary">Explore Stories</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="container homepage-secondary-visuals">
+        <div id="homepage-secondary-card" class="homepage-secondary-image-card hidden-homepage-asset">
+          <h3>Featured Concept</h3>
+          <div class="homepage-secondary-image-frame">
+            <img id="homepage-secondary-image" src="" alt="Secondary homepage artwork" />
+          </div>
         </div>
       </div>
     </section>
@@ -114,10 +273,115 @@
     import { fetchStoriesWithVotes, renderStoriesForHome } from '/js/vote.js';
     import { fetchLatestReadingProgress } from '/js/reading-progress.js';
 
+    function setHomepageImageState({ shell, img, fallback, url, altText }) {
+      if (!shell || !img) return;
+
+      const hasImage = !!String(url || '').trim();
+
+      if (hasImage) {
+        img.src = url;
+        img.alt = altText || 'Homepage image';
+        shell.classList.remove('hidden-homepage-asset');
+        if (fallback) fallback.classList.add('hidden-homepage-asset');
+      } else {
+        img.src = '';
+        shell.classList.add('hidden-homepage-asset');
+        if (fallback) fallback.classList.remove('hidden-homepage-asset');
+      }
+    }
+
+    async function renderHomepageContent() {
+      const heroTitle = document.getElementById('homepage-hero-title');
+      const heroDescription = document.getElementById('homepage-hero-description');
+      const heroCta = document.getElementById('homepage-hero-cta');
+
+      const heroImageShell = document.getElementById('homepage-hero-image-shell');
+      const heroImage = document.getElementById('homepage-hero-image');
+      const heroImageFallback = document.getElementById('homepage-hero-image-fallback');
+
+      const secondaryCard = document.getElementById('homepage-secondary-card');
+      const secondaryImage = document.getElementById('homepage-secondary-image');
+
+      try {
+        const res = await fetch('/.netlify/functions/get-homepage-content', {
+          method: 'GET'
+        });
+
+        const result = await res.json();
+
+        if (!res.ok || !result.success) {
+          throw new Error(result.error || 'Failed to load homepage content.');
+        }
+
+        const content = result.content || {};
+
+        if (heroTitle) {
+          heroTitle.textContent = content.hero_heading || 'Current Winner';
+        }
+
+        if (heroDescription) {
+          heroDescription.textContent = content.hero_description || 'Update this text from the admin panel.';
+        }
+
+        if (heroCta) {
+          heroCta.textContent = content.hero_cta_text || 'Keep Reading';
+          heroCta.href = content.hero_cta_link || '#';
+        }
+
+        setHomepageImageState({
+          shell: heroImageShell,
+          img: heroImage,
+          fallback: heroImageFallback,
+          url: content.hero_image_url || '',
+          altText: 'Homepage featured hero image'
+        });
+
+        if (secondaryCard && secondaryImage) {
+          const hasSecondary = !!String(content.secondary_image_url || '').trim();
+
+          if (hasSecondary) {
+            secondaryImage.src = content.secondary_image_url;
+            secondaryImage.alt = 'Homepage secondary featured image';
+            secondaryCard.classList.remove('hidden-homepage-asset');
+          } else {
+            secondaryImage.src = '';
+            secondaryCard.classList.add('hidden-homepage-asset');
+          }
+        }
+      } catch (err) {
+        console.error('Homepage content load error:', err);
+
+        if (heroTitle) {
+          heroTitle.textContent = 'Current Winner';
+        }
+
+        if (heroDescription) {
+          heroDescription.textContent = 'Homepage content could not be loaded right now.';
+        }
+
+        if (heroCta) {
+          heroCta.textContent = 'Explore Stories';
+          heroCta.href = '/gallery/';
+        }
+
+        if (heroImageFallback) {
+          heroImageFallback.textContent = 'Homepage artwork could not be loaded right now.';
+          heroImageFallback.classList.remove('hidden-homepage-asset');
+        }
+
+        if (heroImageShell) {
+          heroImageShell.classList.add('hidden-homepage-asset');
+        }
+
+        if (secondaryCard) {
+          secondaryCard.classList.add('hidden-homepage-asset');
+        }
+      }
+    }
+
     // =========================
     // CONTINUE READING RENDERER
     // =========================
-    // Loads the user's latest reading progress and renders a continue-reading card.
     async function renderContinueReading() {
       const continueReadingSection = document.getElementById('continue-reading-section');
       if (!continueReadingSection) return;
@@ -167,7 +431,6 @@
     // =========================
     // FEATURED STORIES RENDERER
     // =========================
-    // Loads and renders featured stories on the homepage.
     async function renderFeaturedStories() {
       const storyGrid = document.getElementById('story-grid');
       if (!storyGrid) return;
@@ -190,8 +453,6 @@
     // =========================
     // HOME PAGE INITIALIZER
     // =========================
-    // Updates auth-aware navigation, wires logout behavior,
-    // and loads homepage content.
     document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
 
@@ -203,6 +464,7 @@
         });
       });
 
+      await renderHomepageContent();
       await renderContinueReading();
       await renderFeaturedStories();
     });
