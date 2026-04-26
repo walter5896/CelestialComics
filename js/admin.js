@@ -39,6 +39,11 @@ import {
   initAdminVoting
 } from './admin-voting.js';
 
+import {
+  loadHomepageContent,
+  initAdminHomepage
+} from './admin-homepage.js';
+
 /* =========================
    DOM REFERENCES
 ========================= */
@@ -128,6 +133,28 @@ const productImageFile = document.getElementById('product-image-file');
 const uploadProductImageBtn = document.getElementById('upload-product-image-btn');
 const productImageUploadMessage = document.getElementById('product-image-upload-message');
 
+const homepageSection = document.getElementById('homepage-management-section');
+const homepageContentForm = document.getElementById('homepage-content-form');
+const homepageHeroHeading = document.getElementById('homepage-hero-heading');
+const homepageHeroDescription = document.getElementById('homepage-hero-description');
+const homepageHeroCtaText = document.getElementById('homepage-hero-cta-text');
+const homepageHeroCtaLink = document.getElementById('homepage-hero-cta-link');
+const saveHomepageBtn = document.getElementById('save-homepage-btn');
+const resetHomepageBtn = document.getElementById('reset-homepage-btn');
+const homepageStatusMsg = document.getElementById('homepage-status-message');
+
+const homepageHeroImageFile = document.getElementById('homepage-hero-image-file');
+const uploadHomepageHeroImageBtn = document.getElementById('upload-homepage-hero-image-btn');
+const deleteHomepageHeroImageBtn = document.getElementById('delete-homepage-hero-image-btn');
+const homepageHeroImageMessage = document.getElementById('homepage-hero-image-message');
+const homepageHeroImagePreview = document.getElementById('homepage-hero-image-preview');
+
+const homepageSecondaryImageFile = document.getElementById('homepage-secondary-image-file');
+const uploadHomepageSecondaryImageBtn = document.getElementById('upload-homepage-secondary-image-btn');
+const deleteHomepageSecondaryImageBtn = document.getElementById('delete-homepage-secondary-image-btn');
+const homepageSecondaryImageMessage = document.getElementById('homepage-secondary-image-message');
+const homepageSecondaryImagePreview = document.getElementById('homepage-secondary-image-preview');
+
 const orderSection = document.getElementById('order-management-section');
 const activeOrdersPreview = document.getElementById('active-orders-preview');
 const orderHistorySelect = document.getElementById('order-history-select');
@@ -159,7 +186,7 @@ function setUsersTableVisible(isVisible) {
 }
 
 function setAdminSectionsVisible(isVisible) {
-  [votingSection, storySection, productSection, orderSection].forEach((section) => {
+  [votingSection, storySection, productSection, homepageSection, orderSection].forEach((section) => {
     if (!section) return;
     section.style.display = isVisible ? 'block' : 'none';
   });
@@ -306,6 +333,26 @@ function buildAdminContext() {
     uploadProductImageBtn,
     productImageUploadMessage,
 
+    homepageSection,
+    homepageContentForm,
+    homepageHeroHeading,
+    homepageHeroDescription,
+    homepageHeroCtaText,
+    homepageHeroCtaLink,
+    saveHomepageBtn,
+    resetHomepageBtn,
+    homepageStatusMsg,
+    homepageHeroImageFile,
+    uploadHomepageHeroImageBtn,
+    deleteHomepageHeroImageBtn,
+    homepageHeroImageMessage,
+    homepageHeroImagePreview,
+    homepageSecondaryImageFile,
+    uploadHomepageSecondaryImageBtn,
+    deleteHomepageSecondaryImageBtn,
+    homepageSecondaryImageMessage,
+    homepageSecondaryImagePreview,
+
     orderSection,
     activeOrdersPreview,
     orderHistorySelect,
@@ -358,11 +405,13 @@ async function initAdminPanel() {
     initAdminVoting(ctx);
     initAdminStories(ctx);
     initAdminProducts(ctx);
+    initAdminHomepage(ctx);
     initAdminOrders(ctx);
 
     await loadVotingPeriod(ctx);
     await loadStoriesPreview(ctx);
     await loadProductsPreview(ctx);
+    await loadHomepageContent(ctx);
     await loadOrdersPreview(ctx);
 
     clearStoryForm(ctx);

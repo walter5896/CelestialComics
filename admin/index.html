@@ -819,6 +819,121 @@
       </div>
     </div>
 
+    <div class="section-card" id="homepage-management-section" style="display:none;">
+  <h2>Homepage Content</h2>
+  <p class="helper-text">
+    Manage the homepage hero text and the two featured homepage images without touching code.
+  </p>
+
+  <form id="homepage-content-form">
+    <div class="field-group">
+      <label for="homepage-hero-heading">Hero Heading</label>
+      <input
+        type="text"
+        id="homepage-hero-heading"
+        placeholder="Current Winner"
+      />
+    </div>
+
+    <div class="field-group">
+      <label for="homepage-hero-description">Hero Description</label>
+      <textarea
+        id="homepage-hero-description"
+        placeholder="Homepage winner description..."
+      ></textarea>
+    </div>
+
+    <div class="two-column-grid">
+      <div class="field-group">
+        <label for="homepage-hero-cta-text">Hero CTA Text</label>
+        <input
+          type="text"
+          id="homepage-hero-cta-text"
+          placeholder="Keep Reading"
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="homepage-hero-cta-link">Hero CTA Link</label>
+        <input
+          type="text"
+          id="homepage-hero-cta-link"
+          placeholder="/story.html?id=..."
+        />
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button type="submit" id="save-homepage-btn">Save Homepage Content</button>
+      <button type="button" id="reset-homepage-btn" class="secondary-btn">Reset Homepage Form</button>
+    </div>
+  </form>
+
+  <p id="homepage-status-message" class="section-message"></p>
+
+  <div class="story-pages-section">
+    <h3>Hero Image</h3>
+    <p class="helper-text">
+      This is the main featured homepage image.
+    </p>
+
+    <div class="field-group">
+      <label for="homepage-hero-image-file">Upload Hero Image</label>
+      <input type="file" id="homepage-hero-image-file" accept="image/*" />
+      <div class="action-row">
+        <button type="button" id="upload-homepage-hero-image-btn" class="secondary-btn">
+          Upload Hero Image
+        </button>
+        <button
+          type="button"
+          id="delete-homepage-hero-image-btn"
+          class="danger-btn"
+          style="display:none;"
+        >
+          Delete Hero Image
+        </button>
+      </div>
+      <p id="homepage-hero-image-message" class="section-message"></p>
+      <img
+        id="homepage-hero-image-preview"
+        class="product-image-preview"
+        alt="Homepage hero preview"
+      />
+    </div>
+  </div>
+
+  <div class="story-pages-section">
+    <h3>Secondary Homepage Image</h3>
+    <p class="helper-text">
+      This is the second featured homepage image or supporting concept image.
+    </p>
+
+    <div class="field-group">
+      <label for="homepage-secondary-image-file">Upload Secondary Image</label>
+      <input type="file" id="homepage-secondary-image-file" accept="image/*" />
+      <div class="action-row">
+        <button type="button" id="upload-homepage-secondary-image-btn" class="secondary-btn">
+          Upload Secondary Image
+        </button>
+        <button
+          type="button"
+          id="delete-homepage-secondary-image-btn"
+          class="danger-btn"
+          style="display:none;"
+        >
+          Delete Secondary Image
+        </button>
+      </div>
+      <p id="homepage-secondary-image-message" class="section-message"></p>
+      <img
+        id="homepage-secondary-image-preview"
+        class="product-image-preview"
+        alt="Homepage secondary preview"
+      />
+    </div>
+  </div>
+</div>
+
     <div class="section-card" id="order-management-section" style="display:none;">
       <h2>Order Management</h2>
       <p class="helper-text">
