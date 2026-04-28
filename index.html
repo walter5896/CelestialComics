@@ -86,7 +86,7 @@
     }
 
     .header-inner {
-      min-height: 88px;
+      min-height: 100px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -96,14 +96,14 @@
     .site-logo {
       display: inline-flex;
       align-items: center;
-      gap: 0.9rem;
+      gap: 1rem;
       color: #fff;
       min-width: 0;
     }
 
     .site-logo-mark {
-      width: 62px;
-      height: 62px;
+      width: 66px;
+      height: 66px;
       object-fit: contain;
       flex-shrink: 0;
       filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.18));
@@ -111,7 +111,7 @@
 
     .site-logo-text {
       font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(1.8rem, 2.6vw, 2.45rem);
+      font-size: clamp(2.1rem, 2.9vw, 2.9rem);
       font-weight: 700;
       line-height: 1;
       letter-spacing: 0.01em;
@@ -681,11 +681,16 @@
       }
 
       .header-inner {
-        min-height: 76px;
+        min-height: 88px;
+      }
+
+      .site-logo-mark {
+        width: 54px;
+        height: 54px;
       }
 
       .site-logo-text {
-        font-size: 1.9rem;
+        font-size: 2.1rem;
       }
     }
 
@@ -727,12 +732,12 @@
       }
 
       .site-logo-mark {
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
       }
 
       .site-logo-text {
-        font-size: 1.65rem;
+        font-size: 1.8rem;
       }
     }
   </style>
@@ -1114,7 +1119,9 @@
           return;
         }
 
-        const pageNumbers = Array.isArray(pages) ? pages.map((page) => Number(page.page_number)).filter(Number.isFinite) : [];
+        const pageNumbers = Array.isArray(pages)
+          ? pages.map((page) => Number(page.page_number)).filter(Number.isFinite)
+          : [];
 
         let resolvedPage = requestedPage;
         let resumeNote = '';
