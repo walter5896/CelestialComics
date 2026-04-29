@@ -1,23 +1,37 @@
-@media (min-width: 1024px) {
-  .story-card {
-    flex: 1 1 calc(33.333% - var(--spacing-md));
-    
+/* /css/large.css */
+
+/* =========================
+   Large Screens / Desktop
+   Imported last
+========================= */
+
+@media (min-width: 1101px) {
+  .story-grid,
+  .story-grid-custom,
+  .continue-grid,
+  .gallery-grid,
+  .product-grid {
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
   }
 
   .hero-title {
-    font-size: 3rem;
+    font-size: clamp(3rem, 6vw, 4.75rem);
   }
 
   .hero-subtitle {
     font-size: 1.25rem;
   }
-}
-/* Show nav on larger screens */
-@media (min-width: 768px) {
-  .main-nav {
-    display: block;
+
+  .story-card-media,
+  .gallery-card-media {
+    min-height: 280px;
   }
-  .nav-toggle {
-    display: none;
+
+  .product-card-media,
+  .product-card img {
+    min-height: 260px;
   }
 }
+
+/* Keep this intentionally empty for nav.
+   Nav behavior now lives in layout.css so this file does not fight it. */

@@ -1,18 +1,90 @@
 :root {
-  --font-base: system-ui, sans-serif;
-  --font-heading: 'Segoe UI', sans-serif;
+  /* =========================
+     Typography
+  ========================= */
+  --font-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
 
-  --color-bg: #ffffff;
-  --color-text: #111111;
-  --color-accent: #0066ff;
-  --color-accent-hover: #004bb5;
-  --color-footer: #f2f2f2;
+  /* =========================
+     Celestial Brand Palette
+  ========================= */
+  --color-bg: #03172f;
+  --color-bg-deep: #020f20;
+  --color-bg-soft: #05214a;
 
+  --color-surface: #0b2852;
+  --color-surface-soft: #163b72;
+  --color-surface-strong: #071f40;
+
+  --color-nav: #135f67;
+  --color-nav-dark: #09424e;
+
+  --color-status: #7e61bf;
+  --color-status-bright: #8d66cc;
+
+  --color-panel: #1b4ea3;
+  --color-panel-dark: #0b2f63;
+
+  --color-accent: #f2b24a;
+  --color-accent-hover: #dd9730;
+  --color-accent-soft: #f8dca5;
+
+  --color-text: #f7f3ea;
+  --color-text-soft: rgba(247, 243, 234, 0.82);
+  --color-text-muted: rgba(247, 243, 234, 0.66);
+  --color-text-dark: #111827;
+
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.22);
+
+  --color-footer: rgba(2, 16, 35, 0.68);
+
+  /* =========================
+     Legacy aliases
+     Keeps older pages from exploding while we refactor.
+  ========================= */
+  --color-bg-alt: var(--color-surface);
+  --color-text-secondary: var(--color-text-soft);
+  --color-muted: var(--color-text-muted);
+  --color-light: var(--color-surface);
+  --color-primary: var(--color-accent);
+  --color-primary-hover: var(--color-accent-hover);
+
+  /* =========================
+     Spacing
+  ========================= */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
   --spacing-md: 1rem;
   --spacing-lg: 2rem;
   --spacing-xl: 3rem;
+  --spacing-2xl: 4rem;
+  --spacing-3xl: 6rem;
 
-  --border-radius: 8px;
+  /* =========================
+     Layout
+  ========================= */
+  --max-width: 1320px;
+  --content-width: 1120px;
+  --narrow-width: 780px;
+
+  /* =========================
+     Radius / Shadows
+  ========================= */
+  --border-radius: 12px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.18);
+  --shadow-card: 0 18px 45px rgba(0, 0, 0, 0.28);
+  --shadow-heavy: 0 24px 60px rgba(0, 0, 0, 0.38);
+
+  /* =========================
+     Motion
+  ========================= */
+  --transition-fast: 160ms ease;
+  --transition-base: 220ms ease;
+  --transition-slow: 300ms ease;
 }

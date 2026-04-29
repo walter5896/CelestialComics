@@ -4,837 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Celestial Comics | Home</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
-  <style>
-    :root {
-      --bg: #041f43;
-      --bg-deep: #03172f;
-      --nav: #135f67;
-      --status: #7e61bf;
-      --panel: #1b4ea3;
-      --panel-dark: #0b2f63;
-      --surface: #0b2852;
-      --surface-soft: #163b72;
-      --gold: #f2b24a;
-      --gold-dark: #dd9730;
-      --text: #f7f3ea;
-      --text-soft: rgba(247, 243, 234, 0.82);
-      --border: rgba(255, 255, 255, 0.12);
-      --shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
-      --radius-lg: 24px;
-      --radius-md: 18px;
-      --radius-sm: 12px;
-      --max-width: 1320px;
-    }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      margin: 0;
-      font-family: 'Inter', sans-serif;
-      background:
-        radial-gradient(circle at top center, rgba(90, 99, 179, 0.16), transparent 30%),
-        linear-gradient(180deg, #05214a 0%, #03172f 100%);
-      color: var(--text);
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
-
-    img {
-      display: block;
-      max-width: 100%;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    button,
-    input,
-    textarea,
-    select {
-      font: inherit;
-    }
-
-    .container {
-      width: min(var(--max-width), calc(100% - 2rem));
-      margin: 0 auto;
-    }
-
-    .page-shell {
-      padding-bottom: 4rem;
-    }
-
-    .site-header {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background:
-        linear-gradient(135deg, rgba(19, 95, 103, 0.98), rgba(9, 66, 78, 0.98)),
-        var(--nav);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
-      backdrop-filter: blur(16px);
-    }
-
-    .header-inner {
-      min-height: 104px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.25rem;
-      flex-wrap: nowrap;
-      position: relative;
-    }
-
-    .site-logo {
-      display: inline-flex;
-      align-items: center;
-      gap: 1rem;
-      color: #fff;
-      min-width: 0;
-      flex: 0 0 auto;
-    }
-
-    .site-logo-mark {
-      width: 72px;
-      height: 72px;
-      object-fit: contain;
-      flex: 0 0 72px;
-      filter:
-        drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2))
-        drop-shadow(0 0 12px rgba(255, 255, 255, 0.08));
-    }
-
-    .site-logo-text {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 2.7vw, 2.85rem);
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: 0.01em;
-      white-space: nowrap;
-      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.22);
-    }
-
-    .nav-toggle {
-      display: none;
-      width: 56px;
-      height: 56px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
-      color: #fff;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
-      transition:
-        transform 0.22s ease,
-        border-color 0.22s ease,
-        background 0.22s ease;
-      flex: 0 0 56px;
-    }
-
-    .nav-toggle:hover {
-      transform: translateY(-1px);
-      border-color: rgba(255, 255, 255, 0.36);
-      background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07));
-    }
-
-    .hamburger,
-    .hamburger::before,
-    .hamburger::after {
-      content: '';
-      display: block;
-      width: 24px;
-      height: 2px;
-      background: #fff;
-      border-radius: 999px;
-      transition: transform 0.25s ease, opacity 0.25s ease;
-      position: relative;
-    }
-
-    .hamburger::before {
-      position: absolute;
-      top: -8px;
-    }
-
-    .hamburger::after {
-      position: absolute;
-      top: 8px;
-    }
-
-    .nav-toggle.is-open .hamburger {
-      background: transparent;
-    }
-
-    .nav-toggle.is-open .hamburger::before {
-      transform: translateY(8px) rotate(45deg);
-    }
-
-    .nav-toggle.is-open .hamburger::after {
-      transform: translateY(-8px) rotate(-45deg);
-    }
-
-    .main-nav {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      min-width: 0;
-      flex: 1 1 auto;
-    }
-
-    .nav-list {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.35rem;
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      flex-wrap: nowrap;
-      min-width: 0;
-    }
-
-    .nav-list a {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 46px;
-      padding: 0.72rem 0.88rem;
-      border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 800;
-      letter-spacing: 0.055em;
-      text-transform: uppercase;
-      color: #fff;
-      white-space: nowrap;
-      transition:
-        background 0.22s ease,
-        transform 0.22s ease,
-        box-shadow 0.22s ease,
-        border-color 0.22s ease;
-    }
-
-    .nav-list a:hover {
-      background: rgba(255, 255, 255, 0.13);
-      transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
-    }
-
-    .nav-list .login-link,
-    .nav-list .logout-link,
-    .nav-list .admin-link a,
-    .nav-list .profile-link a {
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      background: rgba(255, 255, 255, 0.07);
-    }
-
-    .announcement-strip {
-      background:
-        linear-gradient(90deg, rgba(126, 97, 191, 0.98), rgba(141, 102, 204, 0.98));
-      color: #fff;
-      padding: 0.7rem 0;
-      text-align: center;
-      font-size: 0.95rem;
-      font-weight: 700;
-      letter-spacing: 0.025em;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-    }
-
-    .announcement-strip a {
-      text-decoration: underline;
-      text-underline-offset: 0.16em;
-      font-weight: 800;
-    }
-
-    .page-section {
-      padding: 3.5rem 0;
-    }
-
-    .section-heading {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.2rem, 5vw, 4rem);
-      line-height: 0.95;
-      margin: 0 0 0.75rem;
-      color: var(--text);
-      text-align: center;
-      letter-spacing: 0.01em;
-    }
-
-    .section-subheading {
-      max-width: 900px;
-      margin: 0 auto 2rem;
-      text-align: center;
-      color: var(--text-soft);
-      font-size: 1.08rem;
-    }
-
-    .hero-section {
-      padding: 2.3rem 0 1.25rem;
-    }
-
-    .hero-shell {
-      display: grid;
-      grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
-      gap: 0;
-      overflow: hidden;
-      border-radius: 0;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-    }
-
-    .hero-media {
-      background: linear-gradient(180deg, #0b2046 0%, #07162f 100%);
-      min-height: 540px;
-      position: relative;
-    }
-
-    .hero-image-frame {
-      width: 100%;
-      height: 100%;
-      min-height: 540px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at top center, rgba(255, 255, 255, 0.12), transparent 18%),
-        linear-gradient(180deg, rgba(22, 58, 110, 0.35), rgba(5, 19, 43, 0.35));
-    }
-
-    .hero-image-frame img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .hero-fallback {
-      margin: 0;
-      padding: 2rem;
-      color: var(--text-soft);
-      text-align: center;
-      font-size: 1rem;
-    }
-
-    .hero-panel {
-      background: linear-gradient(180deg, #2d58b1 0%, #2852a5 100%);
-      padding: clamp(1.6rem, 3vw, 2.3rem);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .hero-eyebrow {
-      margin: 0 0 0.35rem;
-      color: #f9d36b;
-      font-size: 1rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-    }
-
-    .hero-title {
-      margin: 0 0 1rem;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2.2rem, 4vw, 4.3rem);
-      line-height: 0.9;
-      color: #f6d16f;
-      text-transform: uppercase;
-      text-decoration: underline;
-      text-decoration-thickness: 2px;
-      text-underline-offset: 0.12em;
-    }
-
-    .hero-description {
-      margin: 0;
-      font-size: 1.08rem;
-      color: rgba(255, 255, 255, 0.94);
-      max-width: 34ch;
-    }
-
-    .hero-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.85rem;
-      margin-top: 1.4rem;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 52px;
-      padding: 0.85rem 1.35rem;
-      border: none;
-      border-radius: 0;
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
-      cursor: pointer;
-    }
-
-    .btn:hover {
-      transform: translateY(-2px);
-    }
-
-    .btn-primary {
-      background: var(--gold);
-      color: #fff;
-      box-shadow: 0 12px 24px rgba(242, 178, 74, 0.28);
-    }
-
-    .btn-primary:hover {
-      background: var(--gold-dark);
-    }
-
-    .btn-secondary {
-      background: transparent;
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.26);
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    .brand-banner {
-      padding-top: 0;
-    }
-
-    .brand-banner-box {
-      background: #0b457a;
-      padding: 1.6rem 1rem 1.2rem;
-      text-align: center;
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      border-top: none;
-    }
-
-    .brand-banner-title {
-      margin: 0;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 4vw, 3.8rem);
-      line-height: 0.95;
-      color: #f6f0e6;
-    }
-
-    .brand-banner-subtitle {
-      margin: 0.2rem 0 0;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(1.5rem, 2vw, 2.3rem);
-      color: rgba(246, 240, 230, 0.88);
-    }
-
-    .concept-spotlight {
-      padding-top: 1.8rem;
-    }
-
-    .concept-shell {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-      gap: 1.6rem;
-      align-items: stretch;
-    }
-
-    .concept-card,
-    .cta-panel,
-    .content-card,
-    .story-card {
-      background: rgba(7, 31, 64, 0.72);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-    }
-
-    .concept-card {
-      padding: 1rem;
-    }
-
-    .concept-image-frame {
-      width: 100%;
-      min-height: 460px;
-      background: rgba(255, 255, 255, 0.04);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .concept-image-frame img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      max-height: 560px;
-    }
-
-    .concept-empty {
-      padding: 2rem;
-      text-align: center;
-      color: var(--text-soft);
-    }
-
-    .concept-copy {
-      padding: 1.35rem 1.35rem 1.5rem;
-      display: grid;
-      gap: 0.8rem;
-    }
-
-    .concept-copy h2 {
-      margin: 0;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 3vw, 3.2rem);
-      line-height: 0.95;
-    }
-
-    .concept-copy p {
-      margin: 0;
-      color: var(--text-soft);
-      font-size: 1.02rem;
-    }
-
-    .cta-panel {
-      padding: 1.65rem;
-      display: grid;
-      align-content: center;
-      gap: 0.95rem;
-      background: linear-gradient(180deg, rgba(15, 53, 107, 0.95), rgba(7, 26, 55, 0.95));
-    }
-
-    .cta-panel h2,
-    .cta-panel h3 {
-      margin: 0;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 3vw, 3rem);
-      line-height: 0.95;
-    }
-
-    .cta-panel p {
-      margin: 0;
-      color: var(--text-soft);
-    }
-
-    .continue-grid,
-    .story-grid-custom {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-      gap: 1.25rem;
-    }
-
-    .story-card {
-      padding: 1rem;
-      border-radius: var(--radius-sm);
-    }
-
-    .story-card-media {
-      width: 100%;
-      min-height: 250px;
-      background: rgba(255, 255, 255, 0.04);
-      border-radius: 10px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1rem;
-    }
-
-    .story-card-media img {
-      width: 100%;
-      height: 100%;
-      max-height: 320px;
-      object-fit: contain;
-    }
-
-    .story-card-status {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.3rem 0.7rem;
-      background: rgba(126, 97, 191, 0.22);
-      border: 1px solid rgba(126, 97, 191, 0.34);
-      color: #e5dcff;
-      font-size: 0.78rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      border-radius: 999px;
-      margin-bottom: 0.75rem;
-    }
-
-    .story-card h3 {
-      margin: 0 0 0.45rem;
-      font-size: 1.45rem;
-      line-height: 1.15;
-      color: #fff;
-    }
-
-    .story-card p {
-      margin: 0 0 0.65rem;
-      color: var(--text-soft);
-    }
-
-    .story-card-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 1rem;
-    }
-
-    .resume-note {
-      font-size: 0.95rem;
-      color: #f8dca5;
-    }
-
-    .section-card-shell {
-      display: grid;
-      gap: 1.4rem;
-    }
-
-    .mid-cta-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.25rem;
-    }
-
-    .mid-cta-card {
-      padding: 1.6rem;
-      background: linear-gradient(180deg, rgba(18, 75, 137, 0.86), rgba(9, 37, 77, 0.95));
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-      min-height: 100%;
-      display: grid;
-      gap: 0.95rem;
-      align-content: start;
-    }
-
-    .mid-cta-card h2 {
-      margin: 0;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: clamp(2rem, 3vw, 3.1rem);
-      line-height: 0.95;
-    }
-
-    .mid-cta-card p {
-      margin: 0;
-      color: var(--text-soft);
-    }
-
-    .site-footer {
-      padding: 2.25rem 0 2.75rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(2, 16, 35, 0.58);
-    }
-
-    .footer-shell {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 1rem;
-      align-items: center;
-      color: var(--text-soft);
-      font-size: 0.95rem;
-    }
-
-    .footer-nav {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.85rem;
-    }
-
-    .footer-nav a:hover {
-      text-decoration: underline;
-    }
-
-    .hidden-asset {
-      display: none !important;
-    }
-
-    .empty-state {
-      background: rgba(7, 31, 64, 0.6);
-      border: 1px dashed rgba(255, 255, 255, 0.18);
-      padding: 1.4rem;
-      text-align: center;
-      color: var(--text-soft);
-    }
-
-    @media (max-width: 1180px) {
-      .nav-toggle {
-        display: inline-flex;
-      }
-
-      .main-nav {
-        position: absolute;
-        top: calc(100% + 0.75rem);
-        left: 0;
-        right: 0;
-        z-index: 60;
-        display: block;
-        max-height: 0;
-        overflow: hidden;
-        opacity: 0;
-        transform: translateY(-10px);
-        pointer-events: none;
-        border-radius: 22px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        background:
-          linear-gradient(180deg, rgba(12, 82, 91, 0.98), rgba(6, 43, 65, 0.98));
-        box-shadow: 0 22px 46px rgba(0, 0, 0, 0.34);
-        backdrop-filter: blur(18px);
-        transition:
-          max-height 0.3s ease,
-          opacity 0.24s ease,
-          transform 0.24s ease;
-      }
-
-      .main-nav.is-open {
-        max-height: 80vh;
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
-      }
-
-      .nav-list {
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: flex-start;
-        gap: 0.35rem;
-        padding: 0.85rem;
-        flex-wrap: nowrap;
-      }
-
-      .nav-list li {
-        width: 100%;
-      }
-
-      .nav-list a {
-        width: 100%;
-        justify-content: flex-start;
-        min-height: 50px;
-        padding: 0.9rem 1rem;
-        border-radius: 16px;
-        font-size: 0.9rem;
-        background: rgba(255, 255, 255, 0.055);
-      }
-
-      .nav-list a:hover {
-        transform: translateX(3px);
-        background: rgba(255, 255, 255, 0.13);
-      }
-
-      .nav-list .login-link,
-      .nav-list .logout-link,
-      .nav-list .admin-link a,
-      .nav-list .profile-link a {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    }
-
-    @media (max-width: 1100px) {
-      .hero-shell,
-      .concept-shell {
-        grid-template-columns: 1fr;
-      }
-
-      .hero-media,
-      .hero-image-frame {
-        min-height: 360px;
-      }
-
-      .concept-image-frame {
-        min-height: 360px;
-      }
-    }
-
-    @media (max-width: 720px) {
-      .container {
-        width: min(var(--max-width), calc(100% - 1rem));
-      }
-
-      .header-inner {
-        min-height: 98px;
-        gap: 0.75rem;
-      }
-
-      .site-logo {
-        gap: 0.75rem;
-      }
-
-      .site-logo-text {
-        font-size: clamp(1.55rem, 7vw, 2.05rem);
-        white-space: normal;
-        line-height: 0.95;
-      }
-
-      .nav-toggle {
-        width: 52px;
-        height: 52px;
-        flex-basis: 52px;
-      }
-
-      .announcement-strip {
-        font-size: 0.82rem;
-        padding: 0.62rem 0.5rem;
-      }
-    }
-
-    @media (max-width: 640px) {
-      .page-section {
-        padding: 2.5rem 0;
-      }
-
-      .hero-section {
-        padding-top: 1.5rem;
-      }
-
-      .hero-media,
-      .hero-image-frame {
-        min-height: 260px;
-      }
-
-      .hero-panel {
-        padding: 1.35rem 1.1rem 1.45rem;
-      }
-
-      .brand-banner-box {
-        padding: 1.25rem 0.8rem 1rem;
-      }
-
-      .concept-card,
-      .story-card,
-      .mid-cta-card,
-      .cta-panel {
-        padding: 1rem;
-      }
-
-      .concept-image-frame {
-        min-height: 260px;
-      }
-    }
-
-    @media (max-width: 460px) {
-      .site-logo-text {
-        max-width: 155px;
-      }
-
-      .header-inner {
-        min-height: 96px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/main.css" />
 </head>
+
 <body>
   <header class="site-header">
     <div class="container header-inner">
@@ -868,66 +48,73 @@
   </div>
 
   <main class="page-shell">
-    <section class="hero-section">
+    <section class="page-section">
+      <div class="container mid-cta-grid">
+        <article class="story-card">
+          <div id="homepage-hero-image-shell" class="story-card-media hidden-asset">
+            <img id="homepage-hero-image" src="" alt="Featured Celestial Comics artwork" />
+          </div>
+
+          <p id="homepage-hero-fallback" class="empty-state">
+            Featured artwork will appear here once it’s uploaded from the admin panel.
+          </p>
+        </article>
+
+        <aside class="cta-panel">
+          <span class="story-card-status">Current Winner</span>
+
+          <h1 id="homepage-hero-title" class="section-heading">
+            Current Winner
+          </h1>
+
+          <p id="homepage-hero-description">
+            Update this text from the admin panel.
+          </p>
+
+          <div class="story-card-actions">
+            <a id="homepage-hero-cta" href="/history/" class="btn btn-primary">Keep Reading</a>
+            <a href="/gallery/" class="btn btn-secondary">View Gallery</a>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="page-section">
       <div class="container">
-        <div class="hero-shell">
-          <div class="hero-media">
-            <div id="homepage-hero-image-shell" class="hero-image-frame hidden-asset">
-              <img id="homepage-hero-image" src="" alt="Featured Celestial Comics artwork" />
-            </div>
-            <p id="homepage-hero-fallback" class="hero-fallback">
-              Featured artwork will appear here once it’s uploaded from the admin panel.
-            </p>
-          </div>
-
-          <div class="hero-panel">
-            <p class="hero-eyebrow">Current Winner</p>
-            <h1 id="homepage-hero-title" class="hero-title">Current Winner</h1>
-            <p id="homepage-hero-description" class="hero-description">
-              Update this text from the admin panel.
-            </p>
-
-            <div class="hero-actions">
-              <a id="homepage-hero-cta" href="/history/" class="btn btn-primary">Keep Reading</a>
-              <a href="/gallery/" class="btn btn-secondary">View Gallery</a>
-            </div>
-          </div>
+        <div class="mid-cta-card text-center">
+          <h2>Celestial Comics</h2>
+          <p>Stories Yet Untold</p>
         </div>
       </div>
     </section>
 
-    <section class="brand-banner">
-      <div class="container">
-        <div class="brand-banner-box">
-          <h2 class="brand-banner-title">Celestial Comics</h2>
-          <p class="brand-banner-subtitle">Stories Yet Untold</p>
-        </div>
-      </div>
-    </section>
+    <section class="page-section">
+      <div class="container mid-cta-grid">
+        <article id="homepage-secondary-shell" class="story-card hidden-asset">
+          <div class="story-card-media">
+            <img id="homepage-secondary-image" src="" alt="Featured concept artwork" />
+          </div>
 
-    <section class="page-section concept-spotlight">
-      <div class="container">
-        <div class="concept-shell">
-          <article id="homepage-secondary-shell" class="concept-card hidden-asset">
-            <div class="concept-image-frame">
-              <img id="homepage-secondary-image" src="" alt="Featured concept artwork" />
-            </div>
-          </article>
+          <span class="story-card-status">Featured Concept</span>
+          <h3>Concept Spotlight</h3>
+          <p>
+            This featured visual can be updated from the homepage CMS in the admin panel.
+          </p>
+        </article>
 
-          <aside class="cta-panel">
-            <h2>From the Gallery</h2>
-            <p>
-              Voting tournament competitors are pulled from the gallery. Did a story you loved not win?
-              It may still return in a future decision tournament.
-            </p>
-            <p>
-              Browse concept art, explore the worlds behind each pitch, and keep up with what may be chosen next.
-            </p>
-            <div>
-              <a href="/gallery/" class="btn btn-primary">Go to Gallery</a>
-            </div>
-          </aside>
-        </div>
+        <aside class="cta-panel">
+          <h2>From the Gallery</h2>
+          <p>
+            Voting tournament competitors are pulled from the gallery. Did a story you loved not win?
+            It may still return in a future decision tournament.
+          </p>
+          <p>
+            Browse concept art, explore the worlds behind each pitch, and keep up with what may be chosen next.
+          </p>
+          <div>
+            <a href="/gallery/" class="btn btn-primary">Go to Gallery</a>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -983,7 +170,7 @@
   </main>
 
   <footer class="site-footer">
-    <div class="container footer-shell">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
 
       <nav class="footer-nav">
