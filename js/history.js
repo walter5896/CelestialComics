@@ -6,6 +6,10 @@ const currentRoundSummaryEl = document.getElementById('current-round-summary');
 const currentStandingsListEl = document.getElementById('current-standings-list');
 const pastWinnersListEl = document.getElementById('past-winners-list');
 
+const featuredWinnerPanelEl = document.getElementById('featured-winner-panel');
+const productionListEl = document.getElementById('production-list');
+const releasedListEl = document.getElementById('released-list');
+
 let historyInitialized = false;
 
 /* =========================
@@ -34,6 +38,33 @@ function formatDateTime(value) {
   return date.toLocaleString();
 }
 
+function formatDate(value) {
+  if (!value) return 'TBA';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleDateString();
+}
+
+function getStoryImage(story) {
+  return story?.cover_image_url || story?.image_url || '';
+}
+
+function getStoryLink(story) {
+  if (!story?.id) return '#';
+  return `/story.html?id=${encodeId(story.id)}`;
+}
+
+function getReadLink(story) {
+  if (!story?.id) return '#';
+  return `/gallery/read.html?id=${encodeId(story.id)}&page=1`;
+}
+
+function getStoryDescription(story, fallback = 'More details for this story will be available soon.') {
+  return story?.description || fallback;
+}
+
 /* =========================
    ROUND STATUS DERIVER
 ========================= */
@@ -56,13 +87,78 @@ function deriveRoundStatus(period) {
   return 'closed';
 }
 
-/* =========================
-   STATUS PILL RENDERER
-========================= */
+function getRoundStatusLabel(status) {
+  switch (status) {
+    case 'open':
+      return 'Voting Open';
+    case 'upcoming':
+      return 'Upcoming';
+    case 'closed':
+      return 'Voting Closed';
+    case 'finalized':
+      return 'Finalized';
+    default:
+      return 'No Active Round';
+  }
+}
 
 function getStatusPill(status) {
   const safeStatus = escapeHtml(status);
-  return `<span class="status-pill ${safeStatus}">${safeStatus}</span>`;
+  const label = escapeHtml(getRoundStatusLabel(status));
+
+  return `<span class="status-pill ${safeStatus}">${label}</span>`;
+}
+
+/* =========================
+   PRODUCTION HELPERS
+========================= */
+
+function getProductionStageLabel(story) {
+  const rawStage =
+    story?.production_stage ||
+    story?.production_status ||
+    story?.production_phase ||
+    '';
+
+  const normalized = String(rawStage || '').trim();
+
+  if (!normalized) {
+    if (story?.story_status === 'released') return 'Released';
+    if (story?.story_status === 'winner_in_production') return 'Winner Selected';
+    return 'Story Concept';
+  }
+
+  return normalized
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getProductionProgress(story) {
+  const stage = String(
+    story?.production_stage ||
+    story?.production_status ||
+    story?.production_phase ||
+    ''
+  ).toLowerCase();
+
+  if (story?.story_status === 'released') return 100;
+
+  if (stage.includes('release')) return 85;
+  if (stage.includes('review') || stage.includes('edit')) return 70;
+  if (stage.includes('art') || stage.includes('illustr')) return 50;
+  if (stage.includes('script') || stage.includes('story') || stage.includes('writing')) return 35;
+  if (stage.includes('selected') || stage.includes('winner')) return 20;
+
+  return 20;
+}
+
+function getProgressLabel(progress) {
+  if (progress >= 100) return 'Complete';
+  if (progress >= 85) return 'Preparing Release';
+  if (progress >= 70) return 'Final Review';
+  if (progress >= 50) return 'Artwork in Progress';
+  if (progress >= 35) return 'Story Development';
+  return 'Winner Selected';
 }
 
 /* =========================
@@ -71,24 +167,42 @@ function getStatusPill(status) {
 
 function renderCurrentRoundError(message = 'Failed to load current tournament.') {
   if (currentRoundSummaryEl) {
-    currentRoundSummaryEl.innerHTML = `<p class="history-empty">${escapeHtml(message)}</p>`;
+    currentRoundSummaryEl.innerHTML = `<div class="winner-empty">${escapeHtml(message)}</div>`;
   }
 }
 
 function renderStandingsError(message = 'Failed to load current standings.') {
   if (currentStandingsListEl) {
-    currentStandingsListEl.innerHTML = `<p class="history-empty">${escapeHtml(message)}</p>`;
+    currentStandingsListEl.innerHTML = `<div class="winner-empty">${escapeHtml(message)}</div>`;
   }
 }
 
 function renderPastWinnersError(message = 'Failed to load past winners.') {
   if (pastWinnersListEl) {
-    pastWinnersListEl.innerHTML = `<p class="history-empty">${escapeHtml(message)}</p>`;
+    pastWinnersListEl.innerHTML = `<div class="winner-empty">${escapeHtml(message)}</div>`;
+  }
+}
+
+function renderFeaturedWinnerError(message = 'Failed to load latest winner.') {
+  if (featuredWinnerPanelEl) {
+    featuredWinnerPanelEl.innerHTML = `<div class="winner-empty">${escapeHtml(message)}</div>`;
+  }
+}
+
+function renderProductionError(message = 'Failed to load production stories.') {
+  if (productionListEl) {
+    productionListEl.innerHTML = `<div class="winner-empty">${escapeHtml(message)}</div>`;
+  }
+}
+
+function renderReleasedError(message = 'Failed to load released stories.') {
+  if (releasedListEl) {
+    releasedListEl.innerHTML = `<div class="winner-empty">${escapeHtml(message)}</div>`;
   }
 }
 
 /* =========================
-   CURRENT ROUND FETCHER
+   DATA FETCHERS
 ========================= */
 
 async function fetchCurrentRound() {
@@ -111,10 +225,6 @@ async function fetchCurrentRound() {
   return data?.[0] || null;
 }
 
-/* =========================
-   PAST FINALIZED ROUNDS FETCHER
-========================= */
-
 async function fetchPastFinalizedRounds() {
   const { data, error } = await supabase
     .from('voting_periods')
@@ -134,39 +244,65 @@ async function fetchPastFinalizedRounds() {
   return data || [];
 }
 
-/* =========================
-   STORIES MAP FETCHER
-========================= */
-
 async function fetchStoriesMap() {
-  const { data, error } = await supabase
+  const enhancedSelect = `
+    id,
+    title,
+    author,
+    description,
+    cover_image_url,
+    image_url,
+    active,
+    story_status,
+    production_stage,
+    production_status,
+    production_phase,
+    release_date,
+    digital_available,
+    paperback_available,
+    bundle_available,
+    story_preview_enabled,
+    story_preview_page_count
+  `;
+
+  const fallbackSelect = `
+    id,
+    title,
+    author,
+    description,
+    cover_image_url,
+    image_url,
+    active,
+    story_status
+  `;
+
+  let result = await supabase
     .from('stories')
-    .select(`
-      id,
-      title,
-      author,
-      cover_image_url,
-      image_url,
-      active,
-      story_status
-    `);
+    .select(enhancedSelect)
+    .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (result.error) {
+    console.warn('Enhanced story select failed, falling back to basic story fields:', result.error);
 
-  const safeStories = data || [];
+    result = await supabase
+      .from('stories')
+      .select(fallbackSelect)
+      .order('created_at', { ascending: false });
+  }
+
+  if (result.error) throw result.error;
+
+  const safeStories = result.data || [];
   setStories(safeStories);
 
   const map = new Map();
+
   safeStories.forEach((story) => {
     map.set(String(story.id), story);
   });
 
   return map;
 }
-
-/* =========================
-   ROUND VOTES FETCHER
-========================= */
 
 async function fetchVotesForRound(roundId) {
   if (!roundId) return [];
@@ -181,7 +317,7 @@ async function fetchVotesForRound(roundId) {
 }
 
 /* =========================
-   CURRENT ROUND SUMMARY RENDERER
+   CURRENT ROUND SUMMARY
 ========================= */
 
 function renderCurrentRoundSummary(round) {
@@ -189,24 +325,258 @@ function renderCurrentRoundSummary(round) {
 
   if (!round) {
     currentRoundSummaryEl.innerHTML = `
-      <p class="history-empty">No active or pending concept tournament exists right now.</p>
+      <div class="winner-empty">
+        No active or pending concept tournament exists right now.
+      </div>
     `;
     return;
   }
 
   const status = deriveRoundStatus(round);
+  const winnerLine = round.winner_id
+    ? `<p><strong>Winner ID:</strong> ${escapeHtml(round.winner_id)}</p>`
+    : '';
 
   currentRoundSummaryEl.innerHTML = `
     ${getStatusPill(status)}
-    <p><strong>Tournament ID:</strong> ${escapeHtml(round.id)}</p>
     <p><strong>Start:</strong> ${escapeHtml(formatDateTime(round.start_time))}</p>
     <p><strong>End:</strong> ${escapeHtml(formatDateTime(round.end_time))}</p>
     <p><strong>Closed At:</strong> ${escapeHtml(formatDateTime(round.closed_at))}</p>
+    ${winnerLine}
   `;
 }
 
 /* =========================
-   STANDINGS RENDERER
+   FEATURED LATEST WINNER
+========================= */
+
+function renderFeaturedWinner(pastRounds, storiesMap) {
+  if (!featuredWinnerPanelEl) return;
+
+  const latestRound = Array.isArray(pastRounds)
+    ? pastRounds.find((round) => round?.winner_id)
+    : null;
+
+  if (!latestRound) {
+    featuredWinnerPanelEl.innerHTML = `
+      <div class="featured-winner-layout">
+        <div class="featured-winner-art">
+          <div class="winner-empty">
+            Latest winner artwork will appear here after the next finalized round.
+          </div>
+        </div>
+
+        <div class="featured-winner-copy">
+          <span class="status-pill finalized">Awaiting Winner</span>
+          <h2>Winner Coming Soon</h2>
+          <p>
+            Once a tournament has a finalized winner, this section will feature the selected story,
+            concept art, vote result, and production status.
+          </p>
+
+          <div class="winner-actions">
+            <a href="/vote/" class="btn btn-primary">View Current Vote</a>
+            <a href="/gallery/" class="btn btn-secondary">Explore Gallery</a>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const story = storiesMap.get(String(latestRound.winner_id));
+  const image = getStoryImage(story);
+  const title = story?.title || 'Unknown Winning Story';
+  const author = story?.author || '';
+  const description = getStoryDescription(
+    story,
+    'This winning story has been selected by the community and is ready for the next stage of Celestial Comics production.'
+  );
+  const voteCount = latestRound.winning_vote_count ?? '—';
+  const finalizedAt = formatDate(latestRound.finalized_at);
+  const storyLink = story ? getStoryLink(story) : '#';
+
+  featuredWinnerPanelEl.innerHTML = `
+    <div class="featured-winner-layout">
+      <div class="featured-winner-art">
+        ${
+          image
+            ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)} artwork" />`
+            : `<div class="winner-empty">No artwork is available for this winner yet.</div>`
+        }
+      </div>
+
+      <div class="featured-winner-copy">
+        <span class="status-pill finalized">Latest Winner</span>
+        <h2>${escapeHtml(title)}</h2>
+
+        ${author ? `<p><strong>By ${escapeHtml(author)}</strong></p>` : ''}
+
+        <p>${escapeHtml(description)}</p>
+
+        <p>
+          <strong>Winning Votes:</strong> ${escapeHtml(voteCount)}<br>
+          <strong>Finalized:</strong> ${escapeHtml(finalizedAt)}
+        </p>
+
+        <div class="winner-actions">
+          <a href="${storyLink}" class="btn btn-primary">View Winning Story</a>
+          <a href="/gallery/" class="btn btn-secondary">Explore Gallery</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* =========================
+   PRODUCTION STORIES
+========================= */
+
+function renderProductionStories(storiesMap) {
+  if (!productionListEl) return;
+
+  const stories = Array.from(storiesMap.values())
+    .filter((story) => story?.active !== false)
+    .filter((story) => story?.story_status === 'winner_in_production')
+    .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
+
+  if (!stories.length) {
+    productionListEl.innerHTML = `
+      <div class="winner-empty">
+        No stories are currently marked as in production.
+      </div>
+    `;
+    return;
+  }
+
+  productionListEl.innerHTML = stories
+    .map((story) => {
+      const title = story.title || 'Untitled Story';
+      const author = story.author || '';
+      const image = getStoryImage(story);
+      const stageLabel = getProductionStageLabel(story);
+      const progress = getProductionProgress(story);
+      const progressLabel = getProgressLabel(progress);
+      const description = getStoryDescription(
+        story,
+        'This winning story is currently moving through the Celestial Comics production pipeline.'
+      );
+
+      return `
+        <article class="production-card">
+          ${
+            image
+              ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)} artwork" />`
+              : ''
+          }
+
+          <span class="production-status">${escapeHtml(stageLabel)}</span>
+
+          <h3>${escapeHtml(title)}</h3>
+
+          ${author ? `<p><strong>By ${escapeHtml(author)}</strong></p>` : ''}
+
+          <p>${escapeHtml(description)}</p>
+
+          <div class="production-timeline" aria-label="${escapeHtml(title)} production progress">
+            <div class="production-stage-row">
+              <div class="production-stage-label">
+                <span>${escapeHtml(progressLabel)}</span>
+                <span>${escapeHtml(progress)}%</span>
+              </div>
+              <div class="production-progress-track">
+                <div class="production-progress-fill" style="--progress: ${escapeHtml(progress)}%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="production-actions">
+            <a href="${getStoryLink(story)}" class="btn btn-primary">View Story</a>
+            <a href="/gallery/" class="btn btn-secondary">Gallery</a>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+/* =========================
+   RELEASED STORIES
+========================= */
+
+function renderReleasedStories(storiesMap) {
+  if (!releasedListEl) return;
+
+  const stories = Array.from(storiesMap.values())
+    .filter((story) => story?.active !== false)
+    .filter((story) => story?.story_status === 'released')
+    .sort((a, b) => {
+      const dateA = new Date(a.release_date || 0).getTime();
+      const dateB = new Date(b.release_date || 0).getTime();
+      return dateB - dateA || String(a.title || '').localeCompare(String(b.title || ''));
+    });
+
+  if (!stories.length) {
+    releasedListEl.innerHTML = `
+      <div class="winner-empty">
+        No stories are currently marked as released.
+      </div>
+    `;
+    return;
+  }
+
+  releasedListEl.innerHTML = stories
+    .map((story) => {
+      const title = story.title || 'Untitled Story';
+      const author = story.author || '';
+      const image = getStoryImage(story);
+      const description = getStoryDescription(
+        story,
+        'This Celestial Comics story has completed production and is available to explore.'
+      );
+
+      const formats = [];
+
+      if (story.digital_available) formats.push('Digital');
+      if (story.paperback_available) formats.push('Paperback');
+      if (story.bundle_available) formats.push('Bundle');
+
+      const formatsText = formats.length ? formats.join(' · ') : 'Release details coming soon';
+      const releaseDateText = formatDate(story.release_date);
+
+      return `
+        <article class="release-card">
+          ${
+            image
+              ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)} cover" />`
+              : ''
+          }
+
+          <span class="release-status">Released</span>
+
+          <h3>${escapeHtml(title)}</h3>
+
+          ${author ? `<p><strong>By ${escapeHtml(author)}</strong></p>` : ''}
+
+          <p>${escapeHtml(description)}</p>
+
+          <p>
+            <strong>Release Date:</strong> ${escapeHtml(releaseDateText)}<br>
+            <strong>Formats:</strong> ${escapeHtml(formatsText)}
+          </p>
+
+          <div class="release-actions">
+            <a href="${getReadLink(story)}" class="btn btn-primary">Read Story</a>
+            <a href="/shop/" class="btn btn-secondary">Shop Formats</a>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+/* =========================
+   CURRENT STANDINGS
 ========================= */
 
 function renderCurrentStandings(round, storiesMap, votes) {
@@ -214,7 +584,7 @@ function renderCurrentStandings(round, storiesMap, votes) {
 
   if (!round) {
     currentStandingsListEl.innerHTML = `
-      <p class="history-empty">No current standings to display.</p>
+      <div class="winner-empty">No current standings to display.</div>
     `;
     return;
   }
@@ -237,36 +607,46 @@ function renderCurrentStandings(round, storiesMap, votes) {
 
   if (!standings.length) {
     currentStandingsListEl.innerHTML = `
-      <p class="history-empty">No active concept competitors are in this tournament right now.</p>
+      <div class="winner-empty">
+        No active concept competitors are in this tournament right now.
+      </div>
     `;
     return;
   }
 
   currentStandingsListEl.innerHTML = standings
     .map((story, index) => {
-      const safeTitle = escapeHtml(story.title || 'Untitled Story');
-      const safeAuthor = escapeHtml(story.author || '');
-      const safeVotes = Number(story.totalVotes) || 0;
-      const safeStoryId = encodeId(story.id);
+      const title = story.title || 'Untitled Story';
+      const author = story.author || '';
+      const votesText = Number(story.totalVotes) || 0;
+      const image = getStoryImage(story);
 
       return `
-        <div class="standing-card">
+        <article class="standing-card">
+          ${
+            image
+              ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)} artwork" />`
+              : ''
+          }
+
           <div class="standing-rank">#${index + 1}</div>
-          <div class="standing-title">${safeTitle}</div>
-          <div class="standing-meta">
-            ${safeAuthor ? `By ${safeAuthor} · ` : ''}${safeVotes} vote${safeVotes === 1 ? '' : 's'}
-          </div>
+          <h3 class="standing-title">${escapeHtml(title)}</h3>
+
+          <p class="standing-meta">
+            ${author ? `By ${escapeHtml(author)} · ` : ''}${votesText} vote${votesText === 1 ? '' : 's'}
+          </p>
+
           <div class="standing-actions">
-            <a href="/gallery/story.html?id=${safeStoryId}">View Concept Details</a>
+            <a href="${getStoryLink(story)}" class="btn btn-secondary">View Concept</a>
           </div>
-        </div>
+        </article>
       `;
     })
     .join('');
 }
 
 /* =========================
-   PAST WINNERS RENDERER
+   PAST WINNERS
 ========================= */
 
 function renderPastWinners(rounds, storiesMap) {
@@ -274,7 +654,7 @@ function renderPastWinners(rounds, storiesMap) {
 
   if (!Array.isArray(rounds) || !rounds.length) {
     pastWinnersListEl.innerHTML = `
-      <p class="history-empty">No past winning concepts yet.</p>
+      <div class="winner-empty">No past winning concepts yet.</div>
     `;
     return;
   }
@@ -282,26 +662,35 @@ function renderPastWinners(rounds, storiesMap) {
   pastWinnersListEl.innerHTML = rounds
     .map((round) => {
       const story = storiesMap.get(String(round.winner_id));
-      const safeTitle = escapeHtml(story?.title || 'Unknown Concept');
-      const safeAuthor = escapeHtml(story?.author || '');
-      const safeRoundId = escapeHtml(round.id);
-      const safeWinningVotes = escapeHtml(round.winning_vote_count ?? '—');
-      const safeFinalizedAt = escapeHtml(formatDateTime(round.finalized_at));
-      const winnerLink = story ? `/gallery/story.html?id=${encodeId(story.id)}` : '#';
+      const title = story?.title || 'Unknown Concept';
+      const author = story?.author || '';
+      const image = getStoryImage(story);
+      const winningVotes = round.winning_vote_count ?? '—';
+      const finalizedAt = formatDate(round.finalized_at);
+      const winnerLink = story ? getStoryLink(story) : '#';
 
       return `
-        <div class="winner-card">
-          <div class="winner-title">${safeTitle}</div>
-          <div class="winner-meta">
-            <strong>Tournament:</strong> ${safeRoundId}<br>
-            ${safeAuthor ? `<strong>Author:</strong> ${safeAuthor}<br>` : ''}
-            <strong>Winning Votes:</strong> ${safeWinningVotes}<br>
-            <strong>Finalized At:</strong> ${safeFinalizedAt}
-          </div>
+        <article class="winner-card">
+          ${
+            image
+              ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)} artwork" />`
+              : ''
+          }
+
+          <span class="status-pill finalized">Past Winner</span>
+
+          <h3 class="winner-title">${escapeHtml(title)}</h3>
+
+          <p class="winner-meta">
+            ${author ? `<strong>Author:</strong> ${escapeHtml(author)}<br>` : ''}
+            <strong>Winning Votes:</strong> ${escapeHtml(winningVotes)}<br>
+            <strong>Finalized:</strong> ${escapeHtml(finalizedAt)}
+          </p>
+
           <div class="winner-actions">
-            <a href="${winnerLink}">View Winning Concept</a>
+            <a href="${winnerLink}" class="btn btn-secondary">View Winning Concept</a>
           </div>
-        </div>
+        </article>
       `;
     })
     .join('');
@@ -333,11 +722,18 @@ async function initHistoryPage() {
       : [];
 
     renderCurrentRoundSummary(currentRound);
+    renderFeaturedWinner(pastRounds, storiesMap);
+    renderProductionStories(storiesMap);
+    renderReleasedStories(storiesMap);
     renderCurrentStandings(currentRound, storiesMap, currentRoundVotes);
     renderPastWinners(pastRounds, storiesMap);
   } catch (err) {
-    console.error('Error loading tournament history:', err);
+    console.error('Error loading winner page:', err);
+
     renderCurrentRoundError();
+    renderFeaturedWinnerError();
+    renderProductionError();
+    renderReleasedError();
     renderStandingsError();
     renderPastWinnersError();
   }

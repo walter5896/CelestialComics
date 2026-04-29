@@ -3,148 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tournament History | Celestial Comics</title>
+
+  <meta
+    name="description"
+    content="Track Celestial Comics winners, stories in production, released comics, and past tournament results."
+  />
+
+  <title>Winners & Releases | Celestial Comics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="/css/main.css" />
-  <style>
-    .history-page {
-      padding: 2rem 1rem 4rem;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .history-page h1 {
-      margin-bottom: 0.5rem;
-    }
-
-    .history-page p.page-intro {
-      margin-bottom: 2rem;
-      color: #4b5563;
-    }
-
-    .history-section {
-      margin-bottom: 2.5rem;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 1.25rem;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-    }
-
-    .history-section h2 {
-      margin-bottom: 1rem;
-    }
-
-    .round-summary {
-      display: grid;
-      gap: 0.5rem;
-    }
-
-    .standings-list,
-    .past-winners-list {
-      display: grid;
-      gap: 1rem;
-    }
-
-    .standing-card,
-    .winner-card {
-      border: 1px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 1rem;
-      background: #f9fafb;
-    }
-
-    .standing-rank {
-      font-size: 1.15rem;
-      font-weight: 700;
-      margin-bottom: 0.35rem;
-    }
-
-    .standing-title,
-    .winner-title {
-      font-size: 1.05rem;
-      font-weight: 600;
-      margin-bottom: 0.35rem;
-    }
-
-    .standing-meta,
-    .winner-meta {
-      color: #4b5563;
-      margin-bottom: 0.5rem;
-    }
-
-    .winner-actions a,
-    .standing-actions a {
-      display: inline-block;
-      margin-top: 0.25rem;
-    }
-
-    .history-empty {
-      color: #6b7280;
-      font-style: italic;
-    }
-
-    .status-pill {
-      display: inline-block;
-      padding: 0.25rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      background: #e5e7eb;
-      color: #111827;
-    }
-
-    .status-pill.open {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .status-pill.upcoming {
-      background: #dbeafe;
-      color: #1d4ed8;
-    }
-
-    .status-pill.closed {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-
-    .status-pill.finalized {
-      background: #f3e8ff;
-      color: #7e22ce;
-    }
-
-    @media (max-width: 640px) {
-      .history-page {
-        padding: 1.25rem 0.75rem 3rem;
-      }
-
-      .history-section {
-        padding: 1rem;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/pages/winner.css" />
 </head>
-<body>
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
 
-      <button class="nav-toggle" aria-label="Toggle navigation">
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
-          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
+          <li><a href="/history/" aria-current="page">Winner</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
+          <li><a href="/team/">The Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
-          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -152,76 +52,258 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="history-page">
-    <h1>Tournament History</h1>
-    <p class="page-intro">
-      Review the current concept tournament status, track live standings when voting is active, and look back at past winning concepts.
-    </p>
+  <main class="winner-page">
+    <section class="winner-hero" aria-labelledby="winner-page-title">
+      <div class="winner-hero-inner">
+        <p class="winner-kicker">Winner Hub</p>
 
-    <section class="history-section">
-      <h2>Current Tournament</h2>
-      <div id="current-round-summary" class="round-summary">
-        <p>Loading current tournament...</p>
+        <h1 id="winner-page-title">Winners & Releases</h1>
+
+        <p>
+          Follow the stories that rise from the voting tournament into production.
+          Track where each winner is in the creative pipeline, revisit past winners,
+          and explore released Celestial Comics projects.
+        </p>
       </div>
     </section>
 
-    <section class="history-section">
-      <h2>Current Standings</h2>
-      <div id="current-standings-list" class="standings-list">
-        <p>Loading standings...</p>
+    <section class="winner-section" aria-labelledby="current-tournament-heading">
+      <div class="container">
+        <div class="winner-section-header">
+          <h2 id="current-tournament-heading">Current Tournament</h2>
+          <p>
+            See whether voting is open, upcoming, closed, or finalized.
+          </p>
+        </div>
+
+        <div class="winner-panel">
+          <div id="current-round-summary" class="round-summary">
+            <p>Loading current tournament...</p>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="history-section">
-      <h2>Past Winning Concepts</h2>
-      <div id="past-winners-list" class="past-winners-list">
-        <p>Loading past winners...</p>
+    <section class="winner-section" aria-labelledby="featured-winner-heading">
+      <div class="container">
+        <div class="winner-section-header">
+          <h2 id="featured-winner-heading">Latest Winner</h2>
+          <p>
+            The newest community-selected story gets the spotlight here once a voting round is finalized.
+          </p>
+        </div>
+
+        <div id="featured-winner-panel" class="winner-panel">
+          <div class="featured-winner-layout">
+            <div class="featured-winner-art">
+              <div class="winner-empty">
+                Latest winner artwork will appear here after the next finalized round.
+              </div>
+            </div>
+
+            <div class="featured-winner-copy">
+              <span class="status-pill finalized">Awaiting Winner</span>
+              <h2>Winner Coming Soon</h2>
+              <p>
+                Once a tournament has a finalized winner, this section can feature the selected story,
+                its concept art, production status, and links to read or follow the project.
+              </p>
+
+              <div class="winner-actions">
+                <a href="/vote/" class="btn btn-primary">View Current Vote</a>
+                <a href="/gallery/" class="btn btn-secondary">Explore Gallery</a>
+              </div>
+
+              <p class="winner-dev-note">
+                Next implementation step: wire this block to the latest finalized winner from story data.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="winner-section" aria-labelledby="production-heading">
+      <div class="container">
+        <div class="winner-section-header">
+          <h2 id="production-heading">In Production</h2>
+          <p>
+            Winning stories that are actively being made will appear here with production phase tracking.
+          </p>
+        </div>
+
+        <div id="production-list" class="production-grid">
+          <article class="production-card">
+            <span class="production-status">Production Pipeline</span>
+
+            <h3>Production updates coming soon</h3>
+
+            <p>
+              Stories marked as in production will show their current phase here,
+              such as story development, artwork, editing, final review, or preparing release.
+            </p>
+
+            <div class="production-timeline" aria-label="Example production progress">
+              <div class="production-stage-row">
+                <div class="production-stage-label">
+                  <span>Winner Selected</span>
+                  <span>20%</span>
+                </div>
+                <div class="production-progress-track">
+                  <div class="production-progress-fill" style="--progress: 20%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="production-actions">
+              <a href="/gallery/" class="btn btn-secondary">View Story Concepts</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="winner-section" aria-labelledby="released-heading">
+      <div class="container">
+        <div class="winner-section-header">
+          <h2 id="released-heading">Released Stories</h2>
+          <p>
+            Completed winners and released comics will be collected here with links to read or shop available formats.
+          </p>
+        </div>
+
+        <div id="released-list" class="release-grid">
+          <article class="release-card">
+            <span class="release-status">No Releases Yet</span>
+
+            <h3>Released comics will appear here</h3>
+
+            <p>
+              Once a winning story is marked as released, this section can link readers to digital,
+              paperback, bundle, or shop options.
+            </p>
+
+            <div class="release-actions">
+              <a href="/shop/" class="btn btn-primary">Visit the Shop</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="winner-section" aria-labelledby="standings-heading">
+      <div class="container">
+        <div class="winner-section-header">
+          <h2 id="standings-heading">Current Standings</h2>
+          <p>
+            When voting is active, this area shows how the tournament is currently shaping up.
+          </p>
+        </div>
+
+        <div id="current-standings-list" class="standings-list">
+          <p>Loading standings...</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="winner-section" aria-labelledby="past-winners-heading">
+      <div class="container">
+        <div class="winner-section-header">
+          <h2 id="past-winners-heading">Past Winner Archive</h2>
+          <p>
+            Revisit previous winning concepts and completed tournament results.
+          </p>
+        </div>
+
+        <div id="past-winners-list" class="past-winners-list">
+          <p>Loading past winners...</p>
+        </div>
       </div>
     </section>
   </main>
 
-  <!-- FOOTER -->
   <footer class="site-footer">
-    <div class="container footer-container">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/">Home</a>
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV -->
   <script src="/js/env.js"></script>
-
-  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
-
-  <!-- PAGE LOGIC -->
   <script type="module" src="/js/history.js"></script>
+  <script type="module" src="/js/admin-nav.js"></script>
 
-  <!-- AUTH / NAV STATE -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
+    const navToggle = document.querySelector('.nav-toggle');
+    const mainNav = document.querySelector('.main-nav');
+
+    function closeNav() {
+      if (!navToggle || !mainNav) return;
+
+      mainNav.classList.remove('is-open');
+      navToggle.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function bindNavToggle() {
+      if (!navToggle || !mainNav) return;
+
+      navToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('is-open');
+
+        navToggle.classList.toggle('is-open', isOpen);
+        navToggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      mainNav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeNav();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 1180) {
+          closeNav();
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Node)) return;
+        if (mainNav.contains(target) || navToggle.contains(target)) return;
+
+        closeNav();
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
+      bindNavToggle();
 
       document.querySelectorAll('.logout-link').forEach((el) => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
+        el.addEventListener('click', async (event) => {
+          event.preventDefault();
           await logout();
           window.location.href = '/';
         });
       });
     });
   </script>
-
-  <!-- ADMIN NAV LINK -->
-  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
