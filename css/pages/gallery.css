@@ -10,7 +10,7 @@
 }
 
 .gallery-hero {
-  padding: 2.5rem 0 2.25rem;
+  padding: 3rem 0 3.25rem;
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.14), transparent 34%),
@@ -18,7 +18,7 @@
 }
 
 .gallery-hero-inner {
-  width: min(920px, calc(100% - 2rem));
+  width: min(980px, calc(100% - 2rem));
   margin-inline: auto;
 }
 
@@ -37,19 +37,20 @@
 }
 
 .gallery-hero h1 {
-  margin: 0 0 1rem;
+  margin: 0 0 1.15rem;
   font-family: var(--font-heading);
-  font-size: clamp(3.25rem, 8vw, 6.5rem);
-  line-height: 0.85;
+  font-size: clamp(4rem, 10vw, 8rem);
+  line-height: 0.86;
   color: var(--color-accent-soft);
   text-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
 }
 
 .gallery-hero p {
-  max-width: 760px;
+  max-width: 900px;
   margin: 0 auto;
-  color: var(--color-text-soft);
-  font-size: 1.08rem;
+  color: var(--color-text);
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  line-height: 1.55;
 }
 
 .gallery-section {
@@ -58,32 +59,49 @@
 
 .gallery-toolbar {
   margin-bottom: 1.5rem;
-  padding: 1.15rem;
+  padding: clamp(1.15rem, 2vw, 1.65rem);
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1.25rem;
   align-items: center;
   background:
     linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(9, 37, 77, 0.9));
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-card);
 }
 
+.gallery-toolbar > div {
+  flex: 1 1 520px;
+  min-width: 0;
+}
+
 .gallery-toolbar h2 {
-  margin: 0;
+  margin: 0 0 0.5rem;
   font-family: var(--font-heading);
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  line-height: 0.9;
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: 0.01em;
 }
 
 .gallery-toolbar p {
   margin: 0;
-  max-width: 620px;
-  color: var(--color-text-soft);
+  max-width: 760px;
+  color: var(--color-text);
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  line-height: 1.45;
 }
 
-/* Works with whatever card markup renderStoriesForGallery outputs */
+.gallery-toolbar .btn {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* =========================
+   Gallery Grid / Shared Cards
+========================= */
+
 .story-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -129,7 +147,8 @@
   margin: 1rem 1rem 0.45rem;
   font-family: var(--font-heading);
   font-size: clamp(1.8rem, 3vw, 2.35rem);
-  line-height: 0.95;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
   color: var(--color-text);
 }
 
@@ -188,6 +207,7 @@
   background:
     linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(9, 37, 77, 0.92));
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-card);
 }
 
@@ -195,7 +215,8 @@
   margin: 0 0 0.6rem;
   font-family: var(--font-heading);
   font-size: clamp(2rem, 4vw, 3.25rem);
-  line-height: 0.9;
+  line-height: 1;
+  letter-spacing: 0.01em;
 }
 
 .gallery-note-panel p {
@@ -204,34 +225,6 @@
   color: var(--color-text-soft);
 }
 
-@media (max-width: 900px) {
-  .story-grid img {
-    height: 360px;
-  }
-}
-
-@media (max-width: 640px) {
-  .gallery-hero {
-    padding: 2rem 0 1.75rem;
-  }
-
-  .gallery-section {
-    padding-top: 1.5rem;
-  }
-
-  .gallery-toolbar {
-    text-align: center;
-    justify-content: center;
-  }
-
-  .story-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .story-grid img {
-    height: 340px;
-  }
-}
 /* =========================
    Story Detail Page
 ========================= */
@@ -294,7 +287,8 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: clamp(3rem, 7vw, 6rem);
-  line-height: 0.85;
+  line-height: 0.98;
+  letter-spacing: 0.01em;
   color: var(--color-accent-soft);
   text-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
 }
@@ -354,44 +348,6 @@
   margin-bottom: 1.35rem;
 }
 
-@media (max-width: 1000px) {
-  .concept-detail-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .concept-art-frame,
-  .concept-art-frame img,
-  .story-hero-img {
-    min-height: 420px;
-  }
-}
-
-@media (max-width: 640px) {
-  .concept-detail-hero {
-    padding: 1.5rem 0 2rem;
-  }
-
-  .concept-detail-panel {
-    padding: 1rem;
-  }
-
-  .concept-art-frame,
-  .concept-art-frame img,
-  .story-hero-img {
-    min-height: 320px;
-  }
-
-  .concept-actions,
-  .story-cta {
-    flex-direction: column;
-  }
-
-  .concept-actions .btn,
-  .story-cta .btn {
-    width: 100%;
-  }
-}
-
 /* =========================
    Reader Page
 ========================= */
@@ -437,7 +393,8 @@
   margin: 0 0 0.45rem;
   font-family: var(--font-heading);
   font-size: clamp(2.5rem, 6vw, 5rem);
-  line-height: 0.85;
+  line-height: 0.98;
+  letter-spacing: 0.01em;
   color: var(--color-accent-soft);
 }
 
@@ -520,34 +477,6 @@
   box-shadow: var(--shadow-card);
 }
 
-@media (max-width: 720px) {
-  .reader-page {
-    padding: 1.25rem 1rem 3rem;
-  }
-
-  .reader-topbar {
-    align-items: flex-start;
-  }
-
-  .reader-nav-links,
-  .reader-controls {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .reader-nav-links .btn,
-  .reader-controls .btn {
-    width: 100%;
-  }
-
-  .reader-stage {
-    min-height: 360px;
-  }
-
-  .reader-page-indicator {
-    min-width: auto;
-  }
-}
 /* =========================
    Gallery Rendered Story Cards
 ========================= */
@@ -628,21 +557,107 @@
   margin: 0;
 }
 
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 1000px) {
+  .concept-detail-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-art-frame,
+  .concept-art-frame img,
+  .story-hero-img {
+    min-height: 420px;
+  }
+}
+
 @media (max-width: 900px) {
+  .story-grid img,
   .story-card-art {
     height: 360px;
   }
 }
 
+@media (max-width: 720px) {
+  .reader-page {
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  .reader-topbar {
+    align-items: flex-start;
+  }
+
+  .reader-nav-links,
+  .reader-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .reader-nav-links .btn,
+  .reader-controls .btn {
+    width: 100%;
+  }
+
+  .reader-stage {
+    min-height: 360px;
+  }
+
+  .reader-page-indicator {
+    min-width: auto;
+  }
+}
+
 @media (max-width: 640px) {
+  .gallery-hero {
+    padding: 2.25rem 0 2.5rem;
+  }
+
+  .gallery-section {
+    padding-top: 1.5rem;
+  }
+
+  .gallery-toolbar {
+    text-align: center;
+    justify-content: center;
+  }
+
+  .gallery-toolbar .btn {
+    width: 100%;
+  }
+
+  .story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .story-grid img,
   .story-card-art {
     height: 340px;
   }
 
+  .concept-detail-hero {
+    padding: 1.5rem 0 2rem;
+  }
+
+  .concept-detail-panel {
+    padding: 1rem;
+  }
+
+  .concept-art-frame,
+  .concept-art-frame img,
+  .story-hero-img {
+    min-height: 320px;
+  }
+
+  .concept-actions,
+  .story-cta,
   .story-actions {
     flex-direction: column;
   }
 
+  .concept-actions .btn,
+  .story-cta .btn,
   .story-actions .btn {
     width: 100%;
   }
