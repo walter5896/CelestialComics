@@ -75,6 +75,15 @@ function getReleaseFormats(story) {
   return formats.length ? formats.join(' / ') : 'Release details coming soon';
 }
 
+function getSortableDateValue(value) {
+  if (!value) return 0;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+
+  return date.getTime();
+}
+
 /* =========================
    ROUND STATUS
 ========================= */
@@ -209,7 +218,7 @@ function renderStandingsError(message = 'Failed to load current standings.') {
   }
 }
 
-function renderPastWinnersError(message = 'Failed to load past winners.') {
+function renderPastWinnersError(message = 'Failed to load winner archive.') {
   if (pastWinnersListEl) {
     pastWinnersListEl.innerHTML = `<div class="winner-empty">${escapeHtml(message)}</div>`;
   }
@@ -365,7 +374,6 @@ function renderCurrentRoundSummary(round) {
     ${getStatusPill(status)}
     <p><strong>Start:</strong> ${escapeHtml(formatDateTime(round.start_time))}</p>
     <p><strong>End:</strong> ${escapeHtml(formatDateTime(round.end_time))}</p>
-    <p><strong>Closed At:</strong> ${escapeHtml(formatDateTime(round.closed_at))}</p>
   `;
 }
 
@@ -698,49 +706,119 @@ function renderCurrentStandings(round, storiesMap, votes) {
 }
 
 /* =========================
-   PAST WINNERS
+   PAST WINNER / RELEASED ARCHIVE
 ========================= */
+
+function buildArchiveItems(rounds, storiesMap) {
+  const safeRounds = Array.isArray(rounds) ? rounds : [];
+  const usedStoryIds = new Set();
+
+  const roundItems = safeRounds
+    .filter((round) => round?.winner_id)
+    .map((round) => {
+      const story = storiesMap.get(String(round.winner_id));
+      const storyId = story?.id || round.winner_id;
+
+      if (storyId) {
+        usedStoryIds.add(String(storyId));
+      }
+
+      return {
+        type: 'past_winner',
+        story,
+        storyId,
+        title: story?.title || 'Unknown Concept',
+        author: story?.author || '',
+        image: getStoryImage(story),
+        winningVotes: round.winning_vote_count ?? '—',
+        finalizedAt: formatDate(round.finalized_at),
+        sortDate: getSortableDateValue(round.finalized_at),
+        link: story ? getStoryLink(story) : '#'
+      };
+    });
+
+  const releasedItems = Array.from(storiesMap.values())
+    .filter((story) => story?.active !== false)
+    .filter((story) => story?.story_status === 'released')
+    .filter((story) => !usedStoryIds.has(String(story.id)))
+    .map((story) => ({
+      type: 'released_story',
+      story,
+      storyId: story.id,
+      title: story.title || 'Untitled Story',
+      author: story.author || '',
+      image: getStoryImage(story),
+      releaseDate: formatDate(story.release_date),
+      formats: getReleaseFormats(story),
+      sortDate: getSortableDateValue(story.release_date || story.created_at),
+      link: getReadLink(story)
+    }));
+
+  return [...roundItems, ...releasedItems]
+    .sort((a, b) => b.sortDate - a.sortDate || String(a.title).localeCompare(String(b.title)));
+}
 
 function renderPastWinners(rounds, storiesMap) {
   if (!pastWinnersListEl) return;
 
-  if (!Array.isArray(rounds) || !rounds.length) {
+  const archiveItems = buildArchiveItems(rounds, storiesMap);
+
+  if (!archiveItems.length) {
     pastWinnersListEl.innerHTML = `
-      <div class="winner-empty">No past winning concepts yet.</div>
+      <div class="winner-empty">No past winning or released stories yet.</div>
     `;
     return;
   }
 
-  pastWinnersListEl.innerHTML = rounds
-    .map((round) => {
-      const story = storiesMap.get(String(round.winner_id));
-      const title = story?.title || 'Unknown Concept';
-      const author = story?.author || '';
-      const image = getStoryImage(story);
-      const winningVotes = round.winning_vote_count ?? '—';
-      const finalizedAt = formatDate(round.finalized_at);
-      const winnerLink = story ? getStoryLink(story) : '#';
+  pastWinnersListEl.innerHTML = archiveItems
+    .map((item) => {
+      if (item.type === 'released_story') {
+        return `
+          <article class="winner-card">
+            ${
+              item.image
+                ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)} artwork" />`
+                : ''
+            }
+
+            <span class="status-pill finalized">Released Story</span>
+
+            <h3 class="winner-title">${escapeHtml(item.title)}</h3>
+
+            <p class="winner-meta">
+              ${item.author ? `<strong>Author:</strong> ${escapeHtml(item.author)}<br>` : ''}
+              <strong>Status:</strong> Released<br>
+              <strong>Release Date:</strong> ${escapeHtml(item.releaseDate)}<br>
+              <strong>Formats:</strong> ${escapeHtml(item.formats)}
+            </p>
+
+            <div class="winner-actions">
+              <a href="${item.link}" class="btn btn-secondary">Read Released Story</a>
+            </div>
+          </article>
+        `;
+      }
 
       return `
         <article class="winner-card">
           ${
-            image
-              ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)} artwork" />`
+            item.image
+              ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)} artwork" />`
               : ''
           }
 
           <span class="status-pill finalized">Past Winner</span>
 
-          <h3 class="winner-title">${escapeHtml(title)}</h3>
+          <h3 class="winner-title">${escapeHtml(item.title)}</h3>
 
           <p class="winner-meta">
-            ${author ? `<strong>Author:</strong> ${escapeHtml(author)}<br>` : ''}
-            <strong>Winning Votes:</strong> ${escapeHtml(winningVotes)}<br>
-            <strong>Finalized:</strong> ${escapeHtml(finalizedAt)}
+            ${item.author ? `<strong>Author:</strong> ${escapeHtml(item.author)}<br>` : ''}
+            <strong>Winning Votes:</strong> ${escapeHtml(item.winningVotes)}<br>
+            <strong>Finalized:</strong> ${escapeHtml(item.finalizedAt)}
           </p>
 
           <div class="winner-actions">
-            <a href="${winnerLink}" class="btn btn-secondary">View Winning Concept</a>
+            <a href="${item.link}" class="btn btn-secondary">View Winning Concept</a>
           </div>
         </article>
       `;
