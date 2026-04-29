@@ -13,6 +13,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const FEATURED_WINNER_SETTING_KEY = 'featured_winner';
+
+// =========================
+// RESPONSE HELPER
+// =========================
+function jsonResponse(statusCode, payload) {
+  return {
+    statusCode,
+    body: JSON.stringify(payload)
+  };
+}
+
 // =========================
 // ADMIN USER VALIDATOR
 // =========================
@@ -138,6 +150,43 @@ async function getVoteTotalsForPeriod(periodId) {
 }
 
 // =========================
+// FEATURED WINNER SETTING UPDATER
+// =========================
+async function updateFeaturedWinnerSetting({
+  winnerStoryId,
+  adminUserId,
+  periodId,
+  source = 'determine_winner'
+}) {
+  if (!winnerStoryId) {
+    return null;
+  }
+
+  const { data: setting, error } = await supabase
+    .from('site_settings')
+    .upsert(
+      {
+        key: FEATURED_WINNER_SETTING_KEY,
+        value: {
+          story_id: winnerStoryId,
+          updated_by: adminUserId,
+          updated_via: source,
+          voting_period_id: periodId
+        }
+      },
+      { onConflict: 'key' }
+    )
+    .select('key, value, updated_at')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return setting;
+}
+
+// =========================
 // ROUND FINALIZER
 // =========================
 // Finalizes the specified round with the provided winning story data.
@@ -171,26 +220,51 @@ async function finalizeRound({
 }
 
 // =========================
+// FINALIZE WINNER FLOW
+// =========================
+// Finalizes the round and updates the public Featured Winner setting.
+async function finalizeWinnerAndFeature({
+  periodId,
+  winnerStoryId,
+  winningVoteCount,
+  adminUserId,
+  source
+}) {
+  const finalizedPeriod = await finalizeRound({
+    periodId,
+    winnerStoryId,
+    winningVoteCount,
+    adminUserId
+  });
+
+  const featuredWinnerSetting = await updateFeaturedWinnerSetting({
+    winnerStoryId,
+    adminUserId,
+    periodId,
+    source
+  });
+
+  return {
+    finalizedPeriod,
+    featuredWinnerSetting
+  };
+}
+
+// =========================
 // MAIN HANDLER
 // =========================
 // Determines the winner automatically when possible, allows an admin
 // to manually resolve a tie, and finalizes no-vote rounds with no winner.
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+    return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   const authHeader = event.headers.authorization || event.headers.Authorization;
   const token = authHeader?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
-    return {
-      statusCode: 401,
-      body: JSON.stringify({ error: 'Missing auth token' })
-    };
+    return jsonResponse(401, { error: 'Missing auth token' });
   }
 
   try {
@@ -204,13 +278,10 @@ exports.handler = async (event) => {
     const period = await getLatestClosedUnfinalizedPeriod();
 
     if (!period) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: false,
-          message: 'No closed, unfinalized voting period was found.'
-        })
-      };
+      return jsonResponse(200, {
+        success: false,
+        message: 'No closed, unfinalized voting period was found.'
+      });
     }
 
     const voteTotals = await getVoteTotalsForPeriod(period.id);
@@ -226,20 +297,19 @@ exports.handler = async (event) => {
         adminUserId: adminUser.id
       });
 
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: true,
-          no_votes: true,
-          period_id: period.id,
-          winner_id: null,
-          winner_title: null,
-          vote_count: null,
-          vote_totals: [],
-          message: 'Round finalized with no winner because no votes were cast.',
-          finalized_period: finalizedPeriod
-        })
-      };
+      return jsonResponse(200, {
+        success: true,
+        no_votes: true,
+        period_id: period.id,
+        winner_id: null,
+        winner_title: null,
+        vote_count: null,
+        vote_totals: [],
+        featured_winner_updated: false,
+        featured_winner_setting: null,
+        message: 'Round finalized with no winner because no votes were cast.',
+        finalized_period: finalizedPeriod
+      });
     }
 
     // =========================
@@ -257,53 +327,50 @@ exports.handler = async (event) => {
       );
 
       if (!selectedTiedStory) {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({
-            error: 'Selected winner must be one of the tied top-vote stories.',
-            period_id: period.id,
-            tied_stories: topStories
-          })
-        };
+        return jsonResponse(400, {
+          error: 'Selected winner must be one of the tied top-vote stories.',
+          period_id: period.id,
+          tied_stories: topStories
+        });
       }
 
-      const finalizedPeriod = await finalizeRound({
+      const {
+        finalizedPeriod,
+        featuredWinnerSetting
+      } = await finalizeWinnerAndFeature({
         periodId: period.id,
         winnerStoryId: selectedTiedStory.story_id,
         winningVoteCount: selectedTiedStory.total_votes,
-        adminUserId: adminUser.id
+        adminUserId: adminUser.id,
+        source: 'determine_winner_tie_resolution'
       });
 
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: true,
-          tie_resolved: true,
-          period_id: period.id,
-          winner_id: selectedTiedStory.story_id,
-          winner_title: selectedTiedStory.title,
-          vote_count: selectedTiedStory.total_votes,
-          vote_totals: voteTotals,
-          finalized_period: finalizedPeriod
-        })
-      };
+      return jsonResponse(200, {
+        success: true,
+        tie_resolved: true,
+        period_id: period.id,
+        winner_id: selectedTiedStory.story_id,
+        winner_title: selectedTiedStory.title,
+        vote_count: selectedTiedStory.total_votes,
+        vote_totals: voteTotals,
+        featured_winner_updated: true,
+        featured_winner_setting: featuredWinnerSetting,
+        finalized_period: finalizedPeriod
+      });
     }
 
     // =========================
     // AUTO TIE RESPONSE
     // =========================
     if (topStories.length > 1) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({
-          success: false,
-          reason: 'tie_detected',
-          message: 'Tie detected. Please choose a winner manually.',
-          period_id: period.id,
-          vote_totals: voteTotals,
-          tied_stories: topStories
-        })
-      };
+      return jsonResponse(200, {
+        success: false,
+        reason: 'tie_detected',
+        message: 'Tie detected. Please choose a winner manually.',
+        period_id: period.id,
+        vote_totals: voteTotals,
+        tied_stories: topStories
+      });
     }
 
     // =========================
@@ -311,31 +378,33 @@ exports.handler = async (event) => {
     // =========================
     const winner = voteTotals[0];
 
-    const finalizedPeriod = await finalizeRound({
+    const {
+      finalizedPeriod,
+      featuredWinnerSetting
+    } = await finalizeWinnerAndFeature({
       periodId: period.id,
       winnerStoryId: winner.story_id,
       winningVoteCount: winner.total_votes,
-      adminUserId: adminUser.id
+      adminUserId: adminUser.id,
+      source: 'determine_winner_auto'
     });
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        success: true,
-        period_id: period.id,
-        winner_id: winner.story_id,
-        winner_title: winner.title,
-        vote_count: winner.total_votes,
-        vote_totals: voteTotals,
-        finalized_period: finalizedPeriod
-      })
-    };
+    return jsonResponse(200, {
+      success: true,
+      period_id: period.id,
+      winner_id: winner.story_id,
+      winner_title: winner.title,
+      vote_count: winner.total_votes,
+      vote_totals: voteTotals,
+      featured_winner_updated: true,
+      featured_winner_setting: featuredWinnerSetting,
+      finalized_period: finalizedPeriod
+    });
   } catch (err) {
     console.error('determine-winner error:', err);
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message || 'Server error' })
-    };
+    return jsonResponse(500, {
+      error: err.message || 'Server error'
+    });
   }
 };
