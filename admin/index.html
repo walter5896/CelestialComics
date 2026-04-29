@@ -272,6 +272,29 @@
       background: #f9fafb;
     }
 
+    .featured-winner-control {
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.75rem;
+      background: #f9fafb;
+    }
+
+    .featured-winner-control h3 {
+      margin-bottom: 0.35rem;
+    }
+
+    .featured-winner-current {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      color: #374151;
+      font-size: 0.94rem;
+    }
+
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -517,6 +540,33 @@
           <div id="finalized-winner-summary">
             <p>No finalized winner yet.</p>
           </div>
+        </div>
+      </div>
+
+      <div class="featured-winner-control">
+        <h3>Featured Winner Display</h3>
+        <p class="helper-text">
+          Choose which story appears in the public Winner page hero. If left unset, the site falls back to the latest finalized voting winner.
+        </p>
+
+        <div class="field-group">
+          <label for="featured-winner-select">Displayed Winner</label>
+          <select id="featured-winner-select">
+            <option value="">-- Use Latest Finalized Winner --</option>
+          </select>
+        </div>
+
+        <div class="action-row">
+          <button type="button" id="save-featured-winner-btn">Save Featured Winner</button>
+          <button type="button" id="clear-featured-winner-btn" class="secondary-btn">
+            Use Automatic Winner
+          </button>
+        </div>
+
+        <p id="featured-winner-status-message" class="section-message"></p>
+
+        <div id="featured-winner-current" class="featured-winner-current">
+          Loading featured winner setting...
         </div>
       </div>
 

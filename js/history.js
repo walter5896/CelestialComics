@@ -310,6 +310,25 @@ async function fetchVotesForRound(roundId) {
   return data || [];
 }
 
+async function fetchFeaturedWinnerSetting() {
+  try {
+    const res = await fetch('/.netlify/functions/get-featured-winner', {
+      method: 'GET'
+    });
+
+    const result = await res.json().catch(() => ({}));
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || 'Failed to load featured winner setting.');
+    }
+
+    return result;
+  } catch (err) {
+    console.warn('Featured winner setting unavailable. Falling back to latest finalized winner.', err);
+    return null;
+  }
+}
+
 /* =========================
    CURRENT ROUND SUMMARY
 ========================= */
@@ -340,50 +359,47 @@ function renderCurrentRoundSummary(round) {
    FEATURED LATEST WINNER
 ========================= */
 
-function renderFeaturedWinner(pastRounds, storiesMap) {
+function renderFeaturedWinnerEmpty() {
   if (!featuredWinnerPanelEl) return;
 
-  const latestRound = Array.isArray(pastRounds)
-    ? pastRounds.find((round) => round?.winner_id)
-    : null;
-
-  if (!latestRound) {
-    featuredWinnerPanelEl.innerHTML = `
-      <div class="featured-winner-layout">
-        <div class="featured-winner-art">
-          <div class="winner-empty">
-            Latest winner artwork will appear here after the next finalized round.
-          </div>
-        </div>
-
-        <div class="featured-winner-copy">
-          <span class="status-pill finalized">Awaiting Winner</span>
-          <h2>Winner Coming Soon</h2>
-          <p>
-            Once a tournament has a finalized winner, this section will feature the selected story,
-            concept art, vote result, and production status.
-          </p>
-
-          <div class="winner-actions">
-            <a href="/vote/" class="btn btn-primary">View Current Vote</a>
-            <a href="/gallery/" class="btn btn-secondary">Explore Gallery</a>
-          </div>
+  featuredWinnerPanelEl.innerHTML = `
+    <div class="featured-winner-layout">
+      <div class="featured-winner-art">
+        <div class="winner-empty">
+          Latest winner artwork will appear here after the next finalized round.
         </div>
       </div>
-    `;
-    return;
-  }
 
-  const story = storiesMap.get(String(latestRound.winner_id));
+      <div class="featured-winner-copy">
+        <span class="status-pill finalized">Awaiting Winner</span>
+        <h2>Winner Coming Soon</h2>
+        <p>
+          Once a tournament has a finalized winner, this section will feature the selected story,
+          concept art, vote result, and production status.
+        </p>
+
+        <div class="winner-actions">
+          <a href="/vote/" class="btn btn-primary">View Current Vote</a>
+          <a href="/gallery/" class="btn btn-secondary">Explore Gallery</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderFeaturedWinnerStory({
+  story,
+  label = 'Latest Winner',
+  voteCount = '—',
+  finalizedAt = 'Manual Selection',
+  descriptionFallback = 'This story has been selected for the featured Winner display.'
+}) {
+  if (!featuredWinnerPanelEl) return;
+
   const image = getStoryImage(story);
   const title = story?.title || 'Unknown Winning Story';
   const author = story?.author || '';
-  const description = getStoryDescription(
-    story,
-    'This winning story has been selected by the community and is ready for the next stage of Celestial Comics production.'
-  );
-  const voteCount = latestRound.winning_vote_count ?? '—';
-  const finalizedAt = formatDate(latestRound.finalized_at);
+  const description = getStoryDescription(story, descriptionFallback);
   const storyLink = story ? getStoryLink(story) : '#';
 
   featuredWinnerPanelEl.innerHTML = `
@@ -397,7 +413,7 @@ function renderFeaturedWinner(pastRounds, storiesMap) {
       </div>
 
       <div class="featured-winner-copy">
-        <span class="status-pill finalized">Latest Winner</span>
+        <span class="status-pill finalized">${escapeHtml(label)}</span>
         <h2>${escapeHtml(title)}</h2>
 
         ${author ? `<p><strong>By ${escapeHtml(author)}</strong></p>` : ''}
@@ -416,6 +432,47 @@ function renderFeaturedWinner(pastRounds, storiesMap) {
       </div>
     </div>
   `;
+}
+
+function renderFeaturedWinner(pastRounds, storiesMap, featuredWinnerSetting) {
+  if (!featuredWinnerPanelEl) return;
+
+  const manualStoryId = featuredWinnerSetting?.featured_winner_story_id || null;
+  const manualStoryFromFunction = featuredWinnerSetting?.story || null;
+
+  if (manualStoryId) {
+    const story = manualStoryFromFunction || storiesMap.get(String(manualStoryId));
+
+    if (story) {
+      renderFeaturedWinnerStory({
+        story,
+        label: 'Featured Winner',
+        voteCount: 'Manual Display',
+        finalizedAt: formatDate(featuredWinnerSetting?.setting?.updated_at),
+        descriptionFallback: 'This story is currently selected by the admin as the featured Winner page display.'
+      });
+      return;
+    }
+  }
+
+  const latestRound = Array.isArray(pastRounds)
+    ? pastRounds.find((round) => round?.winner_id)
+    : null;
+
+  if (!latestRound) {
+    renderFeaturedWinnerEmpty();
+    return;
+  }
+
+  const story = storiesMap.get(String(latestRound.winner_id));
+
+  renderFeaturedWinnerStory({
+    story,
+    label: 'Latest Winner',
+    voteCount: latestRound.winning_vote_count ?? '—',
+    finalizedAt: formatDate(latestRound.finalized_at),
+    descriptionFallback: 'This winning story has been selected by the community and is ready for the next stage of Celestial Comics production.'
+  });
 }
 
 /* =========================
@@ -684,10 +741,11 @@ async function initHistoryPage() {
   historyInitialized = true;
 
   try {
-    const [currentRound, pastRounds, storiesMap] = await Promise.all([
+    const [currentRound, pastRounds, storiesMap, featuredWinnerSetting] = await Promise.all([
       fetchCurrentRound(),
       fetchPastFinalizedRounds(),
-      fetchStoriesMap()
+      fetchStoriesMap(),
+      fetchFeaturedWinnerSetting()
     ]);
 
     if (currentRound) {
@@ -701,7 +759,7 @@ async function initHistoryPage() {
       : [];
 
     renderCurrentRoundSummary(currentRound);
-    renderFeaturedWinner(pastRounds, storiesMap);
+    renderFeaturedWinner(pastRounds, storiesMap, featuredWinnerSetting);
     renderProductionStories(storiesMap);
     renderReleasedStories(storiesMap);
     renderCurrentStandings(currentRound, storiesMap, currentRoundVotes);

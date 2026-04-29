@@ -44,6 +44,11 @@ import {
   initAdminHomepage
 } from './admin-homepage.js';
 
+import {
+  initAdminFeaturedWinner,
+  loadFeaturedWinnerControl
+} from './admin-featured-winner.js';
+
 /* =========================
    DOM REFERENCES
 ========================= */
@@ -61,6 +66,12 @@ const votingMsg = document.getElementById('voting-status-message');
 
 const currentRoundSummary = document.getElementById('current-round-summary');
 const finalizedWinnerSummary = document.getElementById('finalized-winner-summary');
+
+const featuredWinnerSelect = document.getElementById('featured-winner-select');
+const saveFeaturedWinnerBtn = document.getElementById('save-featured-winner-btn');
+const clearFeaturedWinnerBtn = document.getElementById('clear-featured-winner-btn');
+const featuredWinnerStatusMsg = document.getElementById('featured-winner-status-message');
+const featuredWinnerCurrent = document.getElementById('featured-winner-current');
 
 const tieResolutionPanel = document.getElementById('tie-resolution-panel');
 const tieResolutionMessage = document.getElementById('tie-resolution-message');
@@ -269,6 +280,13 @@ function buildAdminContext() {
     votingMsg,
     currentRoundSummary,
     finalizedWinnerSummary,
+
+    featuredWinnerSelect,
+    saveFeaturedWinnerBtn,
+    clearFeaturedWinnerBtn,
+    featuredWinnerStatusMsg,
+    featuredWinnerCurrent,
+
     tieResolutionPanel,
     tieResolutionMessage,
     tieWinnerSelect,
@@ -409,9 +427,11 @@ async function initAdminPanel() {
     initAdminProducts(ctx);
     initAdminHomepage(ctx);
     initAdminOrders(ctx);
+    initAdminFeaturedWinner(ctx);
 
     await loadVotingPeriod(ctx);
     await loadStoriesPreview(ctx);
+    await loadFeaturedWinnerControl(ctx);
     await loadProductsPreview(ctx);
     await loadHomepageContent(ctx);
     await loadOrdersPreview(ctx);
