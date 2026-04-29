@@ -2,31 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="description"
+    content="View a Celestial Comics story concept, explore its artwork, save it, and see whether it is currently competing in a vote."
+  />
+
   <title>Story Concept | Celestial Comics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/pages/gallery.css" />
 </head>
+
 <body>
-
-  <!-- HEADER -->
   <header class="site-header">
-    <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
 
-      <button class="nav-toggle" aria-label="Toggle navigation">
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
-          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
+          <li><a href="/history/">Winner</a></li>
+          <li><a href="/gallery/" aria-current="page">Gallery</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
+          <li><a href="/team/">The Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
-          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -34,69 +52,83 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="content-wrapper">
-
-    <div class="story-back">
-      <a href="/gallery/" class="btn btn-secondary">← Back to Gallery</a>
-    </div>
-
-    <section class="story-hero">
+  <main class="concept-page">
+    <section class="concept-detail-hero" aria-labelledby="concept-title">
       <div class="container">
-        <p class="story-status-label">Concept Bank</p>
-        <h1 class="story-title">Loading...</h1>
-        <p class="story-meta"></p>
-        <img src="" alt="" class="story-hero-img" />
+        <div class="concept-back-row">
+          <a href="/gallery/" class="btn btn-secondary">← Back to Gallery</a>
+        </div>
+
+        <div class="concept-detail-panel">
+          <div class="concept-detail-copy">
+            <p class="story-status-label concept-status-pill">Concept Bank</p>
+
+            <h1 id="concept-title" class="story-title">Loading...</h1>
+
+            <p class="story-meta concept-meta"></p>
+
+            <div class="story-content concept-description">
+              <p>Loading concept details...</p>
+            </div>
+
+            <div class="story-cta concept-actions">
+              <button type="button" class="btn btn-primary vote-btn" data-story-id="" style="display:none;">
+                Vote for this concept
+              </button>
+
+              <button type="button" class="btn btn-secondary save-btn" data-story-id="">
+                Save Concept
+              </button>
+
+              <a id="read-preview-link" href="#" class="btn btn-secondary" style="display:none;">
+                Read Preview
+              </a>
+            </div>
+          </div>
+
+          <figure class="concept-art-frame">
+            <img src="" alt="" class="story-hero-img" />
+          </figure>
+        </div>
       </div>
     </section>
 
-    <section class="story-body">
+    <section class="related-stories concept-related" aria-labelledby="related-concepts-title">
       <div class="container">
-        <div class="story-content">
-          <p>Loading concept details...</p>
+        <div class="gallery-toolbar concept-related-toolbar">
+          <div>
+            <h2 id="related-concepts-title">Other Concepts You Might Like</h2>
+            <p>
+              Explore more stories from the concept archive. These ideas may return in future voting rounds.
+            </p>
+          </div>
+
+          <a href="/vote/" class="btn btn-primary">View Current Vote</a>
         </div>
 
-        <div class="story-cta">
-          <button type="button" class="btn btn-primary vote-btn" data-story-id="" style="display:none;">
-            Vote for this concept
-          </button>
-          <button type="button" class="btn btn-secondary save-btn" data-story-id="">
-            Save Concept
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section class="related-stories">
-      <div class="container">
-        <h2>Other Concepts You Might Like</h2>
         <div id="related-stories-grid" class="story-grid"></div>
       </div>
     </section>
-
   </main>
 
-  <!-- FOOTER -->
   <footer class="site-footer">
-    <div class="container footer-container">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/">Home</a>
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV -->
   <script src="/js/env.js"></script>
-
-  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- STORY PAGE LOGIC -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
     import { loadStory } from '/js/story.js';
@@ -110,29 +142,100 @@
     } from '/js/vote.js';
     import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      updateUI();
+    const navToggle = document.querySelector('.nav-toggle');
+    const mainNav = document.querySelector('.main-nav');
 
+    function closeNav() {
+      if (!navToggle || !mainNav) return;
+
+      mainNav.classList.remove('is-open');
+      navToggle.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function bindNavToggle() {
+      if (!navToggle || !mainNav) return;
+
+      navToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('is-open');
+
+        navToggle.classList.toggle('is-open', isOpen);
+        navToggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      mainNav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeNav();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 1180) {
+          closeNav();
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Node)) return;
+        if (mainNav.contains(target) || navToggle.contains(target)) return;
+
+        closeNav();
+      });
+    }
+
+    function bindLogoutLinks() {
       document.querySelectorAll('.logout-link').forEach((el) => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
+        el.addEventListener('click', async (event) => {
+          event.preventDefault();
           await logout();
           window.location.href = '/';
         });
       });
+    }
+
+    function updateReadPreviewLink(story) {
+      const readPreviewLink = document.getElementById('read-preview-link');
+      if (!readPreviewLink || !story?.id) return;
+
+      const previewEnabled =
+        story.is_preview_enabled ||
+        story.story_preview_enabled ||
+        Number(story.preview_page_count || story.story_preview_page_count || 0) > 0;
+
+      if (!previewEnabled) {
+        readPreviewLink.style.display = 'none';
+        return;
+      }
+
+      readPreviewLink.href = `/gallery/read.html?id=${encodeURIComponent(story.id)}&page=1`;
+      readPreviewLink.style.display = 'inline-flex';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      updateUI();
+      bindNavToggle();
+      bindLogoutLinks();
 
       const story = await loadStory();
       if (!story) return;
+
+      updateReadPreviewLink(story);
 
       const storyId = story.id;
       const voteBtn = document.querySelector('.vote-btn');
       const saveBtn = document.querySelector('.save-btn');
       const statusLabel = document.querySelector('.story-status-label');
 
-      // Default label for current phase
-      statusLabel.textContent = 'Concept Bank';
+      if (statusLabel) {
+        statusLabel.textContent = 'Concept Bank';
+      }
 
-      // Load active-vote stories to see whether this concept is currently competing
       const activeVoteStories = await fetchStoriesWithVotes();
       const matchingActiveStory = activeVoteStories.find(
         (item) => String(item.id) === String(storyId)
@@ -141,91 +244,97 @@
       if (matchingActiveStory) {
         story.voting_status = matchingActiveStory.voting_status;
         story.vote_count = matchingActiveStory.vote_count || 0;
-        statusLabel.textContent = 'Currently in Voting';
+
+        if (statusLabel) {
+          statusLabel.textContent = 'Currently in Voting';
+        }
       } else {
         story.voting_status = 'closed';
         story.vote_count = 0;
       }
 
-      voteBtn.dataset.storyId = storyId;
-      voteBtn.dataset.voteCount = story.vote_count || 0;
-      saveBtn.dataset.storyId = storyId;
+      if (voteBtn) {
+        voteBtn.dataset.storyId = storyId;
+        voteBtn.dataset.voteCount = story.vote_count || 0;
 
-      // Only show voting if this concept is actively competing
-      if (matchingActiveStory) {
-        voteBtn.style.display = 'inline-flex';
-        await restrictSingleStoryVoting(story, voteBtn);
-      } else {
-        voteBtn.style.display = 'none';
-      }
+        if (matchingActiveStory) {
+          voteBtn.style.display = 'inline-flex';
+          await restrictSingleStoryVoting(story, voteBtn);
+        } else {
+          voteBtn.style.display = 'none';
+        }
 
-      voteBtn.addEventListener('click', async () => {
-        if (voteBtn.disabled || voteBtn.style.display === 'none') return;
+        voteBtn.addEventListener('click', async () => {
+          if (voteBtn.disabled || voteBtn.style.display === 'none') return;
 
-        const originalText = voteBtn.textContent;
-        voteBtn.disabled = true;
-        voteBtn.textContent = 'Submitting...';
+          const originalText = voteBtn.textContent;
+          voteBtn.disabled = true;
+          voteBtn.textContent = 'Submitting...';
 
-        try {
-          const result = await submitVote(storyId, 1);
+          try {
+            const result = await submitVote(storyId, 1);
 
-          if (result.success) {
-            story.vote_count = (story.vote_count || 0) + 1;
-            voteBtn.dataset.voteCount = story.vote_count;
-            voteBtn.disabled = false;
-            voteBtn.textContent = `Add Vote (${story.vote_count})`;
-          } else if (result.reason === 'insufficient_balance') {
-            voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
-          } else {
+            if (result.success) {
+              story.vote_count = (story.vote_count || 0) + 1;
+              voteBtn.dataset.voteCount = story.vote_count;
+              voteBtn.disabled = false;
+              voteBtn.textContent = `Add Vote (${story.vote_count})`;
+            } else if (result.reason === 'insufficient_balance') {
+              voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
+            } else {
+              voteBtn.disabled = false;
+              voteBtn.textContent = originalText;
+            }
+          } catch (err) {
+            console.error('Single story vote error:', err);
             voteBtn.disabled = false;
             voteBtn.textContent = originalText;
           }
-        } catch (err) {
-          console.error('Single story vote error:', err);
-          voteBtn.disabled = false;
-          voteBtn.textContent = originalText;
-        }
-      });
-
-      const savedResult = await fetchSavedStories();
-      const savedStories = savedResult.success ? savedResult.data : [];
-      const alreadySaved = savedStories.some(
-        (savedStory) => String(savedStory.id) === String(storyId)
-      );
-
-      if (alreadySaved) {
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Already Saved';
+        });
       }
 
-      saveBtn.addEventListener('click', async () => {
-        if (saveBtn.disabled) return;
+      if (saveBtn) {
+        saveBtn.dataset.storyId = storyId;
 
-        const originalText = saveBtn.textContent;
-        saveBtn.disabled = true;
-        saveBtn.textContent = 'Saving...';
+        const savedResult = await fetchSavedStories();
+        const savedStories = savedResult.success ? savedResult.data : [];
+        const alreadySaved = savedStories.some(
+          (savedStory) => String(savedStory.id) === String(storyId)
+        );
 
-        try {
-          const result = await saveStory(storyId);
+        if (alreadySaved) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Already Saved';
+        }
 
-          if (result.success) {
-            saveBtn.textContent = 'Saved';
-          } else if (result.reason === 'already_saved') {
-            saveBtn.textContent = 'Already Saved';
-          } else {
+        saveBtn.addEventListener('click', async () => {
+          if (saveBtn.disabled) return;
+
+          const originalText = saveBtn.textContent;
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving...';
+
+          try {
+            const result = await saveStory(storyId);
+
+            if (result.success) {
+              saveBtn.textContent = 'Saved';
+            } else if (result.reason === 'already_saved') {
+              saveBtn.textContent = 'Already Saved';
+            } else {
+              saveBtn.disabled = false;
+              saveBtn.textContent = originalText;
+              alert('Failed to save concept.');
+            }
+          } catch (err) {
+            console.error('Save story error:', err);
             saveBtn.disabled = false;
             saveBtn.textContent = originalText;
             alert('Failed to save concept.');
           }
-        } catch (err) {
-          console.error('Save story error:', err);
-          saveBtn.disabled = false;
-          saveBtn.textContent = originalText;
-          alert('Failed to save concept.');
-        }
-      });
+        });
+      }
 
-      // Related concepts should come from concept bank, not vote list
       const conceptStories = await fetchConceptBankStories();
       const relatedStories = conceptStories.filter(
         (item) => String(item.id) !== String(storyId)
@@ -235,8 +344,6 @@
     });
   </script>
 
-  <!-- ADMIN NAV LINK -->
   <script type="module" src="/js/admin-nav.js"></script>
-
 </body>
 </html>

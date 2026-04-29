@@ -8,14 +8,26 @@ const storyGrid = document.getElementById('story-grid');
 let galleryInitialized = false;
 let logoutBound = false;
 
-function renderGalleryError(message = 'Failed to load story concepts.') {
+function renderGalleryMessage(message, className = '') {
   if (!storyGrid) return;
-  storyGrid.innerHTML = `<p class="error">${message}</p>`;
+
+  storyGrid.innerHTML = `
+    <p class="${className}">
+      ${message}
+    </p>
+  `;
+}
+
+function renderGalleryError(message = 'Failed to load story concepts.') {
+  renderGalleryMessage(message, 'error');
 }
 
 function renderGalleryEmpty() {
-  if (!storyGrid) return;
-  storyGrid.innerHTML = '<p>No story concepts found.</p>';
+  renderGalleryMessage('No story concepts found yet. Check back soon for new Celestial Comics concepts.');
+}
+
+function renderGalleryLoading() {
+  renderGalleryMessage('Loading story concepts...');
 }
 
 function renderGalleryFromState() {
@@ -37,8 +49,8 @@ function bindLogoutLinks() {
   logoutBound = true;
 
   document.querySelectorAll('.logout-link').forEach((el) => {
-    el.addEventListener('click', async (e) => {
-      e.preventDefault();
+    el.addEventListener('click', async (event) => {
+      event.preventDefault();
 
       const result = await logout();
 
@@ -56,7 +68,7 @@ async function loadGalleryStories() {
   if (!storyGrid) return;
 
   try {
-    storyGrid.innerHTML = '<p>Loading story concepts...</p>';
+    renderGalleryLoading();
 
     const stories = await fetchConceptBankStories();
     const safeStories = Array.isArray(stories) ? stories : [];

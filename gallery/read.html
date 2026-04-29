@@ -2,138 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="description"
+    content="Read a Celestial Comics story preview page by page."
+  />
+
   <title>Read Story | Celestial Comics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="/css/main.css" />
-  <style>
-    .reader-page {
-      padding: 2rem 1rem 4rem;
-    }
-
-    .reader-shell {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .reader-topbar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .reader-title-wrap h1 {
-      margin-bottom: 0.35rem;
-    }
-
-    .reader-meta {
-      color: #6b7280;
-      font-size: 0.95rem;
-    }
-
-    .reader-card {
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 1rem;
-      padding: 1rem;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-    }
-
-    .reader-stage {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 400px;
-      background: #f9fafb;
-      border-radius: 0.75rem;
-      overflow: hidden;
-    }
-
-    .reader-image {
-      width: 100%;
-      height: auto;
-      display: block;
-      object-fit: contain;
-      max-height: 80vh;
-      background: #fff;
-    }
-
-    .reader-caption {
-      margin-top: 1rem;
-      font-size: 1rem;
-      color: #374151;
-      text-align: center;
-      min-height: 1.5rem;
-    }
-
-    .reader-controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-top: 1.5rem;
-    }
-
-    .reader-page-indicator {
-      font-size: 0.95rem;
-      color: #4b5563;
-      min-width: 100px;
-      text-align: center;
-    }
-
-    .reader-loading,
-    .reader-error,
-    .reader-empty {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: #374151;
-    }
-
-    .reader-nav-links {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    @media (max-width: 640px) {
-      .reader-topbar {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .reader-controls {
-        flex-direction: column;
-      }
-
-      .reader-page-indicator {
-        min-width: auto;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/pages/gallery.css" />
 </head>
-<body>
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
 
-      <button class="nav-toggle" aria-label="Toggle navigation">
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
-          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
+          <li><a href="/history/">Winner</a></li>
+          <li><a href="/gallery/" aria-current="page">Gallery</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
+          <li><a href="/team/">The Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
-          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -141,11 +52,11 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
   <main class="reader-page">
     <div class="reader-shell">
       <div class="reader-topbar">
         <div class="reader-title-wrap">
+          <p class="gallery-kicker reader-kicker">Story Preview</p>
           <h1 id="reader-title">Loading story...</h1>
           <p id="reader-meta" class="reader-meta"></p>
         </div>
@@ -153,7 +64,7 @@
         <div class="reader-nav-links">
           <a id="back-to-story-link" href="/gallery/" class="btn btn-secondary">Back to Story</a>
           <a href="/gallery/" class="btn btn-secondary">Back to Gallery</a>
-          <a href="/history/" class="btn btn-secondary">View History</a>
+          <a href="/history/" class="btn btn-secondary">Winner Hub</a>
         </div>
       </div>
 
@@ -183,39 +94,82 @@
     </div>
   </main>
 
-  <!-- FOOTER -->
   <footer class="site-footer">
-    <div class="container footer-container">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/">Home</a>
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV -->
   <script src="/js/env.js"></script>
-
-  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
-
-  <!-- PAGE LOGIC -->
   <script type="module" src="/js/read.js"></script>
 
-  <!-- AUTH / NAV STATE -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
+    const navToggle = document.querySelector('.nav-toggle');
+    const mainNav = document.querySelector('.main-nav');
+
+    function closeNav() {
+      if (!navToggle || !mainNav) return;
+
+      mainNav.classList.remove('is-open');
+      navToggle.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function bindNavToggle() {
+      if (!navToggle || !mainNav) return;
+
+      navToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('is-open');
+
+        navToggle.classList.toggle('is-open', isOpen);
+        navToggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      mainNav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeNav();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 1180) {
+          closeNav();
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Node)) return;
+        if (mainNav.contains(target) || navToggle.contains(target)) return;
+
+        closeNav();
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
+      bindNavToggle();
 
       document.querySelectorAll('.logout-link').forEach((el) => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
+        el.addEventListener('click', async (event) => {
+          event.preventDefault();
           await logout();
           window.location.href = '/';
         });
@@ -223,7 +177,6 @@
     });
   </script>
 
-  <!-- ADMIN NAV LINK -->
   <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>

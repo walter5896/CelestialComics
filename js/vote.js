@@ -32,6 +32,56 @@ function isPositiveInteger(value) {
   return Number.isInteger(value) && value > 0;
 }
 
+function truncateText(value, maxLength = 180) {
+  const text = String(value ?? '').trim();
+
+  if (!text) return '';
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength).trim()}...`;
+}
+
+function getStoryAuthor(story) {
+  return String(story?.author || '').trim();
+}
+
+function getStoryDescription(story) {
+  return String(story?.description || '').trim();
+}
+
+function isPreviewEnabled(story) {
+  return (
+    !!story?.is_preview_enabled ||
+    !!story?.story_preview_enabled ||
+    Number(story?.preview_page_count || story?.story_preview_page_count || 0) > 0
+  );
+}
+
+function getStoryStatusLabel(story) {
+  switch (story?.story_status) {
+    case 'active_vote':
+      return 'In Tournament';
+    case 'winner_in_production':
+      return 'In Production';
+    case 'released':
+      return 'Released';
+    case 'concept_bank':
+    default:
+      return 'Concept Bank';
+  }
+}
+
+function getStoryDetailUrl(story) {
+  return `/gallery/story.html?id=${encodeId(story?.id)}`;
+}
+
+function getStoryReadUrl(story) {
+  return `/gallery/read.html?id=${encodeId(story?.id)}&page=1`;
+}
+
 /* =======================
    VOTING PERIOD HELPERS
 ======================= */
@@ -154,10 +204,12 @@ async function fetchUserProfileBalances() {
 
   if (!user) {
     const emptyBalances = { round: 0, bonus: 0, total: 0 };
+
     setVoteBalances({
       voteBalance: 0,
       bonusVoteBalance: 0
     });
+
     return emptyBalances;
   }
 
@@ -171,10 +223,12 @@ async function fetchUserProfileBalances() {
     console.error('Error fetching user balances:', error);
 
     const emptyBalances = { round: 0, bonus: 0, total: 0 };
+
     setVoteBalances({
       voteBalance: 0,
       bonusVoteBalance: 0
     });
+
     return emptyBalances;
   }
 
@@ -209,7 +263,9 @@ export async function fetchConceptBankStories() {
         author,
         description,
         active,
-        story_status
+        story_status,
+        is_preview_enabled,
+        preview_page_count
       `)
       .eq('active', true)
       .eq('story_status', 'concept_bank')
@@ -244,7 +300,9 @@ export async function fetchStoriesWithVotes() {
         author,
         description,
         active,
-        story_status
+        story_status,
+        is_preview_enabled,
+        preview_page_count
       `)
       .eq('active', true)
       .eq('story_status', 'active_vote');
@@ -269,6 +327,7 @@ export async function fetchStoriesWithVotes() {
     const voteCounts = (votesData || []).reduce((acc, vote) => {
       const storyId = String(vote.story_id);
       const count = Number(vote.vote_count) || 0;
+
       acc[storyId] = (acc[storyId] || 0) + count;
       return acc;
     }, {});
@@ -341,7 +400,11 @@ export async function fetchSavedStories() {
   }
 
   const stories = (data || []).map((item) => item.stories).filter(Boolean);
-  return { success: true, data: stories };
+
+  return {
+    success: true,
+    data: stories
+  };
 }
 
 /* =======================
@@ -350,6 +413,7 @@ export async function fetchSavedStories() {
 
 export async function submitVote(storyId, amount = 1) {
   const user = await getCurrentUserAsync();
+
   if (!user) {
     return {
       success: false,
@@ -359,6 +423,7 @@ export async function submitVote(storyId, amount = 1) {
   }
 
   const voteAmount = Number(amount);
+
   if (!isPositiveInteger(voteAmount)) {
     return {
       success: false,
@@ -374,6 +439,7 @@ export async function submitVote(storyId, amount = 1) {
 
   if (error) {
     console.error('submit_vote_secure error:', error);
+
     return {
       success: false,
       reason: 'rpc_error',
@@ -401,6 +467,7 @@ export async function submitVote(storyId, amount = 1) {
 
 export async function recantVote(storyId, amount = 1) {
   const user = await getCurrentUserAsync();
+
   if (!user) {
     return {
       success: false,
@@ -410,6 +477,7 @@ export async function recantVote(storyId, amount = 1) {
   }
 
   const recantAmount = Number(amount);
+
   if (!isPositiveInteger(recantAmount)) {
     return {
       success: false,
@@ -425,6 +493,7 @@ export async function recantVote(storyId, amount = 1) {
 
   if (error) {
     console.error('recant_vote_secure error:', error);
+
     return {
       success: false,
       reason: 'rpc_error',
@@ -452,21 +521,38 @@ export async function recantVote(storyId, amount = 1) {
 
 export async function saveStory(storyId) {
   const user = await getCurrentUserAsync();
+
   if (!user) {
-    return { success: false, reason: 'not_logged_in', message: 'You must be logged in.' };
+    return {
+      success: false,
+      reason: 'not_logged_in',
+      message: 'You must be logged in.'
+    };
   }
 
   const { error } = await supabase
     .from('saved_stories')
-    .insert({ user_id: user.id, story_id: storyId });
+    .insert({
+      user_id: user.id,
+      story_id: storyId
+    });
 
   if (error) {
     if (error.code === '23505') {
-      return { success: false, reason: 'already_saved', message: 'Story already saved.' };
+      return {
+        success: false,
+        reason: 'already_saved',
+        message: 'Story already saved.'
+      };
     }
 
     console.error('Error saving story:', error);
-    return { success: false, reason: 'save_failed', message: 'Could not save story.' };
+
+    return {
+      success: false,
+      reason: 'save_failed',
+      message: 'Could not save story.'
+    };
   }
 
   return { success: true };
@@ -474,8 +560,13 @@ export async function saveStory(storyId) {
 
 export async function unsaveStory(storyId) {
   const user = await getCurrentUserAsync();
+
   if (!user) {
-    return { success: false, reason: 'not_logged_in', message: 'You must be logged in.' };
+    return {
+      success: false,
+      reason: 'not_logged_in',
+      message: 'You must be logged in.'
+    };
   }
 
   const { error } = await supabase
@@ -486,10 +577,57 @@ export async function unsaveStory(storyId) {
 
   if (error) {
     console.error('Error unsaving story:', error);
-    return { success: false, reason: 'unsave_failed', message: 'Could not unsave story.' };
+
+    return {
+      success: false,
+      reason: 'unsave_failed',
+      message: 'Could not unsave story.'
+    };
   }
 
   return { success: true };
+}
+
+/* =======================
+   RENDER HELPERS
+======================= */
+
+function renderStoryArtwork(story, safeTitle) {
+  const image = getStoryImage(story);
+
+  if (!image) {
+    return `
+      <div class="story-card-art story-card-art-empty" aria-label="${safeTitle} artwork placeholder">
+        <span>No Artwork Yet</span>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="story-card-art">
+      <img src="${escapeHtml(image)}" alt="${safeTitle}" />
+    </div>
+  `;
+}
+
+function renderStoryCardMeta(story) {
+  const author = getStoryAuthor(story);
+  const description = truncateText(getStoryDescription(story), 180);
+
+  return `
+    ${author ? `<p class="story-card-author">By ${escapeHtml(author)}</p>` : ''}
+    ${description ? `<p class="story-card-description">${escapeHtml(description)}</p>` : ''}
+  `;
+}
+
+function renderPreviewButton(story) {
+  if (!isPreviewEnabled(story)) return '';
+
+  return `
+    <a href="${getStoryReadUrl(story)}" class="btn btn-secondary">
+      Read Preview
+    </a>
+  `;
 }
 
 /* =======================
@@ -503,19 +641,26 @@ export function renderStoriesForHome(stories, containerId = 'story-grid') {
   container.innerHTML = '';
 
   stories.forEach((story) => {
-    const safeTitle = escapeHtml(story.title);
-    const safeImage = escapeHtml(getStoryImage(story));
-    const safeStoryId = encodeId(story.id);
+    const safeTitle = escapeHtml(story.title || 'Untitled Story');
 
     const card = document.createElement('article');
     card.className = 'story-card';
+
     card.innerHTML = `
-      <img src="${safeImage}" alt="${safeTitle}" />
-      <h3>${safeTitle}</h3>
-      <div class="story-actions">
-        <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
+      ${renderStoryArtwork(story, safeTitle)}
+
+      <div class="story-card-body">
+        <span class="story-status">${escapeHtml(getStoryStatusLabel(story))}</span>
+        <h3>${safeTitle}</h3>
+        ${renderStoryCardMeta(story)}
+
+        <div class="story-actions">
+          <a href="${getStoryDetailUrl(story)}" class="btn btn-primary">Learn More</a>
+          ${renderPreviewButton(story)}
+        </div>
       </div>
     `;
+
     container.appendChild(card);
   });
 }
@@ -527,19 +672,28 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
   container.innerHTML = '';
 
   stories.forEach((story) => {
-    const safeTitle = escapeHtml(story.title);
-    const safeImage = escapeHtml(getStoryImage(story));
-    const safeStoryId = encodeId(story.id);
+    const safeTitle = escapeHtml(story.title || 'Untitled Story');
 
     const card = document.createElement('article');
-    card.className = 'story-card';
+    card.className = 'story-card gallery-story-card';
+
     card.innerHTML = `
-      <img src="${safeImage}" alt="${safeTitle}" />
-      <h3>${safeTitle}</h3>
-      <div class="story-actions">
-        <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
+      <a href="${getStoryDetailUrl(story)}" class="story-card-art-link" aria-label="View ${safeTitle}">
+        ${renderStoryArtwork(story, safeTitle)}
+      </a>
+
+      <div class="story-card-body">
+        <span class="story-status">${escapeHtml(getStoryStatusLabel(story))}</span>
+        <h3>${safeTitle}</h3>
+        ${renderStoryCardMeta(story)}
+
+        <div class="story-actions">
+          <a href="${getStoryDetailUrl(story)}" class="btn btn-primary">View Concept</a>
+          ${renderPreviewButton(story)}
+        </div>
       </div>
     `;
+
     container.appendChild(card);
   });
 }
@@ -551,24 +705,36 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
   container.innerHTML = '';
 
   stories.forEach((story) => {
-    const safeTitle = escapeHtml(story.title);
-    const safeImage = escapeHtml(getStoryImage(story));
+    const safeTitle = escapeHtml(story.title || 'Untitled Story');
     const safeStoryId = encodeId(story.id);
     const voteCount = Number(story.vote_count) || 0;
 
     const card = document.createElement('article');
-    card.className = 'story-card';
+    card.className = 'story-card vote-story-card';
+
     card.innerHTML = `
-      <img src="${safeImage}" alt="${safeTitle}" />
-      <h3>${safeTitle}</h3>
-      <div class="story-actions">
-        <button
-          class="btn btn-primary vote-btn"
-          data-story-id="${safeStoryId}"
-          data-vote-count="${voteCount}">
-          Vote (${voteCount})
-        </button>
-        <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
+      ${renderStoryArtwork(story, safeTitle)}
+
+      <div class="story-card-body">
+        <span class="story-status">${escapeHtml(getStoryStatusLabel(story))}</span>
+        <h3>${safeTitle}</h3>
+        ${renderStoryCardMeta(story)}
+
+        <p class="story-card-votes">
+          ${voteCount} vote${voteCount === 1 ? '' : 's'}
+        </p>
+
+        <div class="story-actions">
+          <button
+            class="btn btn-primary vote-btn"
+            data-story-id="${safeStoryId}"
+            data-vote-count="${voteCount}">
+            Vote (${voteCount})
+          </button>
+
+          <a href="${getStoryDetailUrl(story)}" class="btn btn-secondary">View Concept</a>
+          ${renderPreviewButton(story)}
+        </div>
       </div>
     `;
 
@@ -584,24 +750,36 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
     votedContainer.innerHTML = '';
 
     votedStories.forEach((story) => {
-      const safeTitle = escapeHtml(story.title);
-      const safeImage = escapeHtml(getStoryImage(story));
+      const safeTitle = escapeHtml(story.title || 'Untitled Story');
       const safeStoryId = encodeId(story.id);
       const userVoteCount = Number(story.user_vote_count) || 0;
 
       const card = document.createElement('article');
-      card.className = 'story-card';
+      card.className = 'story-card profile-story-card';
+
       card.innerHTML = `
-        <img src="${safeImage}" alt="${safeTitle}" />
-        <h3>${safeTitle}</h3>
-        <p>You cast ${userVoteCount} vote(s)</p>
-        <div class="story-actions">
-          <button class="btn btn-primary recant-btn" data-story-id="${safeStoryId}">
-            Recant 1 Vote
-          </button>
-          <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
+        ${renderStoryArtwork(story, safeTitle)}
+
+        <div class="story-card-body">
+          <span class="story-status">${escapeHtml(getStoryStatusLabel(story))}</span>
+          <h3>${safeTitle}</h3>
+          ${renderStoryCardMeta(story)}
+
+          <p class="story-card-votes">
+            You cast ${userVoteCount} vote${userVoteCount === 1 ? '' : 's'}
+          </p>
+
+          <div class="story-actions">
+            <button class="btn btn-primary recant-btn" data-story-id="${safeStoryId}">
+              Recant 1 Vote
+            </button>
+
+            <a href="${getStoryDetailUrl(story)}" class="btn btn-secondary">View Concept</a>
+            ${renderPreviewButton(story)}
+          </div>
         </div>
       `;
+
       votedContainer.appendChild(card);
     });
   }
@@ -610,22 +788,31 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
     savedContainer.innerHTML = '';
 
     savedStories.forEach((story) => {
-      const safeTitle = escapeHtml(story.title);
-      const safeImage = escapeHtml(getStoryImage(story));
+      const safeTitle = escapeHtml(story.title || 'Untitled Story');
       const safeStoryId = encodeId(story.id);
 
       const card = document.createElement('article');
-      card.className = 'story-card';
+      card.className = 'story-card saved-story-card';
+
       card.innerHTML = `
-        <img src="${safeImage}" alt="${safeTitle}" />
-        <h3>${safeTitle}</h3>
-        <div class="story-actions">
-          <button class="btn btn-secondary unsave-btn" data-story-id="${safeStoryId}">
-            Unsave
-          </button>
-          <a href="/gallery/story.html?id=${safeStoryId}" class="btn btn-link">Read More</a>
+        ${renderStoryArtwork(story, safeTitle)}
+
+        <div class="story-card-body">
+          <span class="story-status">${escapeHtml(getStoryStatusLabel(story))}</span>
+          <h3>${safeTitle}</h3>
+          ${renderStoryCardMeta(story)}
+
+          <div class="story-actions">
+            <button class="btn btn-secondary unsave-btn" data-story-id="${safeStoryId}">
+              Unsave
+            </button>
+
+            <a href="${getStoryDetailUrl(story)}" class="btn btn-primary">View Concept</a>
+            ${renderPreviewButton(story)}
+          </div>
         </div>
       `;
+
       savedContainer.appendChild(card);
     });
   }
@@ -643,6 +830,7 @@ export function updateVoteButtons(userVotes, stories) {
   document.querySelectorAll('.vote-btn').forEach((btn) => {
     const storyId = String(btn.dataset.storyId);
     const story = stories.find((s) => String(s.id) === storyId);
+
     if (!story) return;
 
     const status = story.voting_status || 'upcoming';
@@ -668,7 +856,10 @@ export function updateVoteButtons(userVotes, stories) {
 }
 
 export function attachVoteListeners(containerId = 'story-grid', options = {}) {
-  const { onSuccess = null, reloadOnSuccess = true } = options;
+  const {
+    onSuccess = null,
+    reloadOnSuccess = true
+  } = options;
 
   document.querySelectorAll(`#${containerId} .vote-btn`).forEach((btn) => {
     if (btn.dataset.listenerAttached === 'true') return;
@@ -678,6 +869,7 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
       if (btn.disabled) return;
 
       const originalText = btn.textContent;
+
       btn.disabled = true;
       btn.textContent = 'Submitting...';
 
@@ -733,13 +925,16 @@ export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = 
         if (!unsaveResult.success) return;
 
         btn.textContent = 'Save Story';
+
         const idx = savedStoryIds.indexOf(String(storyId));
         if (idx > -1) savedStoryIds.splice(idx, 1);
       } else {
         const saveResult = await saveStory(storyId);
+
         if (!saveResult.success && saveResult.reason !== 'already_saved') return;
 
         btn.textContent = 'Saved';
+
         if (!savedStoryIds.includes(String(storyId))) {
           savedStoryIds.push(String(storyId));
         }
@@ -749,7 +944,10 @@ export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = 
 }
 
 export function attachRecantListeners(containerId, options = {}) {
-  const { onSuccess = null, reloadOnSuccess = true } = options;
+  const {
+    onSuccess = null,
+    reloadOnSuccess = true
+  } = options;
 
   document.querySelectorAll(`#${containerId} .recant-btn`).forEach((btn) => {
     if (btn.dataset.listenerAttached === 'true') return;
@@ -759,6 +957,7 @@ export function attachRecantListeners(containerId, options = {}) {
       if (btn.disabled) return;
 
       const originalText = btn.textContent;
+
       btn.disabled = true;
       btn.textContent = 'Recanting...';
 
@@ -797,7 +996,10 @@ export function attachRecantListeners(containerId, options = {}) {
 }
 
 export function attachUnsaveListeners(containerId, options = {}) {
-  const { onSuccess = null, reloadOnSuccess = true } = options;
+  const {
+    onSuccess = null,
+    reloadOnSuccess = true
+  } = options;
 
   document.querySelectorAll(`#${containerId} .unsave-btn`).forEach((btn) => {
     if (btn.dataset.listenerAttached === 'true') return;
@@ -829,9 +1031,11 @@ export async function initVoting(containerId = 'story-grid') {
   if (!user) return false;
 
   const stories = await fetchStoriesWithVotes();
+
   renderStoriesForVote(stories, containerId);
 
   const userVotes = await fetchUserVotes();
+
   updateVoteButtons(userVotes, stories);
   attachVoteListeners(containerId);
 
