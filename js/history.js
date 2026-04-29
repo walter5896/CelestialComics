@@ -51,9 +51,13 @@ function getStoryImage(story) {
   return story?.cover_image_url || story?.image_url || '';
 }
 
+/*
+  Use the route your older history page already used.
+  If this still breaks, then the actual detail page route has changed and we only need to update this helper.
+*/
 function getStoryLink(story) {
   if (!story?.id) return '#';
-  return `/story.html?id=${encodeId(story.id)}`;
+  return `/gallery/story.html?id=${encodeId(story.id)}`;
 }
 
 function getReadLink(story) {
@@ -66,7 +70,7 @@ function getStoryDescription(story, fallback = 'More details for this story will
 }
 
 /* =========================
-   ROUND STATUS DERIVER
+   ROUND STATUS
 ========================= */
 
 function deriveRoundStatus(period) {
@@ -114,41 +118,14 @@ function getStatusPill(status) {
 ========================= */
 
 function getProductionStageLabel(story) {
-  const rawStage =
-    story?.production_stage ||
-    story?.production_status ||
-    story?.production_phase ||
-    '';
-
-  const normalized = String(rawStage || '').trim();
-
-  if (!normalized) {
-    if (story?.story_status === 'released') return 'Released';
-    if (story?.story_status === 'winner_in_production') return 'Winner Selected';
-    return 'Story Concept';
-  }
-
-  return normalized
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  if (story?.story_status === 'released') return 'Released';
+  if (story?.story_status === 'winner_in_production') return 'Winner Selected';
+  return 'Story Concept';
 }
 
 function getProductionProgress(story) {
-  const stage = String(
-    story?.production_stage ||
-    story?.production_status ||
-    story?.production_phase ||
-    ''
-  ).toLowerCase();
-
   if (story?.story_status === 'released') return 100;
-
-  if (stage.includes('release')) return 85;
-  if (stage.includes('review') || stage.includes('edit')) return 70;
-  if (stage.includes('art') || stage.includes('illustr')) return 50;
-  if (stage.includes('script') || stage.includes('story') || stage.includes('writing')) return 35;
-  if (stage.includes('selected') || stage.includes('winner')) return 20;
-
+  if (story?.story_status === 'winner_in_production') return 20;
   return 20;
 }
 
@@ -162,7 +139,7 @@ function getProgressLabel(progress) {
 }
 
 /* =========================
-   EMPTY / ERROR HELPERS
+   ERROR HELPERS
 ========================= */
 
 function renderCurrentRoundError(message = 'Failed to load current tournament.') {
@@ -245,54 +222,33 @@ async function fetchPastFinalizedRounds() {
 }
 
 async function fetchStoriesMap() {
-  const enhancedSelect = `
-    id,
-    title,
-    author,
-    description,
-    cover_image_url,
-    image_url,
-    active,
-    story_status,
-    production_stage,
-    production_status,
-    production_phase,
-    release_date,
-    digital_available,
-    paperback_available,
-    bundle_available,
-    story_preview_enabled,
-    story_preview_page_count
-  `;
-
-  const fallbackSelect = `
-    id,
-    title,
-    author,
-    description,
-    cover_image_url,
-    image_url,
-    active,
-    story_status
-  `;
-
-  let result = await supabase
+  /*
+    Keep this query aligned with the columns we know exist from your current schema/workflow.
+    This avoids the Supabase 400 from requesting columns that are not in the table yet.
+  */
+  const { data, error } = await supabase
     .from('stories')
-    .select(enhancedSelect)
+    .select(`
+      id,
+      title,
+      author,
+      description,
+      cover_image_url,
+      image_url,
+      active,
+      story_status,
+      release_date,
+      digital_available,
+      paperback_available,
+      bundle_available,
+      story_preview_enabled,
+      story_preview_page_count
+    `)
     .order('created_at', { ascending: false });
 
-  if (result.error) {
-    console.warn('Enhanced story select failed, falling back to basic story fields:', result.error);
+  if (error) throw error;
 
-    result = await supabase
-      .from('stories')
-      .select(fallbackSelect)
-      .order('created_at', { ascending: false });
-  }
-
-  if (result.error) throw result.error;
-
-  const safeStories = result.data || [];
+  const safeStories = data || [];
   setStories(safeStories);
 
   const map = new Map();
@@ -333,16 +289,12 @@ function renderCurrentRoundSummary(round) {
   }
 
   const status = deriveRoundStatus(round);
-  const winnerLine = round.winner_id
-    ? `<p><strong>Winner ID:</strong> ${escapeHtml(round.winner_id)}</p>`
-    : '';
 
   currentRoundSummaryEl.innerHTML = `
     ${getStatusPill(status)}
     <p><strong>Start:</strong> ${escapeHtml(formatDateTime(round.start_time))}</p>
     <p><strong>End:</strong> ${escapeHtml(formatDateTime(round.end_time))}</p>
     <p><strong>Closed At:</strong> ${escapeHtml(formatDateTime(round.closed_at))}</p>
-    ${winnerLine}
   `;
 }
 
