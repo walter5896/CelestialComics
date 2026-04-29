@@ -37,7 +37,6 @@
 
       <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
-          <li><a href="/">Home</a></li>
           <li><a href="/vote/" aria-current="page">Vote</a></li>
           <li><a href="/history/">Winner</a></li>
           <li><a href="/gallery/">Gallery</a></li>
@@ -68,13 +67,12 @@
     </section>
 
     <section class="vote-section" aria-label="Voting area">
-      <div class="container">
+      <div class="container vote-container">
         <div id="login-prompt" class="voting-state vote-state-panel" style="display:none;">
           <span class="vote-state-badge">Login Required</span>
           <h2>Please Log In to Vote</h2>
           <p>
             You can view the current tournament, but you need to log in before casting a vote.
-            Sign in or create an account to participate in the current concept round.
           </p>
 
           <div class="vote-state-actions">
@@ -87,8 +85,7 @@
           <span class="vote-state-badge">Voting Closed</span>
           <h2>No Active Tournament Right Now</h2>
           <p>
-            There is not an open concept vote at the moment. Visit the Winner page to see
-            what moved forward, or browse the Gallery for future contenders.
+            Visit the Winner page to see what moved forward, or browse the Gallery for future contenders.
           </p>
 
           <div class="vote-state-actions">
@@ -97,18 +94,10 @@
           </div>
         </div>
 
-        <div id="voting-open" class="voting-state" style="display:none;">
-          <div class="vote-toolbar">
-            <div>
-              <span class="vote-state-badge open">Voting Open</span>
-              <h2>Choose Your Champion</h2>
-              <p>
-                Cast your vote for the story concept you want to see produced next.
-                Open each concept for more details before voting.
-              </p>
-            </div>
-
-            <a href="/gallery/" class="btn btn-secondary">Explore Gallery</a>
+        <div id="voting-open" class="voting-state vote-matchup-panel" style="display:none;">
+          <div class="vote-matchup-heading">
+            <h2>Week 2/4</h2>
+            <p>Choose the concept you want to see produced next.</p>
           </div>
 
           <div id="story-grid" class="story-grid vote-story-grid"></div>
@@ -214,7 +203,6 @@
 
       if (state === 'open') {
         voteStatusBanner.innerHTML = 'VOTING OPEN! <a href="#story-grid">Click HERE to vote</a>';
-
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
         if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Scroll down to see who’s competing this week.';
         return;
@@ -222,17 +210,15 @@
 
       if (state === 'closed') {
         voteStatusBanner.innerHTML = 'VOTING CLOSED <a href="/history/">Click HERE to see the winner details</a>';
-
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Closed';
-        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Visit the Winner page or browse the Gallery while the next round is prepared.';
+        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'The next voting round is being prepared.';
         return;
       }
 
       if (state === 'login') {
         voteStatusBanner.innerHTML = 'LOGIN REQUIRED <a href="/login/">Click HERE to vote</a>';
-
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
-        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Log in to cast your vote in the current tournament.';
+        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Log in to cast your vote.';
         return;
       }
 
