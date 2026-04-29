@@ -65,6 +65,16 @@ function getStoryDescription(story, fallback = 'More details for this story will
   return story?.description || fallback;
 }
 
+function getReleaseFormats(story) {
+  const formats = [];
+
+  if (story?.is_digital_purchase_available) formats.push('Digital');
+  if (story?.is_paperback_available) formats.push('Paperback');
+  if (story?.bundle_purchase_available) formats.push('Bundle');
+
+  return formats.length ? formats.join(' / ') : 'Release details coming soon';
+}
+
 /* =========================
    ROUND STATUS
 ========================= */
@@ -168,7 +178,7 @@ function getProductionStageConfig(story) {
 function getProductionStageLabel(story) {
   const customLabel = String(story?.production_stage_label || '').trim();
 
-  if (customLabel) {
+  if (customLabel && story?.story_status === 'winner_in_production') {
     return customLabel;
   }
 
@@ -280,6 +290,10 @@ async function fetchStoriesMap() {
       story_status,
       production_stage,
       production_stage_label,
+      is_digital_purchase_available,
+      is_paperback_available,
+      bundle_purchase_available,
+      release_date,
       created_at
     `)
     .order('created_at', { ascending: false });
@@ -573,8 +587,8 @@ function renderReleasedStories(storiesMap) {
       const title = story.title || 'Untitled Story';
       const author = story.author || '';
       const image = getStoryImage(story);
-      const stageLabel = getProductionStageLabel(story);
-      const progress = getProductionProgress(story);
+      const releaseDate = formatDate(story.release_date);
+      const formats = getReleaseFormats(story);
       const description = getStoryDescription(
         story,
         'This Celestial Comics story has completed production and is available to explore.'
@@ -588,7 +602,7 @@ function renderReleasedStories(storiesMap) {
               : ''
           }
 
-          <span class="release-status">${escapeHtml(stageLabel)}</span>
+          <span class="release-status">Released</span>
 
           <h3>${escapeHtml(title)}</h3>
 
@@ -597,8 +611,10 @@ function renderReleasedStories(storiesMap) {
           <p>${escapeHtml(description)}</p>
 
           <p>
-            <strong>Production:</strong> ${escapeHtml(progress)}% Complete<br>
-            <strong>Formats:</strong> Release details coming soon
+            <strong>Status:</strong> Released<br>
+            <strong>Production:</strong> Complete<br>
+            <strong>Release Date:</strong> ${escapeHtml(releaseDate)}<br>
+            <strong>Formats:</strong> ${escapeHtml(formats)}
           </p>
 
           <div class="release-actions">

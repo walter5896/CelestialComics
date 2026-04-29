@@ -16,6 +16,13 @@ let editingStoryId = null;
 
 const REQUEST_TIMEOUT_MS = 15000;
 
+const VALID_STORY_STATUSES = new Set([
+  'concept_bank',
+  'active_vote',
+  'winner_in_production',
+  'released'
+]);
+
 const VALID_PRODUCTION_STAGES = new Set([
   'winner_selected',
   'story_development',
@@ -86,23 +93,71 @@ function parseReleaseDateValue(value) {
   return parsed.toISOString();
 }
 
-function normalizeProductionStage(value, storyStatus = 'concept_bank') {
-  const fallbackStage = storyStatus === 'released'
-    ? 'released'
-    : 'winner_selected';
+function normalizeStoryStatus(value) {
+  const status = String(value || 'concept_bank').trim();
 
-  const stage = String(value || fallbackStage).trim();
+  if (!VALID_STORY_STATUSES.has(status)) {
+    throw new Error('Invalid story lifecycle status.');
+  }
+
+  return status;
+}
+
+function normalizeProductionStage(value, storyStatus = 'concept_bank') {
+  const normalizedStatus = normalizeStoryStatus(storyStatus);
+
+  if (normalizedStatus === 'released') {
+    return 'released';
+  }
+
+  if (normalizedStatus !== 'winner_in_production') {
+    return 'winner_selected';
+  }
+
+  const stage = String(value || 'winner_selected').trim();
 
   if (!VALID_PRODUCTION_STAGES.has(stage)) {
     throw new Error('Invalid production progress stage.');
   }
 
+  if (stage === 'released') {
+    return 'preparing_release';
+  }
+
   return stage;
 }
 
+function isProductionStatus(storyStatus) {
+  return storyStatus === 'winner_in_production';
+}
+
+function isReleasedStatus(storyStatus) {
+  return storyStatus === 'released';
+}
+
 function getProductionStageDisplay(story) {
-  const stage = normalizeProductionStage(story?.production_stage, story?.story_status);
-  return PRODUCTION_STAGE_LABELS[stage] || PRODUCTION_STAGE_LABELS.winner_selected;
+  const status = story?.story_status || 'concept_bank';
+
+  if (isProductionStatus(status)) {
+    const stage = normalizeProductionStage(story?.production_stage, status);
+    return PRODUCTION_STAGE_LABELS[stage] || PRODUCTION_STAGE_LABELS.winner_selected;
+  }
+
+  if (isReleasedStatus(status)) {
+    return 'Complete / Released';
+  }
+
+  return 'Not in production';
+}
+
+function getProductionLabelDisplay(story) {
+  const status = story?.story_status || 'concept_bank';
+
+  if (!isProductionStatus(status)) {
+    return '—';
+  }
+
+  return story?.production_stage_label || '—';
 }
 
 function setSaveButtonState(saveStoryBtn, isBusy, isEditing) {
@@ -116,6 +171,108 @@ function setSaveButtonState(saveStoryBtn, isBusy, isEditing) {
   }
 
   saveStoryBtn.textContent = isEditing ? 'Update Story' : 'Create Story';
+}
+
+function getFieldGroup(el) {
+  return el?.closest?.('.field-group') || null;
+}
+
+function setHelperText(fieldGroup, message) {
+  if (!fieldGroup) return;
+
+  const helper = fieldGroup.querySelector('.helper-text');
+  if (helper) {
+    helper.textContent = message;
+  }
+}
+
+function updateProductionControls(ctx) {
+  const {
+    storyStatusSelect,
+    productionStageSelect,
+    productionStageLabel
+  } = ctx;
+
+  const storyStatus = storyStatusSelect?.value || 'concept_bank';
+
+  const stageGroup = getFieldGroup(productionStageSelect);
+  const labelGroup = getFieldGroup(productionStageLabel);
+
+  if (!productionStageSelect && !productionStageLabel) return;
+
+  if (storyStatus === 'winner_in_production') {
+    if (productionStageSelect) {
+      productionStageSelect.disabled = false;
+
+      if (productionStageSelect.value === 'released') {
+        productionStageSelect.value = 'preparing_release';
+      }
+    }
+
+    if (productionStageLabel) {
+      productionStageLabel.disabled = false;
+      productionStageLabel.placeholder = 'Optional custom label for production status';
+    }
+
+    if (stageGroup) {
+      stageGroup.style.opacity = '1';
+    }
+
+    if (labelGroup) {
+      labelGroup.style.opacity = '1';
+    }
+
+    setHelperText(stageGroup, 'Controls the progress bar on the Winner page.');
+    setHelperText(labelGroup, 'Optional display text for the in-production card.');
+    return;
+  }
+
+  if (storyStatus === 'released') {
+    if (productionStageSelect) {
+      productionStageSelect.value = 'released';
+      productionStageSelect.disabled = true;
+    }
+
+    if (productionStageLabel) {
+      productionStageLabel.value = '';
+      productionStageLabel.disabled = true;
+      productionStageLabel.placeholder = 'Not used for released stories';
+    }
+
+    if (stageGroup) {
+      stageGroup.style.opacity = '0.62';
+    }
+
+    if (labelGroup) {
+      labelGroup.style.opacity = '0.62';
+    }
+
+    setHelperText(stageGroup, 'Released stories are treated as complete instead of showing an active progress bar.');
+    setHelperText(labelGroup, 'Stage labels only apply while a story is in production.');
+    return;
+  }
+
+  if (productionStageSelect) {
+    productionStageSelect.value = 'winner_selected';
+    productionStageSelect.disabled = true;
+  }
+
+  if (productionStageLabel) {
+    productionStageLabel.value = '';
+    productionStageLabel.disabled = true;
+    productionStageLabel.placeholder = 'Only available for stories in production';
+  }
+
+  if (stageGroup) {
+    stageGroup.style.opacity = '0.62';
+  }
+
+  if (labelGroup) {
+    labelGroup.style.opacity = '0.62';
+  }
+
+  setHelperText(stageGroup, 'Production progress only applies after a story becomes a winner in production.');
+  setHelperText(labelGroup, 'Stage labels only apply while a story is in production.');
 }
 
 export function getAllStories() {
@@ -184,6 +341,7 @@ export function clearStoryForm(ctx) {
   if (storyBundleAvailable) storyBundleAvailable.checked = false;
   if (storyReleaseDate) storyReleaseDate.value = '';
 
+  updateProductionControls(ctx);
   setSaveButtonState(saveStoryBtn, false, false);
 
   if (deleteStoryBtn) deleteStoryBtn.style.display = 'none';
@@ -227,24 +385,28 @@ export async function populateStoryForm(story, ctx) {
 
   editingStoryId = story.id;
 
+  const storyStatus = normalizeStoryStatus(story.story_status || 'concept_bank');
+
   if (storyTitle) storyTitle.value = story.title || '';
   if (storyAuthor) storyAuthor.value = story.author || '';
   if (storyDescription) storyDescription.value = story.description || '';
   if (storyActive) storyActive.checked = !!story.active;
 
   if (storyStatusSelect) {
-    storyStatusSelect.value = story.story_status || 'concept_bank';
+    storyStatusSelect.value = storyStatus;
   }
 
   if (productionStageSelect) {
     productionStageSelect.value = normalizeProductionStage(
       story.production_stage,
-      story.story_status
+      storyStatus
     );
   }
 
   if (productionStageLabel) {
-    productionStageLabel.value = story.production_stage_label || '';
+    productionStageLabel.value = isProductionStatus(storyStatus)
+      ? story.production_stage_label || ''
+      : '';
   }
 
   if (storyPreviewEnabled) {
@@ -270,6 +432,8 @@ export async function populateStoryForm(story, ctx) {
   if (storyReleaseDate) {
     storyReleaseDate.value = formatForDateTimeLocal(story.release_date);
   }
+
+  updateProductionControls(ctx);
 
   updatePreviewImage(coverPreview, story.cover_image_url || '');
   setStatus(coverUploadMessage, '', '');
@@ -326,16 +490,18 @@ function renderStoriesPreview(ctx) {
     const card = document.createElement('div');
     card.className = 'story-chip';
 
+    const status = story.story_status || 'concept_bank';
     const progressStage = getProductionStageDisplay(story);
+    const stageLabel = getProductionLabelDisplay(story);
 
     card.innerHTML = `
       ${story.cover_image_url ? `<img src="${story.cover_image_url}" alt="${story.title} cover">` : ''}
       <strong>${story.title}</strong>
-      <span class="status-badge">${prettyStoryStatus(story.story_status)}</span>
+      <span class="status-badge">${prettyStoryStatus(status)}</span>
       <div>${story.author || 'No author set'}</div>
       <div><strong>Visible:</strong> ${story.active ? 'Yes' : 'No'}</div>
-      <div><strong>Production Progress:</strong> ${progressStage}</div>
-      <div><strong>Stage Label:</strong> ${story.production_stage_label || '—'}</div>
+      <div><strong>Production:</strong> ${progressStage}</div>
+      ${isProductionStatus(status) ? `<div><strong>Stage Label:</strong> ${stageLabel}</div>` : ''}
       <div><strong>Preview:</strong> ${story.is_preview_enabled ? `Enabled (${story.preview_page_count || 0} pages)` : 'Disabled'}</div>
       <div><strong>Digital:</strong> ${story.is_digital_purchase_available ? 'Yes' : 'No'}</div>
       <div><strong>Paperback:</strong> ${story.is_paperback_available ? 'Yes' : 'No'}</div>
@@ -889,12 +1055,16 @@ export async function handleStorySubmit(event, ctx) {
     const description = storyDescription?.value.trim() || '';
     const active = !!storyActive?.checked;
 
-    const story_status = storyStatusSelect?.value || 'concept_bank';
+    const story_status = normalizeStoryStatus(storyStatusSelect?.value || 'concept_bank');
     const production_stage = normalizeProductionStage(
       productionStageSelect?.value,
       story_status
     );
-    const production_stage_label = productionStageLabel?.value.trim() || null;
+
+    const production_stage_label = isProductionStatus(story_status)
+      ? productionStageLabel?.value.trim() || null
+      : null;
+
     const is_preview_enabled = !!storyPreviewEnabled?.checked;
     const preview_page_count = Number(storyPreviewPageCount?.value || 0);
     const is_digital_purchase_available = !!storyDigitalAvailable?.checked;
@@ -904,10 +1074,6 @@ export async function handleStorySubmit(event, ctx) {
 
     if (!title) {
       throw new Error('Title is required.');
-    }
-
-    if (!['concept_bank', 'active_vote', 'winner_in_production', 'released'].includes(story_status)) {
-      throw new Error('Invalid story lifecycle status.');
     }
 
     if (!Number.isInteger(preview_page_count) || preview_page_count < 0) {
@@ -1042,6 +1208,7 @@ export function initAdminStories(ctx) {
 
   const {
     storySelect,
+    storyStatusSelect,
     resetStoryBtn,
     uploadCoverBtn,
     deleteCoverBtn,
@@ -1051,9 +1218,14 @@ export function initAdminStories(ctx) {
   } = ctx;
 
   attachStoryPageDeleteDelegation(ctx);
+  updateProductionControls(ctx);
 
   storySelect?.addEventListener('change', async () => {
     await handleStorySelectChange(ctx);
+  });
+
+  storyStatusSelect?.addEventListener('change', () => {
+    updateProductionControls(ctx);
   });
 
   resetStoryBtn?.addEventListener('click', () => {
