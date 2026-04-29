@@ -189,12 +189,14 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(260px, 1fr));
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .vote-story-card,
 .story-card {
   min-width: 0;
+  height: 100%;
+  min-height: 470px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -207,6 +209,7 @@
 .story-card-art {
   width: 100%;
   height: clamp(210px, 24vw, 300px);
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -231,7 +234,10 @@
 }
 
 .story-card-body {
-  display: block;
+  min-height: 255px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   padding: 0.85rem;
   text-align: center;
 }
@@ -262,10 +268,16 @@
   color: var(--color-text-soft);
   font-size: 0.85rem;
   line-height: 1.35;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .story-card-vote-summary {
-  margin-top: 0.65rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
 }
 
 .story-card-votes {
@@ -284,7 +296,7 @@
   justify-content: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.85rem;
+  margin-top: 0.75rem;
   padding-top: 0;
 }
 
@@ -324,8 +336,17 @@
     width: min(560px, 100%);
   }
 
+  .vote-story-card,
+  .story-card {
+    min-height: auto;
+  }
+
   .story-card-art {
     height: 300px;
+  }
+
+  .story-card-body {
+    min-height: auto;
   }
 }
 
