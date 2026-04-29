@@ -79,7 +79,7 @@ section {
 
 .header-container,
 .header-inner {
-  min-height: 104px;
+  min-height: 96px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -92,17 +92,17 @@ section {
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.9rem;
   color: #fff;
   min-width: 0;
   flex: 0 0 auto;
 }
 
 .site-logo-mark {
-  width: 72px;
-  height: 72px;
+  width: 86px;
+  height: 86px;
   object-fit: contain;
-  flex: 0 0 72px;
+  flex: 0 0 86px;
   filter:
     drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2))
     drop-shadow(0 0 12px rgba(255, 255, 255, 0.08));
@@ -110,9 +110,9 @@ section {
 
 .site-logo-text {
   font-family: var(--font-heading);
-  font-size: clamp(2rem, 2.7vw, 2.85rem);
+  font-size: clamp(2.35rem, 3vw, 3.25rem);
   font-weight: 700;
-  line-height: 1;
+  line-height: 0.9;
   letter-spacing: 0.01em;
   white-space: nowrap;
   text-shadow: 0 3px 12px rgba(0, 0, 0, 0.22);
@@ -501,7 +501,7 @@ section {
 
   .header-container,
   .header-inner {
-    min-height: 98px;
+    min-height: 96px;
     gap: 0.75rem;
   }
 
@@ -511,15 +511,15 @@ section {
   }
 
   .site-logo-text {
-    font-size: clamp(1.55rem, 7vw, 2.05rem);
+    font-size: clamp(1.8rem, 7vw, 2.25rem);
     white-space: normal;
-    line-height: 0.95;
+    line-height: 0.9;
   }
 
   .site-logo-mark {
-    width: 72px;
-    height: 72px;
-    flex-basis: 72px;
+    width: 86px;
+    height: 86px;
+    flex-basis: 86px;
   }
 
   .nav-toggle {
@@ -551,12 +551,19 @@ section {
 }
 
 @media (max-width: 460px) {
+  .site-logo-mark {
+    width: 76px;
+    height: 76px;
+    flex-basis: 76px;
+  }
+
   .site-logo-text {
-    max-width: 155px;
+    max-width: 165px;
+    font-size: 1.8rem;
   }
 
   .header-container,
   .header-inner {
-    min-height: 96px;
+    min-height: 92px;
   }
 }
