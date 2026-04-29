@@ -2,30 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Vote | Celestial Comics</title>
-  <link rel="stylesheet" href="/css/main.css" />
-</head>
-<body>
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-      <button class="nav-toggle" aria-label="Toggle navigation">
+  <meta
+    name="description"
+    content="Vote on active Celestial Comics story concepts and help decide which story moves into production next."
+  />
+
+  <title>Vote | Celestial Comics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/pages/vote.css" />
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
           <li><a href="/">Home</a></li>
+          <li><a href="/vote/" aria-current="page">Vote</a></li>
+          <li><a href="/history/">Winner</a></li>
           <li><a href="/gallery/">Gallery</a></li>
-          <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
+          <li><a href="/team/">The Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
-          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -33,105 +52,185 @@
     </div>
   </header>
 
-  <!-- MAIN VOTING AREA -->
-  <main class="container">
-    <div id="voting-closed" class="voting-state" style="display:none;">
-      <h2>Voting is Closed</h2>
-      <p>
-        There is no active concept tournament at the moment. Check back soon to
-        help decide which story concept gets produced next.
-      </p>
-      <div class="story-actions">
-        <a href="/winner/" class="btn btn-primary">View Current Winner</a>
-        <a href="/gallery/" class="btn btn-secondary">Browse Concept Gallery</a>
+  <main class="vote-page">
+    <section class="vote-hero" aria-labelledby="vote-page-title">
+      <div class="vote-hero-inner">
+        <p class="vote-kicker">Community Tournament</p>
+        <h1 id="vote-page-title">Vote on the Next Story</h1>
+        <p>
+          Review the competing Celestial Comics concepts and help decide which story
+          should move forward into production.
+        </p>
       </div>
-    </div>
+    </section>
 
-    <div id="voting-open" class="voting-state" style="display:none;">
-      <h2>Voting is Open!</h2>
-      <p>
-        Review the competing story concepts below and cast your vote for the one
-        you want to see move into production.
-      </p>
-      <div id="story-grid" class="story-grid"></div>
-    </div>
+    <section class="vote-section" aria-label="Voting area">
+      <div class="container">
+        <div id="login-prompt" class="voting-state vote-state-panel" style="display:none;">
+          <span class="vote-state-badge">Login Required</span>
+          <h2>Please Log In to Vote</h2>
+          <p>
+            You can browse the tournament, but you need to log in before casting a vote.
+            Sign in to participate in the current concept round.
+          </p>
 
-    <div id="login-prompt" class="voting-state" style="display:none;">
-      <h2>Please Log In to Vote</h2>
-      <p>
-        You must be logged in to vote in the current concept tournament. Please
-        log in or sign up to participate.
-      </p>
-      <a href="/login/" class="btn btn-primary">Login</a>
-    </div>
+          <div class="vote-state-actions">
+            <a href="/login/" class="btn btn-primary">Login to Vote</a>
+            <a href="/signup/" class="btn btn-secondary">Create Account</a>
+          </div>
+        </div>
+
+        <div id="voting-closed" class="voting-state vote-state-panel" style="display:none;">
+          <span class="vote-state-badge">Voting Closed</span>
+          <h2>No Active Tournament Right Now</h2>
+          <p>
+            There is not an open concept vote at the moment. Visit the Winner page to see
+            what moved forward, or browse the Gallery for future contenders.
+          </p>
+
+          <div class="vote-state-actions">
+            <a href="/history/" class="btn btn-primary">View Current Winner</a>
+            <a href="/gallery/" class="btn btn-secondary">Browse Gallery</a>
+          </div>
+        </div>
+
+        <div id="voting-open" class="voting-state" style="display:none;">
+          <div class="vote-toolbar">
+            <div>
+              <span class="vote-state-badge open">Voting Open</span>
+              <h2>Choose Your Champion</h2>
+              <p>
+                Cast your vote for the story concept you want to see produced next.
+                You can open each concept for more details before voting.
+              </p>
+            </div>
+
+            <a href="/gallery/" class="btn btn-secondary">Explore Gallery</a>
+          </div>
+
+          <div id="story-grid" class="story-grid vote-story-grid"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <!-- FOOTER -->
   <footer class="site-footer">
-    <div class="container footer-container">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/">Home</a>
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV -->
   <script src="/js/env.js"></script>
-
-  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
-
-  <!-- PAGE LOGIC -->
   <script type="module" src="/js/vote.js"></script>
 
-  <!-- AUTH + VOTING INIT -->
   <script type="module">
     import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
     import { initVoting, fetchStoriesWithVotes } from '/js/vote.js';
 
-    async function initVotePage() {
-      const loginPrompt = document.getElementById('login-prompt');
-      const votingOpen = document.getElementById('voting-open');
-      const votingClosed = document.getElementById('voting-closed');
+    const navToggle = document.querySelector('.nav-toggle');
+    const mainNav = document.querySelector('.main-nav');
 
-      const user = await getCurrentUserAsync();
+    function closeNav() {
+      if (!navToggle || !mainNav) return;
 
-      updateUI();
+      mainNav.classList.remove('is-open');
+      navToggle.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
 
+    function bindNavToggle() {
+      if (!navToggle || !mainNav) return;
+
+      navToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('is-open');
+
+        navToggle.classList.toggle('is-open', isOpen);
+        navToggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      mainNav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeNav();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 1180) {
+          closeNav();
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Node)) return;
+        if (mainNav.contains(target) || navToggle.contains(target)) return;
+
+        closeNav();
+      });
+    }
+
+    function bindLogoutLinks() {
       document.querySelectorAll('.logout-link').forEach((el) => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
+        el.addEventListener('click', async (event) => {
+          event.preventDefault();
           await logout();
           window.location.href = '/';
         });
       });
+    }
 
-      if (!user) {
-        if (loginPrompt) loginPrompt.style.display = 'block';
-        if (votingOpen) votingOpen.style.display = 'none';
-        if (votingClosed) votingClosed.style.display = 'none';
-        return;
-      }
+    function setVotePageState(state) {
+      const loginPrompt = document.getElementById('login-prompt');
+      const votingOpen = document.getElementById('voting-open');
+      const votingClosed = document.getElementById('voting-closed');
 
-      await initVoting('story-grid');
+      if (loginPrompt) loginPrompt.style.display = state === 'login' ? 'block' : 'none';
+      if (votingOpen) votingOpen.style.display = state === 'open' ? 'block' : 'none';
+      if (votingClosed) votingClosed.style.display = state === 'closed' ? 'block' : 'none';
+    }
+
+    async function initVotePage() {
+      updateUI();
+      bindNavToggle();
+      bindLogoutLinks();
+
+      const user = await getCurrentUserAsync();
 
       const stories = await fetchStoriesWithVotes();
       const anyOpen = (stories || []).some((story) => story.voting_status === 'open');
 
-      if (loginPrompt) loginPrompt.style.display = 'none';
-      if (votingOpen) votingOpen.style.display = anyOpen ? 'block' : 'none';
-      if (votingClosed) votingClosed.style.display = anyOpen ? 'none' : 'block';
+      if (!anyOpen) {
+        setVotePageState('closed');
+        return;
+      }
+
+      if (!user) {
+        setVotePageState('login');
+        return;
+      }
+
+      setVotePageState('open');
+      await initVoting('story-grid');
     }
 
     document.addEventListener('DOMContentLoaded', initVotePage);
   </script>
 
-  <!-- ADMIN NAV LINK -->
   <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>

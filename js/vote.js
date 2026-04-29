@@ -74,6 +74,18 @@ function getStoryStatusLabel(story) {
   }
 }
 
+function getVotingStatusLabel(status) {
+  switch (status) {
+    case 'open':
+      return 'Voting Open';
+    case 'upcoming':
+      return 'Voting Starts Soon';
+    case 'closed':
+    default:
+      return 'Voting Closed';
+  }
+}
+
 function getStoryDetailUrl(story) {
   return `/gallery/story.html?id=${encodeId(story?.id)}`;
 }
@@ -82,21 +94,28 @@ function getStoryReadUrl(story) {
   return `/gallery/read.html?id=${encodeId(story?.id)}&page=1`;
 }
 
+function renderContainerMessage(container, message, className = '') {
+  if (!container) return;
+
+  container.innerHTML = `
+    <p class="${className}">
+      ${escapeHtml(message)}
+    </p>
+  `;
+}
+
+function getButtonVoteCount(btn) {
+  return Number(btn?.dataset?.voteCount) || 0;
+}
+
+function setButtonVoteCount(btn, count) {
+  if (!btn) return;
+  btn.dataset.voteCount = String(Number(count) || 0);
+}
+
 /* =======================
    VOTING PERIOD HELPERS
 ======================= */
-
-function isEffectivelyClosed(period) {
-  if (!period) return true;
-  if (period.finalized_at) return true;
-  if (period.closed_at) return true;
-
-  const now = new Date();
-  const end = new Date(period.end_time);
-
-  if (Number.isNaN(end.getTime())) return true;
-  return now > end;
-}
 
 function isEffectivelyOpen(period) {
   if (!period) return false;
@@ -265,7 +284,8 @@ export async function fetchConceptBankStories() {
         active,
         story_status,
         is_preview_enabled,
-        preview_page_count
+        preview_page_count,
+        created_at
       `)
       .eq('active', true)
       .eq('story_status', 'concept_bank')
@@ -302,10 +322,12 @@ export async function fetchStoriesWithVotes() {
         active,
         story_status,
         is_preview_enabled,
-        preview_page_count
+        preview_page_count,
+        created_at
       `)
       .eq('active', true)
-      .eq('story_status', 'active_vote');
+      .eq('story_status', 'active_vote')
+      .order('created_at', { ascending: false });
 
     if (storiesError) throw storiesError;
 
@@ -605,14 +627,14 @@ function renderStoryArtwork(story, safeTitle) {
 
   return `
     <div class="story-card-art">
-      <img src="${escapeHtml(image)}" alt="${safeTitle}" />
+      <img src="${escapeHtml(image)}" alt="${safeTitle}" loading="lazy" />
     </div>
   `;
 }
 
 function renderStoryCardMeta(story) {
   const author = getStoryAuthor(story);
-  const description = truncateText(getStoryDescription(story), 180);
+  const description = truncateText(getStoryDescription(story), 190);
 
   return `
     ${author ? `<p class="story-card-author">By ${escapeHtml(author)}</p>` : ''}
@@ -630,6 +652,17 @@ function renderPreviewButton(story) {
   `;
 }
 
+function renderVoteStatusMeta(story) {
+  const status = story?.voting_status || 'closed';
+  const label = getVotingStatusLabel(status);
+
+  return `
+    <p class="story-card-vote-status">
+      ${escapeHtml(label)}
+    </p>
+  `;
+}
+
 /* =======================
    RENDERERS
 ======================= */
@@ -640,7 +673,14 @@ export function renderStoriesForHome(stories, containerId = 'story-grid') {
 
   container.innerHTML = '';
 
-  stories.forEach((story) => {
+  const safeStories = Array.isArray(stories) ? stories : [];
+
+  if (!safeStories.length) {
+    renderContainerMessage(container, 'No stories are available yet.');
+    return;
+  }
+
+  safeStories.forEach((story) => {
     const safeTitle = escapeHtml(story.title || 'Untitled Story');
 
     const card = document.createElement('article');
@@ -671,7 +711,14 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
 
   container.innerHTML = '';
 
-  stories.forEach((story) => {
+  const safeStories = Array.isArray(stories) ? stories : [];
+
+  if (!safeStories.length) {
+    renderContainerMessage(container, 'No story concepts found yet.');
+    return;
+  }
+
+  safeStories.forEach((story) => {
     const safeTitle = escapeHtml(story.title || 'Untitled Story');
 
     const card = document.createElement('article');
@@ -704,9 +751,20 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
 
   container.innerHTML = '';
 
-  stories.forEach((story) => {
+  const safeStories = Array.isArray(stories) ? stories : [];
+
+  if (!safeStories.length) {
+    renderContainerMessage(
+      container,
+      'No active voting concepts are currently available.',
+      'vote-empty-state'
+    );
+    return;
+  }
+
+  safeStories.forEach((story) => {
     const safeTitle = escapeHtml(story.title || 'Untitled Story');
-    const safeStoryId = encodeId(story.id);
+    const safeStoryId = escapeHtml(story.id);
     const voteCount = Number(story.vote_count) || 0;
 
     const card = document.createElement('article');
@@ -720,12 +778,16 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
         <h3>${safeTitle}</h3>
         ${renderStoryCardMeta(story)}
 
-        <p class="story-card-votes">
-          ${voteCount} vote${voteCount === 1 ? '' : 's'}
-        </p>
+        <div class="story-card-vote-summary">
+          <p class="story-card-votes">
+            ${voteCount} vote${voteCount === 1 ? '' : 's'}
+          </p>
+          ${renderVoteStatusMeta(story)}
+        </div>
 
         <div class="story-actions">
           <button
+            type="button"
             class="btn btn-primary vote-btn"
             data-story-id="${safeStoryId}"
             data-vote-count="${voteCount}">
@@ -746,12 +808,19 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
   const votedContainer = votedContainerId ? document.getElementById(votedContainerId) : null;
   const savedContainer = savedContainerId ? document.getElementById(savedContainerId) : null;
 
+  const safeVotedStories = Array.isArray(votedStories) ? votedStories : [];
+  const safeSavedStories = Array.isArray(savedStories) ? savedStories : [];
+
   if (votedContainer) {
     votedContainer.innerHTML = '';
 
-    votedStories.forEach((story) => {
+    if (!safeVotedStories.length) {
+      renderContainerMessage(votedContainer, 'You have not voted for any active stories yet.');
+    }
+
+    safeVotedStories.forEach((story) => {
       const safeTitle = escapeHtml(story.title || 'Untitled Story');
-      const safeStoryId = encodeId(story.id);
+      const safeStoryId = escapeHtml(story.id);
       const userVoteCount = Number(story.user_vote_count) || 0;
 
       const card = document.createElement('article');
@@ -770,7 +839,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
           </p>
 
           <div class="story-actions">
-            <button class="btn btn-primary recant-btn" data-story-id="${safeStoryId}">
+            <button type="button" class="btn btn-primary recant-btn" data-story-id="${safeStoryId}">
               Recant 1 Vote
             </button>
 
@@ -787,9 +856,13 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
   if (savedContainer) {
     savedContainer.innerHTML = '';
 
-    savedStories.forEach((story) => {
+    if (!safeSavedStories.length) {
+      renderContainerMessage(savedContainer, 'You have not saved any stories yet.');
+    }
+
+    safeSavedStories.forEach((story) => {
       const safeTitle = escapeHtml(story.title || 'Untitled Story');
-      const safeStoryId = encodeId(story.id);
+      const safeStoryId = escapeHtml(story.id);
 
       const card = document.createElement('article');
       card.className = 'story-card saved-story-card';
@@ -803,7 +876,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
           ${renderStoryCardMeta(story)}
 
           <div class="story-actions">
-            <button class="btn btn-secondary unsave-btn" data-story-id="${safeStoryId}">
+            <button type="button" class="btn btn-secondary unsave-btn" data-story-id="${safeStoryId}">
               Unsave
             </button>
 
@@ -823,36 +896,58 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
 ======================= */
 
 export function updateVoteButtons(userVotes, stories) {
+  const safeVotes = Array.isArray(userVotes) ? userVotes : [];
+  const safeStories = Array.isArray(stories) ? stories : [];
+
   const userVoteMap = new Map(
-    userVotes.map((v) => [String(v.story_id), Number(v.vote_count) || 0])
+    safeVotes.map((v) => [String(v.story_id), Number(v.vote_count) || 0])
   );
 
   document.querySelectorAll('.vote-btn').forEach((btn) => {
     const storyId = String(btn.dataset.storyId);
-    const story = stories.find((s) => String(s.id) === storyId);
+    const story = safeStories.find((s) => String(s.id) === storyId);
 
     if (!story) return;
 
     const status = story.voting_status || 'upcoming';
     const userVoteCountForStory = userVoteMap.get(storyId) || 0;
-    const publicVoteCount = Number(btn.dataset.voteCount) || 0;
+    const publicVoteCount = getButtonVoteCount(btn);
+
+    btn.classList.toggle('voted', userVoteCountForStory > 0);
 
     if (status === 'open') {
       btn.disabled = false;
       btn.textContent = userVoteCountForStory > 0
         ? `Add Vote (${publicVoteCount})`
         : `Vote (${publicVoteCount})`;
-      btn.classList.toggle('voted', userVoteCountForStory > 0);
-    } else if (status === 'upcoming') {
+      return;
+    }
+
+    if (status === 'upcoming') {
       btn.disabled = true;
       btn.textContent = 'Voting starts soon';
       btn.classList.remove('voted');
-    } else {
-      btn.disabled = true;
-      btn.textContent = `Voting Closed (${publicVoteCount})`;
-      btn.classList.remove('voted');
+      return;
     }
+
+    btn.disabled = true;
+    btn.textContent = `Voting Closed (${publicVoteCount})`;
+    btn.classList.remove('voted');
   });
+}
+
+async function refreshVoteCards(containerId = 'story-grid') {
+  const stories = await fetchStoriesWithVotes();
+  renderStoriesForVote(stories, containerId);
+
+  const userVotes = await fetchUserVotes();
+
+  updateVoteButtons(userVotes, stories);
+  attachVoteListeners(containerId, {
+    reloadOnSuccess: false
+  });
+
+  return stories;
 }
 
 export function attachVoteListeners(containerId = 'story-grid', options = {}) {
@@ -869,15 +964,23 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
       if (btn.disabled) return;
 
       const originalText = btn.textContent;
+      const originalCount = getButtonVoteCount(btn);
+      const storyId = btn.dataset.storyId;
 
       btn.disabled = true;
       btn.textContent = 'Submitting...';
 
       try {
-        const storyId = btn.dataset.storyId;
         const result = await submitVote(storyId, 1);
 
         if (result.success) {
+          const updatedCount = originalCount + 1;
+
+          setButtonVoteCount(btn, updatedCount);
+          btn.textContent = `Add Vote (${updatedCount})`;
+          btn.classList.add('voted');
+          btn.disabled = false;
+
           if (typeof onSuccess === 'function') {
             await onSuccess(result);
             return;
@@ -887,6 +990,9 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
             window.location.reload();
             return;
           }
+
+          await refreshVoteCards(containerId);
+          return;
         }
 
         btn.textContent = originalText;
@@ -896,6 +1002,7 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
           alert(result.message || 'You must be logged in to vote.');
         } else if (result.reason === 'voting_closed') {
           alert(result.message || 'Voting is closed right now.');
+          await refreshVoteCards(containerId);
         } else if (result.reason === 'insufficient_balance') {
           alert(result.message || 'You do not have enough votes.');
         } else {
@@ -912,33 +1019,53 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
 }
 
 export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = []) {
+  const safeSavedStoryIds = Array.isArray(savedStoryIds)
+    ? savedStoryIds.map(String)
+    : [];
+
   document.querySelectorAll(`#${containerId} .save-btn`).forEach((btn) => {
     if (btn.dataset.listenerAttached === 'true') return;
     btn.dataset.listenerAttached = 'true';
 
     btn.addEventListener('click', async () => {
-      const storyId = btn.dataset.storyId;
-      const alreadySaved = savedStoryIds.includes(String(storyId));
+      const storyId = String(btn.dataset.storyId);
+      const alreadySaved = safeSavedStoryIds.includes(storyId);
+
+      btn.disabled = true;
 
       if (alreadySaved) {
         const unsaveResult = await unsaveStory(storyId);
-        if (!unsaveResult.success) return;
+
+        if (!unsaveResult.success) {
+          btn.disabled = false;
+          alert(unsaveResult.message || 'Could not unsave story.');
+          return;
+        }
 
         btn.textContent = 'Save Story';
 
-        const idx = savedStoryIds.indexOf(String(storyId));
-        if (idx > -1) savedStoryIds.splice(idx, 1);
-      } else {
-        const saveResult = await saveStory(storyId);
+        const idx = safeSavedStoryIds.indexOf(storyId);
+        if (idx > -1) safeSavedStoryIds.splice(idx, 1);
 
-        if (!saveResult.success && saveResult.reason !== 'already_saved') return;
-
-        btn.textContent = 'Saved';
-
-        if (!savedStoryIds.includes(String(storyId))) {
-          savedStoryIds.push(String(storyId));
-        }
+        btn.disabled = false;
+        return;
       }
+
+      const saveResult = await saveStory(storyId);
+
+      if (!saveResult.success && saveResult.reason !== 'already_saved') {
+        btn.disabled = false;
+        alert(saveResult.message || 'Could not save story.');
+        return;
+      }
+
+      btn.textContent = 'Saved';
+
+      if (!safeSavedStoryIds.includes(storyId)) {
+        safeSavedStoryIds.push(storyId);
+      }
+
+      btn.disabled = false;
     });
   });
 }
@@ -957,12 +1084,12 @@ export function attachRecantListeners(containerId, options = {}) {
       if (btn.disabled) return;
 
       const originalText = btn.textContent;
+      const storyId = btn.dataset.storyId;
 
       btn.disabled = true;
       btn.textContent = 'Recanting...';
 
       try {
-        const storyId = btn.dataset.storyId;
         const res = await recantVote(storyId, 1);
 
         if (res.success) {
@@ -975,6 +1102,10 @@ export function attachRecantListeners(containerId, options = {}) {
             window.location.reload();
             return;
           }
+
+          btn.disabled = false;
+          btn.textContent = originalText;
+          return;
         }
 
         btn.disabled = false;
@@ -1007,9 +1138,16 @@ export function attachUnsaveListeners(containerId, options = {}) {
 
     btn.addEventListener('click', async () => {
       const storyId = btn.dataset.storyId;
+      const originalText = btn.textContent;
+
+      btn.disabled = true;
+      btn.textContent = 'Removing...';
+
       const res = await unsaveStory(storyId);
 
       if (!res.success) {
+        btn.disabled = false;
+        btn.textContent = originalText;
         alert(res.message || 'Could not unsave story.');
         return;
       }
@@ -1021,7 +1159,11 @@ export function attachUnsaveListeners(containerId, options = {}) {
 
       if (reloadOnSuccess) {
         window.location.reload();
+        return;
       }
+
+      btn.disabled = false;
+      btn.textContent = originalText;
     });
   });
 }
@@ -1031,13 +1173,16 @@ export async function initVoting(containerId = 'story-grid') {
   if (!user) return false;
 
   const stories = await fetchStoriesWithVotes();
+  const safeStories = Array.isArray(stories) ? stories : [];
 
-  renderStoriesForVote(stories, containerId);
+  renderStoriesForVote(safeStories, containerId);
 
   const userVotes = await fetchUserVotes();
 
-  updateVoteButtons(userVotes, stories);
-  attachVoteListeners(containerId);
+  updateVoteButtons(userVotes, safeStories);
+  attachVoteListeners(containerId, {
+    reloadOnSuccess: false
+  });
 
-  return stories;
+  return safeStories;
 }
