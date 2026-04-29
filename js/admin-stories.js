@@ -16,6 +16,24 @@ let editingStoryId = null;
 
 const REQUEST_TIMEOUT_MS = 15000;
 
+const VALID_PRODUCTION_STAGES = new Set([
+  'winner_selected',
+  'story_development',
+  'artwork_in_progress',
+  'final_review',
+  'preparing_release',
+  'released'
+]);
+
+const PRODUCTION_STAGE_LABELS = {
+  winner_selected: 'Winner Selected — 20%',
+  story_development: 'Story Development — 35%',
+  artwork_in_progress: 'Artwork in Progress — 50%',
+  final_review: 'Final Review — 70%',
+  preparing_release: 'Preparing Release — 85%',
+  released: 'Released — 100%'
+};
+
 function setStatus(el, message = '', color = '') {
   if (!el) return;
   el.textContent = message;
@@ -68,6 +86,25 @@ function parseReleaseDateValue(value) {
   return parsed.toISOString();
 }
 
+function normalizeProductionStage(value, storyStatus = 'concept_bank') {
+  const fallbackStage = storyStatus === 'released'
+    ? 'released'
+    : 'winner_selected';
+
+  const stage = String(value || fallbackStage).trim();
+
+  if (!VALID_PRODUCTION_STAGES.has(stage)) {
+    throw new Error('Invalid production progress stage.');
+  }
+
+  return stage;
+}
+
+function getProductionStageDisplay(story) {
+  const stage = normalizeProductionStage(story?.production_stage, story?.story_status);
+  return PRODUCTION_STAGE_LABELS[stage] || PRODUCTION_STAGE_LABELS.winner_selected;
+}
+
 function setSaveButtonState(saveStoryBtn, isBusy, isEditing) {
   if (!saveStoryBtn) return;
 
@@ -113,6 +150,7 @@ export function clearStoryForm(ctx) {
     storyForm,
     storyActive,
     storyStatusSelect,
+    productionStageSelect,
     productionStageLabel,
     storyPreviewEnabled,
     storyPreviewPageCount,
@@ -137,6 +175,7 @@ export function clearStoryForm(ctx) {
 
   if (storyActive) storyActive.checked = true;
   if (storyStatusSelect) storyStatusSelect.value = 'concept_bank';
+  if (productionStageSelect) productionStageSelect.value = 'winner_selected';
   if (productionStageLabel) productionStageLabel.value = '';
   if (storyPreviewEnabled) storyPreviewEnabled.checked = false;
   if (storyPreviewPageCount) storyPreviewPageCount.value = '0';
@@ -166,6 +205,7 @@ export async function populateStoryForm(story, ctx) {
     storyDescription,
     storyActive,
     storyStatusSelect,
+    productionStageSelect,
     productionStageLabel,
     storyPreviewEnabled,
     storyPreviewPageCount,
@@ -194,6 +234,13 @@ export async function populateStoryForm(story, ctx) {
 
   if (storyStatusSelect) {
     storyStatusSelect.value = story.story_status || 'concept_bank';
+  }
+
+  if (productionStageSelect) {
+    productionStageSelect.value = normalizeProductionStage(
+      story.production_stage,
+      story.story_status
+    );
   }
 
   if (productionStageLabel) {
@@ -279,17 +326,20 @@ function renderStoriesPreview(ctx) {
     const card = document.createElement('div');
     card.className = 'story-chip';
 
+    const progressStage = getProductionStageDisplay(story);
+
     card.innerHTML = `
       ${story.cover_image_url ? `<img src="${story.cover_image_url}" alt="${story.title} cover">` : ''}
       <strong>${story.title}</strong>
       <span class="status-badge">${prettyStoryStatus(story.story_status)}</span>
       <div>${story.author || 'No author set'}</div>
       <div><strong>Visible:</strong> ${story.active ? 'Yes' : 'No'}</div>
+      <div><strong>Production Progress:</strong> ${progressStage}</div>
+      <div><strong>Stage Label:</strong> ${story.production_stage_label || '—'}</div>
       <div><strong>Preview:</strong> ${story.is_preview_enabled ? `Enabled (${story.preview_page_count || 0} pages)` : 'Disabled'}</div>
       <div><strong>Digital:</strong> ${story.is_digital_purchase_available ? 'Yes' : 'No'}</div>
       <div><strong>Paperback:</strong> ${story.is_paperback_available ? 'Yes' : 'No'}</div>
       <div><strong>Bundle:</strong> ${story.bundle_purchase_available ? 'Yes' : 'No'}</div>
-      <div><strong>Stage:</strong> ${story.production_stage_label || '—'}</div>
     `;
 
     storiesPreview.appendChild(card);
@@ -812,6 +862,7 @@ export async function handleStorySubmit(event, ctx) {
     storyDescription,
     storyActive,
     storyStatusSelect,
+    productionStageSelect,
     productionStageLabel,
     storyPreviewEnabled,
     storyPreviewPageCount,
@@ -839,6 +890,10 @@ export async function handleStorySubmit(event, ctx) {
     const active = !!storyActive?.checked;
 
     const story_status = storyStatusSelect?.value || 'concept_bank';
+    const production_stage = normalizeProductionStage(
+      productionStageSelect?.value,
+      story_status
+    );
     const production_stage_label = productionStageLabel?.value.trim() || null;
     const is_preview_enabled = !!storyPreviewEnabled?.checked;
     const preview_page_count = Number(storyPreviewPageCount?.value || 0);
@@ -872,6 +927,7 @@ export async function handleStorySubmit(event, ctx) {
       description,
       active,
       story_status,
+      production_stage,
       production_stage_label,
       is_preview_enabled,
       preview_page_count,

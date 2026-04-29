@@ -53,12 +53,6 @@ function getStoryImage(story) {
 
 function getStoryLink(story) {
   if (!story?.id) return '#';
-
-  /*
-    This matches the original history.js route.
-    If this route is still broken, send me your actual story detail/read file path
-    and we’ll change it here in one place.
-  */
   return `/gallery/story.html?id=${encodeId(story.id)}`;
 }
 
@@ -116,28 +110,77 @@ function getStatusPill(status) {
 }
 
 /* =========================
-   PRODUCTION HELPERS
+   PRODUCTION STAGE HELPERS
 ========================= */
 
+const PRODUCTION_STAGE_CONFIG = {
+  winner_selected: {
+    label: 'Winner Selected',
+    progressLabel: 'Winner Selected',
+    progress: 20
+  },
+  story_development: {
+    label: 'Story Development',
+    progressLabel: 'Story Development',
+    progress: 35
+  },
+  artwork_in_progress: {
+    label: 'Artwork in Progress',
+    progressLabel: 'Artwork in Progress',
+    progress: 50
+  },
+  final_review: {
+    label: 'Final Review',
+    progressLabel: 'Final Review',
+    progress: 70
+  },
+  preparing_release: {
+    label: 'Preparing Release',
+    progressLabel: 'Preparing Release',
+    progress: 85
+  },
+  released: {
+    label: 'Released',
+    progressLabel: 'Complete',
+    progress: 100
+  }
+};
+
+function normalizeProductionStage(story) {
+  if (story?.story_status === 'released') {
+    return 'released';
+  }
+
+  const stage = String(story?.production_stage || '').trim();
+
+  if (Object.prototype.hasOwnProperty.call(PRODUCTION_STAGE_CONFIG, stage)) {
+    return stage;
+  }
+
+  return 'winner_selected';
+}
+
+function getProductionStageConfig(story) {
+  const stage = normalizeProductionStage(story);
+  return PRODUCTION_STAGE_CONFIG[stage] || PRODUCTION_STAGE_CONFIG.winner_selected;
+}
+
 function getProductionStageLabel(story) {
-  if (story?.story_status === 'released') return 'Released';
-  if (story?.story_status === 'winner_in_production') return 'Winner Selected';
-  return 'Story Concept';
+  const customLabel = String(story?.production_stage_label || '').trim();
+
+  if (customLabel) {
+    return customLabel;
+  }
+
+  return getProductionStageConfig(story).label;
 }
 
 function getProductionProgress(story) {
-  if (story?.story_status === 'released') return 100;
-  if (story?.story_status === 'winner_in_production') return 20;
-  return 20;
+  return getProductionStageConfig(story).progress;
 }
 
-function getProgressLabel(progress) {
-  if (progress >= 100) return 'Complete';
-  if (progress >= 85) return 'Preparing Release';
-  if (progress >= 70) return 'Final Review';
-  if (progress >= 50) return 'Artwork in Progress';
-  if (progress >= 35) return 'Story Development';
-  return 'Winner Selected';
+function getProgressLabel(story) {
+  return getProductionStageConfig(story).progressLabel;
 }
 
 /* =========================
@@ -224,10 +267,6 @@ async function fetchPastFinalizedRounds() {
 }
 
 async function fetchStoriesMap() {
-  /*
-    Only query columns we know are already part of your current story workflow.
-    Do NOT query optional production/shop fields here until we add them to Supabase.
-  */
   const { data, error } = await supabase
     .from('stories')
     .select(`
@@ -239,6 +278,8 @@ async function fetchStoriesMap() {
       image_url,
       active,
       story_status,
+      production_stage,
+      production_stage_label,
       created_at
     `)
     .order('created_at', { ascending: false });
@@ -405,7 +446,7 @@ function renderProductionStories(storiesMap) {
       const image = getStoryImage(story);
       const stageLabel = getProductionStageLabel(story);
       const progress = getProductionProgress(story);
-      const progressLabel = getProgressLabel(progress);
+      const progressLabel = getProgressLabel(story);
       const description = getStoryDescription(
         story,
         'This winning story is currently moving through the Celestial Comics production pipeline.'
@@ -475,6 +516,8 @@ function renderReleasedStories(storiesMap) {
       const title = story.title || 'Untitled Story';
       const author = story.author || '';
       const image = getStoryImage(story);
+      const stageLabel = getProductionStageLabel(story);
+      const progress = getProductionProgress(story);
       const description = getStoryDescription(
         story,
         'This Celestial Comics story has completed production and is available to explore.'
@@ -488,7 +531,7 @@ function renderReleasedStories(storiesMap) {
               : ''
           }
 
-          <span class="release-status">Released</span>
+          <span class="release-status">${escapeHtml(stageLabel)}</span>
 
           <h3>${escapeHtml(title)}</h3>
 
@@ -497,6 +540,7 @@ function renderReleasedStories(storiesMap) {
           <p>${escapeHtml(description)}</p>
 
           <p>
+            <strong>Production:</strong> ${escapeHtml(progress)}% Complete<br>
             <strong>Formats:</strong> Release details coming soon
           </p>
 

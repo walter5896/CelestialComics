@@ -66,6 +66,7 @@ export async function handler(event) {
         active,
         created_at,
         story_status,
+        production_stage,
         production_stage_label,
         is_preview_enabled,
         preview_page_count,

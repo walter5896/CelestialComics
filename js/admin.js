@@ -88,6 +88,7 @@ const storyAuthor = document.getElementById('story-author');
 const storyDescription = document.getElementById('story-description');
 const storyActive = document.getElementById('story-active');
 const storyStatusSelect = document.getElementById('story-status-select');
+const productionStageSelect = document.getElementById('production-stage-select');
 const productionStageLabel = document.getElementById('production-stage-label');
 const storyPreviewEnabled = document.getElementById('story-preview-enabled');
 const storyPreviewPageCount = document.getElementById('story-preview-page-count');
@@ -292,6 +293,7 @@ function buildAdminContext() {
     storyDescription,
     storyActive,
     storyStatusSelect,
+    productionStageSelect,
     productionStageLabel,
     storyPreviewEnabled,
     storyPreviewPageCount,

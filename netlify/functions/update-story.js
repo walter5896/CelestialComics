@@ -16,6 +16,15 @@ const VALID_STATUSES = new Set([
   'released'
 ]);
 
+const VALID_PRODUCTION_STAGES = new Set([
+  'winner_selected',
+  'story_development',
+  'artwork_in_progress',
+  'final_review',
+  'preparing_release',
+  'released'
+]);
+
 function jsonResponse(statusCode, payload) {
   return {
     statusCode,
@@ -61,6 +70,20 @@ function normalizeStoryStatus(value) {
   }
 
   return status;
+}
+
+function normalizeProductionStage(value, storyStatus = 'concept_bank') {
+  const fallbackStage = storyStatus === 'released'
+    ? 'released'
+    : 'winner_selected';
+
+  const stage = String(value || fallbackStage).trim();
+
+  if (!VALID_PRODUCTION_STAGES.has(stage)) {
+    throw new Error('Invalid production_stage value');
+  }
+
+  return stage;
 }
 
 function normalizeReleaseDate(value) {
@@ -149,13 +172,17 @@ export async function handler(event) {
 
     await requireStory(story_id);
 
+    const story_status = normalizeStoryStatus(body.story_status);
+    const production_stage = normalizeProductionStage(body.production_stage, story_status);
+
     const updates = {
       title,
       description: normalizeNullableText(body.description),
       author: normalizeNullableText(body.author),
       cover_image_url: normalizeNullableText(body.cover_image_url),
       active: normalizeBoolean(body.active, true),
-      story_status: normalizeStoryStatus(body.story_status),
+      story_status,
+      production_stage,
       production_stage_label: normalizeNullableText(body.production_stage_label),
       is_preview_enabled: normalizeBoolean(body.is_preview_enabled, false),
       preview_page_count: normalizePreviewCount(body.preview_page_count ?? 0),
@@ -185,11 +212,15 @@ export async function handler(event) {
 
     const message = err?.message || 'Server error';
     const statusCode =
+      message === 'Missing auth token' ? 401 :
       message === 'Invalid user token' ? 401 :
       message === 'Admin access required' ? 403 :
       message === 'Story not found' ? 404 :
       message === 'Invalid JSON body.' ? 400 :
+      message === 'story_id is required' ? 400 :
+      message === 'Title is required' ? 400 :
       message === 'Invalid story_status value' ? 400 :
+      message === 'Invalid production_stage value' ? 400 :
       message === 'Invalid release_date value' ? 400 :
       message === 'preview_page_count must be a whole number 0 or greater' ? 400 :
       500;
