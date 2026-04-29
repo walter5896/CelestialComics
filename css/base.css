@@ -26,6 +26,8 @@ body {
     radial-gradient(circle at top center, rgba(90, 99, 179, 0.16), transparent 30%),
     linear-gradient(180deg, var(--color-bg-soft) 0%, var(--color-bg-deep) 100%);
   overflow-x: hidden;
+  position: relative;
+  isolation: isolate;
 }
 
 main,
@@ -128,6 +130,80 @@ strong {
 }
 
 /* =========================
+   Celestial Starfield Background
+========================= */
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  z-index: -2;
+  background-repeat: repeat;
+}
+
+/* Distant soft stars */
+body::before {
+  background:
+    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 255, 255, 0.62) 90%, transparent 0),
+    radial-gradient(1px 1px at 30% 70%, rgba(255, 255, 255, 0.45) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 50% 40%, rgba(255, 255, 255, 0.58) 90%, transparent 0),
+    radial-gradient(1px 1px at 70% 10%, rgba(255, 255, 255, 0.42) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 90% 60%, rgba(255, 255, 255, 0.5) 90%, transparent 0),
+    radial-gradient(1px 1px at 80% 90%, rgba(255, 255, 255, 0.55) 90%, transparent 0);
+  background-size: 420px 420px;
+  animation: celestialStarsDriftSlow 140s linear infinite;
+  opacity: 0.24;
+}
+
+/* Slightly brighter foreground stars */
+body::after {
+  background:
+    radial-gradient(2px 2px at 25% 15%, rgba(255, 255, 255, 0.72) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 75% 50%, rgba(255, 255, 255, 0.58) 90%, transparent 0),
+    radial-gradient(2px 2px at 45% 80%, rgba(255, 255, 255, 0.7) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 10% 60%, rgba(255, 255, 255, 0.48) 90%, transparent 0),
+    radial-gradient(2px 2px at 90% 20%, rgba(255, 255, 255, 0.66) 90%, transparent 0);
+  background-size: 320px 320px;
+  animation: celestialStarsDriftFast 95s linear infinite reverse;
+  opacity: 0.22;
+}
+
+@keyframes celestialStarsDriftSlow {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-120px, -220px, 0);
+  }
+}
+
+@keyframes celestialStarsDriftFast {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(140px, -340px, 0);
+  }
+}
+
+/* Keep page content above the starfield */
+.site-header,
+.announcement-strip,
+.page-shell,
+.page-container,
+.content-wrapper,
+.site-footer {
+  position: relative;
+  z-index: 1;
+}
+
+/* =========================
    Accessibility
 ========================= */
 
@@ -144,6 +220,11 @@ strong {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.001ms !important;
+  }
+
+  body::before,
+  body::after {
+    animation: none !important;
   }
 }
 
