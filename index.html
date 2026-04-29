@@ -3,16 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Celestial Comics | Home</title>
+  <meta
+    name="description"
+    content="Celestial Comics is an interactive comic voting platform where readers discover stories, vote on future projects, and follow winning comics into production."
+  />
+
+  <title>Celestial Comics | Stories Yet Untold</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet"
   />
 
   <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/pages/home.css" />
 </head>
 
 <body>
@@ -23,11 +29,11 @@
         <span class="site-logo-text">Celestial Comics</span>
       </a>
 
-      <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/history/">Winner</a></li>
@@ -43,84 +49,82 @@
     </div>
   </header>
 
-  <div class="announcement-strip">
+  <div class="announcement-strip" role="status" aria-live="polite">
     <span id="homepage-status-text">Loading voting status...</span>
   </div>
 
   <main class="page-shell">
-    <section class="page-section">
-      <div class="container mid-cta-grid">
-        <article class="story-card">
-          <div id="homepage-hero-image-shell" class="story-card-media hidden-asset">
-            <img id="homepage-hero-image" src="" alt="Featured Celestial Comics artwork" />
-          </div>
-
-          <p id="homepage-hero-fallback" class="empty-state">
-            Featured artwork will appear here once it’s uploaded from the admin panel.
-          </p>
-        </article>
-
-        <aside class="cta-panel">
-          <span class="story-card-status">Current Winner</span>
-
-          <h1 id="homepage-hero-title" class="section-heading">
-            Current Winner
-          </h1>
-
-          <p id="homepage-hero-description">
-            Update this text from the admin panel.
-          </p>
-
-          <div class="story-card-actions">
-            <a id="homepage-hero-cta" href="/history/" class="btn btn-primary">Keep Reading</a>
-            <a href="/gallery/" class="btn btn-secondary">View Gallery</a>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <section class="page-section">
+    <section class="hero-section" aria-labelledby="homepage-hero-title">
       <div class="container">
-        <div class="mid-cta-card text-center">
-          <h2>Celestial Comics</h2>
-          <p>Stories Yet Untold</p>
+        <div class="hero-shell">
+          <div class="hero-media">
+            <div id="homepage-hero-image-shell" class="hero-image-frame hidden-asset">
+              <img id="homepage-hero-image" src="" alt="Featured Celestial Comics artwork" />
+            </div>
+
+            <p id="homepage-hero-fallback" class="hero-fallback">
+              Featured artwork will appear here once it’s uploaded from the admin panel.
+            </p>
+          </div>
+
+          <div class="hero-panel">
+            <p class="hero-eyebrow">Current Winner</p>
+
+            <h1 id="homepage-hero-title" class="hero-title">
+              Current Winner
+            </h1>
+
+            <p id="homepage-hero-description" class="hero-description">
+              Discover the winning story currently moving through the Celestial Comics pipeline.
+            </p>
+
+            <div class="hero-actions">
+              <a id="homepage-hero-cta" href="/history/" class="btn btn-primary">Keep Reading</a>
+              <a href="/gallery/" class="btn btn-secondary">View Gallery</a>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="page-section">
-      <div class="container mid-cta-grid">
-        <article id="homepage-secondary-shell" class="story-card hidden-asset">
-          <div class="story-card-media">
-            <img id="homepage-secondary-image" src="" alt="Featured concept artwork" />
-          </div>
-
-          <span class="story-card-status">Featured Concept</span>
-          <h3>Concept Spotlight</h3>
-          <p>
-            This featured visual can be updated from the homepage CMS in the admin panel.
-          </p>
-        </article>
-
-        <aside class="cta-panel">
-          <h2>From the Gallery</h2>
-          <p>
-            Voting tournament competitors are pulled from the gallery. Did a story you loved not win?
-            It may still return in a future decision tournament.
-          </p>
-          <p>
-            Browse concept art, explore the worlds behind each pitch, and keep up with what may be chosen next.
-          </p>
-          <div>
-            <a href="/gallery/" class="btn btn-primary">Go to Gallery</a>
-          </div>
-        </aside>
+    <section class="brand-banner" aria-label="Celestial Comics tagline">
+      <div class="container">
+        <div class="brand-banner-box">
+          <h2 class="brand-banner-title">Celestial Comics</h2>
+          <p class="brand-banner-subtitle">Stories Yet Untold</p>
+        </div>
       </div>
     </section>
 
-    <section class="page-section">
+    <section class="page-section concept-spotlight" aria-labelledby="gallery-spotlight-heading">
+      <div class="container">
+        <div class="concept-shell">
+          <article id="homepage-secondary-shell" class="concept-card hidden-asset">
+            <div class="concept-image-frame">
+              <img id="homepage-secondary-image" src="" alt="Featured concept artwork" />
+            </div>
+          </article>
+
+          <aside class="cta-panel">
+            <h2 id="gallery-spotlight-heading">From the Gallery</h2>
+            <p>
+              Voting tournament competitors are pulled from the gallery. Did a story you loved not win?
+              It may still return in a future decision tournament.
+            </p>
+            <p>
+              Browse concept art, explore the worlds behind each pitch, and keep up with what may be chosen next.
+            </p>
+            <div>
+              <a href="/gallery/" class="btn btn-primary">Go to Gallery</a>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-section" aria-labelledby="continue-reading-heading">
       <div class="container section-card-shell">
-        <h2 class="section-heading">Continue Reading</h2>
+        <h2 id="continue-reading-heading" class="section-heading">Continue Reading</h2>
         <p class="section-subheading">
           Jump back into the latest page you were reading.
         </p>
@@ -131,9 +135,9 @@
       </div>
     </section>
 
-    <section class="page-section">
+    <section class="page-section" aria-labelledby="stories-heading">
       <div class="container section-card-shell">
-        <h2 class="section-heading">Stories Yet Untold</h2>
+        <h2 id="stories-heading" class="section-heading">Stories Yet Untold</h2>
         <p class="section-subheading">
           Browse concepts from the archive and keep an eye on what could enter a future tournament.
         </p>
@@ -144,7 +148,7 @@
       </div>
     </section>
 
-    <section class="page-section">
+    <section class="page-section" aria-label="Explore more Celestial Comics sections">
       <div class="container mid-cta-grid">
         <article class="mid-cta-card">
           <h2>Winner Updates</h2>
@@ -173,7 +177,7 @@
     <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
 
-      <nav class="footer-nav">
+      <nav class="footer-nav" aria-label="Footer navigation">
         <a href="/vote/">Vote</a>
         <a href="/history/">Winner</a>
         <a href="/gallery/">Gallery</a>
@@ -196,37 +200,47 @@
     const navToggle = document.querySelector('.nav-toggle');
     const mainNav = document.querySelector('.main-nav');
 
+    function closeNav() {
+      if (!navToggle || !mainNav) return;
+
+      mainNav.classList.remove('is-open');
+      navToggle.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
+
     function bindNavToggle() {
       if (!navToggle || !mainNav) return;
 
       navToggle.addEventListener('click', () => {
         const isOpen = mainNav.classList.toggle('is-open');
+
         navToggle.classList.toggle('is-open', isOpen);
         navToggle.setAttribute('aria-expanded', String(isOpen));
       });
 
       mainNav.querySelectorAll('a').forEach((link) => {
-        link.addEventListener('click', () => {
-          mainNav.classList.remove('is-open');
-          navToggle.classList.remove('is-open');
-          navToggle.setAttribute('aria-expanded', 'false');
-        });
+        link.addEventListener('click', closeNav);
       });
 
       window.addEventListener('keydown', (event) => {
-        if (event.key !== 'Escape') return;
-
-        mainNav.classList.remove('is-open');
-        navToggle.classList.remove('is-open');
-        navToggle.setAttribute('aria-expanded', 'false');
+        if (event.key === 'Escape') {
+          closeNav();
+        }
       });
 
       window.addEventListener('resize', () => {
         if (window.innerWidth > 1180) {
-          mainNav.classList.remove('is-open');
-          navToggle.classList.remove('is-open');
-          navToggle.setAttribute('aria-expanded', 'false');
+          closeNav();
         }
+      });
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Node)) return;
+        if (mainNav.contains(target) || navToggle.contains(target)) return;
+
+        closeNav();
       });
     }
 
@@ -263,11 +277,17 @@
         image.src = url;
         image.alt = alt || 'Celestial Comics artwork';
         shell.classList.remove('hidden-asset');
-        if (fallback) fallback.classList.add('hidden-asset');
+
+        if (fallback) {
+          fallback.classList.add('hidden-asset');
+        }
       } else {
         image.src = '';
         shell.classList.add('hidden-asset');
-        if (fallback) fallback.classList.remove('hidden-asset');
+
+        if (fallback) {
+          fallback.classList.remove('hidden-asset');
+        }
       }
     }
 
@@ -286,7 +306,12 @@
           method: 'GET'
         });
 
-        const result = await res.json();
+        let result = {};
+        try {
+          result = await res.json();
+        } catch {
+          throw new Error('Homepage content returned an invalid response.');
+        }
 
         if (!res.ok || !result.success) {
           throw new Error(result.error || 'Failed to load homepage content.');
@@ -300,7 +325,8 @@
 
         if (heroDescription) {
           heroDescription.textContent =
-            content.hero_description || 'Update this text from the admin panel.';
+            content.hero_description ||
+            'Discover the winning story currently moving through the Celestial Comics pipeline.';
         }
 
         if (heroCta) {
@@ -489,9 +515,7 @@
 
       storyGrid.innerHTML = displayStories.map((story) => {
         const title = escapeHtml(story.title || 'Untitled Story');
-        const description = escapeHtml(
-          story.description || 'A new story concept is waiting in the wings.'
-        );
+        const description = escapeHtml(story.description || 'A new story concept is waiting in the wings.');
         const author = story.author ? `By ${escapeHtml(story.author)}` : 'Celestial Comics';
         const image = story.cover_image_url || story.image_url || '';
         const imageMarkup = image

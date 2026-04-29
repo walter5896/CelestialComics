@@ -1,0 +1,317 @@
+/* /css/pages/home.css */
+
+/* =========================
+   Homepage Hero
+========================= */
+
+.hero-section {
+  padding: 2.4rem 0 1.25rem;
+}
+
+.hero-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(340px, 0.95fr);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: rgba(7, 31, 64, 0.72);
+  box-shadow: var(--shadow-heavy);
+}
+
+.hero-media {
+  min-height: 560px;
+  position: relative;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(242, 178, 74, 0.12), transparent 28%),
+    linear-gradient(180deg, #0b2046 0%, #07162f 100%);
+}
+
+.hero-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 68%, rgba(3, 23, 47, 0.32)),
+    radial-gradient(circle at center, transparent 46%, rgba(0, 0, 0, 0.28));
+}
+
+.hero-image-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hero-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-fallback {
+  min-height: 560px;
+  margin: 0;
+  padding: 2rem;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-soft);
+  text-align: center;
+  font-size: 1rem;
+}
+
+.hero-panel {
+  min-height: 560px;
+  padding: clamp(1.75rem, 3vw, 2.6rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background:
+    radial-gradient(circle at top right, rgba(242, 178, 74, 0.13), transparent 32%),
+    linear-gradient(180deg, #2f61bf 0%, #17498e 48%, #123a78 100%);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.hero-eyebrow {
+  width: fit-content;
+  margin: 0 0 0.75rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-pill);
+  background: rgba(126, 97, 191, 0.42);
+  border: 1px solid rgba(229, 220, 255, 0.22);
+  color: #f9d36b;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-panel .hero-title {
+  margin: 0 0 1rem;
+  font-family: var(--font-heading);
+  font-size: clamp(2.8rem, 5vw, 5.2rem);
+  line-height: 0.85;
+  color: #f6d16f;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.12em;
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.hero-description {
+  max-width: 38ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 1.08rem;
+  line-height: 1.55;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.5rem;
+}
+
+/* =========================
+   Brand Banner
+========================= */
+
+.brand-banner {
+  padding: 0;
+}
+
+.brand-banner-box {
+  background:
+    linear-gradient(180deg, rgba(15, 80, 131, 0.98), rgba(11, 69, 122, 0.98));
+  padding: 1.65rem 1rem 1.25rem;
+  text-align: center;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+  border-top: none;
+}
+
+.brand-banner-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 0.9;
+  color: #f6f0e6;
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
+}
+
+.brand-banner-subtitle {
+  margin: 0.35rem 0 0;
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 2vw, 2.3rem);
+  color: rgba(246, 240, 230, 0.86);
+}
+
+/* =========================
+   Concept Spotlight
+========================= */
+
+.concept-spotlight {
+  padding-top: 2rem;
+}
+
+.concept-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.concept-card {
+  padding: 1rem;
+  background: rgba(7, 31, 64, 0.72);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.concept-image-frame {
+  width: 100%;
+  min-height: 480px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 44%),
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.concept-image-frame img {
+  width: 100%;
+  height: 100%;
+  max-height: 620px;
+  object-fit: contain;
+}
+
+.concept-shell .cta-panel {
+  min-height: 100%;
+  justify-content: center;
+}
+
+/* =========================
+   Homepage Sections
+========================= */
+
+.homepage-section-spacious {
+  padding: 4rem 0;
+}
+
+.homepage-feature-card {
+  background:
+    linear-gradient(180deg, rgba(18, 75, 137, 0.88), rgba(9, 37, 77, 0.96));
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.continue-grid .story-card {
+  max-width: 980px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.continue-grid .story-card-media {
+  min-height: 320px;
+}
+
+.story-grid-custom .story-card-media {
+  min-height: 330px;
+}
+
+/* =========================
+   Homepage CTA Cards
+========================= */
+
+.mid-cta-grid .mid-cta-card {
+  min-height: 220px;
+}
+
+.mid-cta-card h2 {
+  color: var(--color-text);
+}
+
+.mid-cta-card p {
+  max-width: 62ch;
+}
+
+/* =========================
+   Responsive Homepage
+========================= */
+
+@media (max-width: 1100px) {
+  .hero-shell,
+  .concept-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-media,
+  .hero-image-frame,
+  .hero-fallback,
+  .hero-panel {
+    min-height: auto;
+  }
+
+  .hero-image-frame {
+    min-height: 420px;
+  }
+
+  .hero-panel {
+    padding: 2rem;
+  }
+
+  .concept-image-frame {
+    min-height: 380px;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-section {
+    padding-top: 1.5rem;
+  }
+
+  .hero-image-frame {
+    min-height: 320px;
+  }
+
+  .hero-panel {
+    padding: 1.35rem 1.1rem 1.5rem;
+  }
+
+  .hero-panel .hero-title {
+    font-size: clamp(2.35rem, 13vw, 3.5rem);
+  }
+
+  .hero-actions {
+    flex-direction: column;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  .brand-banner-box {
+    padding: 1.25rem 0.8rem 1rem;
+  }
+
+  .concept-card {
+    padding: 0.85rem;
+  }
+
+  .concept-image-frame {
+    min-height: 280px;
+  }
+
+  .continue-grid .story-card-media,
+  .story-grid-custom .story-card-media {
+    min-height: 240px;
+  }
+}
