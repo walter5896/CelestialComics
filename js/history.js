@@ -51,12 +51,14 @@ function getStoryImage(story) {
   return story?.cover_image_url || story?.image_url || '';
 }
 
-/*
-  Use the route your older history page already used.
-  If this still breaks, then the actual detail page route has changed and we only need to update this helper.
-*/
 function getStoryLink(story) {
   if (!story?.id) return '#';
+
+  /*
+    This matches the original history.js route.
+    If this route is still broken, send me your actual story detail/read file path
+    and we’ll change it here in one place.
+  */
   return `/gallery/story.html?id=${encodeId(story.id)}`;
 }
 
@@ -223,8 +225,8 @@ async function fetchPastFinalizedRounds() {
 
 async function fetchStoriesMap() {
   /*
-    Keep this query aligned with the columns we know exist from your current schema/workflow.
-    This avoids the Supabase 400 from requesting columns that are not in the table yet.
+    Only query columns we know are already part of your current story workflow.
+    Do NOT query optional production/shop fields here until we add them to Supabase.
   */
   const { data, error } = await supabase
     .from('stories')
@@ -237,12 +239,7 @@ async function fetchStoriesMap() {
       image_url,
       active,
       story_status,
-      release_date,
-      digital_available,
-      paperback_available,
-      bundle_available,
-      story_preview_enabled,
-      story_preview_page_count
+      created_at
     `)
     .order('created_at', { ascending: false });
 
@@ -462,11 +459,7 @@ function renderReleasedStories(storiesMap) {
   const stories = Array.from(storiesMap.values())
     .filter((story) => story?.active !== false)
     .filter((story) => story?.story_status === 'released')
-    .sort((a, b) => {
-      const dateA = new Date(a.release_date || 0).getTime();
-      const dateB = new Date(b.release_date || 0).getTime();
-      return dateB - dateA || String(a.title || '').localeCompare(String(b.title || ''));
-    });
+    .sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')));
 
   if (!stories.length) {
     releasedListEl.innerHTML = `
@@ -487,15 +480,6 @@ function renderReleasedStories(storiesMap) {
         'This Celestial Comics story has completed production and is available to explore.'
       );
 
-      const formats = [];
-
-      if (story.digital_available) formats.push('Digital');
-      if (story.paperback_available) formats.push('Paperback');
-      if (story.bundle_available) formats.push('Bundle');
-
-      const formatsText = formats.length ? formats.join(' · ') : 'Release details coming soon';
-      const releaseDateText = formatDate(story.release_date);
-
       return `
         <article class="release-card">
           ${
@@ -513,8 +497,7 @@ function renderReleasedStories(storiesMap) {
           <p>${escapeHtml(description)}</p>
 
           <p>
-            <strong>Release Date:</strong> ${escapeHtml(releaseDateText)}<br>
-            <strong>Formats:</strong> ${escapeHtml(formatsText)}
+            <strong>Formats:</strong> Release details coming soon
           </p>
 
           <div class="release-actions">
