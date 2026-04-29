@@ -131,45 +131,47 @@ strong {
 
 /* =========================
    Celestial Starfield Background
+   Visible behind all content
 ========================= */
 
 body::before,
 body::after {
   content: "";
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 200%;
   height: 200%;
   pointer-events: none;
-  z-index: -2;
+  z-index: 0;
   background-repeat: repeat;
 }
 
 /* Distant soft stars */
 body::before {
   background:
-    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 255, 255, 0.62) 90%, transparent 0),
-    radial-gradient(1px 1px at 30% 70%, rgba(255, 255, 255, 0.45) 90%, transparent 0),
-    radial-gradient(1.5px 1.5px at 50% 40%, rgba(255, 255, 255, 0.58) 90%, transparent 0),
-    radial-gradient(1px 1px at 70% 10%, rgba(255, 255, 255, 0.42) 90%, transparent 0),
-    radial-gradient(1.5px 1.5px at 90% 60%, rgba(255, 255, 255, 0.5) 90%, transparent 0),
-    radial-gradient(1px 1px at 80% 90%, rgba(255, 255, 255, 0.55) 90%, transparent 0);
+    radial-gradient(1.5px 1.5px at 10% 20%, rgba(255, 255, 255, 0.7) 90%, transparent 0),
+    radial-gradient(1px 1px at 30% 70%, rgba(255, 255, 255, 0.52) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 50% 40%, rgba(255, 255, 255, 0.68) 90%, transparent 0),
+    radial-gradient(1px 1px at 70% 10%, rgba(255, 255, 255, 0.48) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 90% 60%, rgba(255, 255, 255, 0.58) 90%, transparent 0),
+    radial-gradient(1px 1px at 80% 90%, rgba(255, 255, 255, 0.62) 90%, transparent 0);
   background-size: 420px 420px;
   animation: celestialStarsDriftSlow 140s linear infinite;
-  opacity: 0.24;
+  opacity: 0.34;
 }
 
 /* Slightly brighter foreground stars */
 body::after {
   background:
-    radial-gradient(2px 2px at 25% 15%, rgba(255, 255, 255, 0.72) 90%, transparent 0),
-    radial-gradient(1.5px 1.5px at 75% 50%, rgba(255, 255, 255, 0.58) 90%, transparent 0),
-    radial-gradient(2px 2px at 45% 80%, rgba(255, 255, 255, 0.7) 90%, transparent 0),
-    radial-gradient(1.5px 1.5px at 10% 60%, rgba(255, 255, 255, 0.48) 90%, transparent 0),
-    radial-gradient(2px 2px at 90% 20%, rgba(255, 255, 255, 0.66) 90%, transparent 0);
+    radial-gradient(2px 2px at 25% 15%, rgba(255, 255, 255, 0.82) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 75% 50%, rgba(255, 255, 255, 0.68) 90%, transparent 0),
+    radial-gradient(2px 2px at 45% 80%, rgba(255, 255, 255, 0.78) 90%, transparent 0),
+    radial-gradient(1.5px 1.5px at 10% 60%, rgba(255, 255, 255, 0.58) 90%, transparent 0),
+    radial-gradient(2px 2px at 90% 20%, rgba(255, 255, 255, 0.74) 90%, transparent 0);
   background-size: 320px 320px;
   animation: celestialStarsDriftFast 95s linear infinite reverse;
-  opacity: 0.22;
+  opacity: 0.3;
 }
 
 @keyframes celestialStarsDriftSlow {
@@ -195,12 +197,13 @@ body::after {
 /* Keep page content above the starfield */
 .site-header,
 .announcement-strip,
+main,
 .page-shell,
 .page-container,
 .content-wrapper,
 .site-footer {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 /* =========================
