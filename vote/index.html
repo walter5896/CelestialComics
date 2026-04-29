@@ -199,26 +199,38 @@
 
       if (!voteStatusBanner) return;
 
-      voteStatusBanner.style.display = 'flex';
-
       if (state === 'open') {
-        voteStatusBanner.innerHTML = 'VOTING OPEN! <a href="#story-grid">Click HERE to vote</a>';
+        voteStatusBanner.style.display = 'none';
+
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
-        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Scroll down to see who’s competing this week.';
+        if (voteHeroSubtitle) {
+          voteHeroSubtitle.textContent = 'Scroll down to see who’s competing this week.';
+        }
+
         return;
       }
 
+      voteStatusBanner.style.display = 'flex';
+
       if (state === 'closed') {
-        voteStatusBanner.innerHTML = 'VOTING CLOSED <a href="/history/">Click HERE to see the winner details</a>';
+        voteStatusBanner.innerHTML = 'VOTING CLOSED <span>•</span> <a href="/history/">See winner details</a>';
+
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Closed';
-        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'The next voting round is being prepared.';
+        if (voteHeroSubtitle) {
+          voteHeroSubtitle.textContent = 'The next voting round is being prepared.';
+        }
+
         return;
       }
 
       if (state === 'login') {
-        voteStatusBanner.innerHTML = 'LOGIN REQUIRED <a href="/login/">Click HERE to vote</a>';
+        voteStatusBanner.innerHTML = 'LOGIN REQUIRED <span>•</span> <a href="/login/">Log in to vote</a>';
+
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
-        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Log in to cast your vote.';
+        if (voteHeroSubtitle) {
+          voteHeroSubtitle.textContent = 'Log in to cast your vote.';
+        }
+
         return;
       }
 
