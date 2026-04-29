@@ -45,7 +45,7 @@ let furthestPageNumberReached = 1;
 
 let currentUser = null;
 let userOwnsStoryAccess = false;
-let readerAccessMode = 'full'; // 'full' | 'preview'
+let readerAccessMode = 'preview'; // 'full' | 'preview'
 let previewPageLimit = 0;
 
 let readerInitialized = false;
@@ -92,20 +92,28 @@ function getStoryBackLink(story) {
   return `/gallery/story.html?id=${encodeId(story.id)}`;
 }
 
+function storyHasPreviewEnabled(story) {
+  return !!story?.is_preview_enabled && Number(story?.preview_page_count || 0) > 0;
+}
+
 function getReaderMetaText() {
   if (!currentStory) return '';
 
   const authorText = currentStory.author ? `By ${currentStory.author}` : 'Author not listed';
 
-  if (readerAccessMode === 'preview' && currentStory.story_status === 'released') {
-    return `${authorText} • Preview Mode`;
+  if (readerAccessMode === 'preview') {
+    const limitText = previewPageLimit > 0
+      ? `Preview Mode • ${previewPageLimit} page${previewPageLimit === 1 ? '' : 's'} available`
+      : 'Preview Mode';
+
+    return `${authorText} • ${limitText}`;
   }
 
   if (userOwnsStoryAccess && currentStory.story_status === 'released') {
     return `${authorText} • Owned Digital Access`;
   }
 
-  return authorText;
+  return `${authorText} • Full Access`;
 }
 
 function getPageIndexFromPageNumber(pageNumber) {
@@ -134,19 +142,35 @@ function updateReaderUrl(pageNumber) {
 function getPreviewPagesFromAllPages(allPages, story) {
   if (!Array.isArray(allPages) || !allPages.length) return [];
 
-  const explicitlyMarkedPreviewPages = allPages.filter((page) => page.is_preview_page);
+  const previewCount = Number(story?.preview_page_count) || 0;
 
-  if (explicitlyMarkedPreviewPages.length > 0) {
-    return explicitlyMarkedPreviewPages;
-  }
-
-  const count = Number(story?.preview_page_count) || 0;
-
-  if (count <= 0) {
+  if (!story?.is_preview_enabled || previewCount <= 0) {
     return [];
   }
 
-  return allPages.slice(0, count);
+  const explicitlyMarkedPreviewPages = allPages.filter((page) => page.is_preview_page);
+
+  if (explicitlyMarkedPreviewPages.length > 0) {
+    return explicitlyMarkedPreviewPages.slice(0, previewCount);
+  }
+
+  return allPages.slice(0, previewCount);
+}
+
+function decideReaderAccessMode(story, ownsAccess) {
+  if (!story) {
+    return 'preview';
+  }
+
+  if (story.story_status === 'released') {
+    return ownsAccess ? 'full' : 'preview';
+  }
+
+  if (storyHasPreviewEnabled(story)) {
+    return 'preview';
+  }
+
+  return 'preview';
 }
 
 // =========================
@@ -282,10 +306,12 @@ async function renderCurrentPage({ shouldSaveProgress = true } = {}) {
   if (!storyPages.length) {
     if (prevBtn) prevBtn.disabled = true;
     if (nextBtn) nextBtn.disabled = true;
+
     if (imageEl) {
       imageEl.src = '';
       imageEl.alt = '';
     }
+
     if (captionEl) captionEl.textContent = '';
     if (pageIndicatorEl) pageIndicatorEl.textContent = 'Page 0 of 0';
     return;
@@ -305,7 +331,11 @@ async function renderCurrentPage({ shouldSaveProgress = true } = {}) {
   }
 
   if (pageIndicatorEl) {
-    pageIndicatorEl.textContent = `Page ${displayPageNumber} of ${totalPages}`;
+    if (readerAccessMode === 'preview') {
+      pageIndicatorEl.textContent = `Preview Page ${currentPageIndex + 1} of ${totalPages}`;
+    } else {
+      pageIndicatorEl.textContent = `Page ${displayPageNumber} of ${totalPages}`;
+    }
   }
 
   if (prevBtn) prevBtn.disabled = currentPageIndex === 0;
@@ -351,7 +381,7 @@ async function loadReader() {
     furthestPageNumberReached = 1;
     currentUser = null;
     userOwnsStoryAccess = false;
-    readerAccessMode = 'full';
+    readerAccessMode = 'preview';
     previewPageLimit = 0;
     setSelectedStoryId(null);
 
@@ -369,25 +399,11 @@ async function loadReader() {
     currentStory = await loadStoryRecord(storyId);
     currentUser = await getCurrentUserAsync();
 
-    // =========================
-    // ACCESS MODE DECISION
-    // =========================
-    // Released stories use paid-access logic.
-    // Non-released stories keep existing readable behavior for now.
-    if (currentStory.story_status === 'released') {
-      userOwnsStoryAccess = await checkUserStoryAccess(storyId);
+    userOwnsStoryAccess = currentStory.story_status === 'released'
+      ? await checkUserStoryAccess(storyId)
+      : false;
 
-      if (userOwnsStoryAccess) {
-        readerAccessMode = 'full';
-      } else {
-        readerAccessMode = 'preview';
-      }
-    } else {
-      userOwnsStoryAccess = false;
-      readerAccessMode = 'full';
-    }
-
-    updateReaderHeader();
+    readerAccessMode = decideReaderAccessMode(currentStory, userOwnsStoryAccess);
 
     const allPages = await loadAllStoryPages(storyId);
 
@@ -395,21 +411,21 @@ async function loadReader() {
       storyPages = [];
       currentPageIndex = 0;
       furthestPageNumberReached = 1;
+      previewPageLimit = 0;
+
+      updateReaderHeader();
       setState('empty');
       await renderCurrentPage({ shouldSaveProgress: false });
       return;
     }
 
     if (readerAccessMode === 'preview') {
-      if (!currentStory.is_preview_enabled) {
-        throw new Error('This comic preview is not currently available.');
-      }
-
       const previewPages = getPreviewPagesFromAllPages(allPages, currentStory);
       previewPageLimit = previewPages.length;
 
       if (!previewPages.length) {
-        throw new Error('This comic preview is not currently available.');
+        updateReaderHeader();
+        throw new Error('This story preview is not currently available.');
       }
 
       storyPages = previewPages;
@@ -422,6 +438,7 @@ async function loadReader() {
       furthestPageNumberReached =
         Number(storyPages[currentPageIndex]?.page_number) || 1;
 
+      updateReaderHeader();
       setState('content');
       await renderCurrentPage({ shouldSaveProgress: false });
       return;
@@ -431,6 +448,7 @@ async function loadReader() {
     // FULL ACCESS READER MODE
     // =========================
     storyPages = allPages;
+    previewPageLimit = 0;
 
     const existingProgress = await fetchReadingProgressForStory(storyId);
     const savedPageNumber = Number(existingProgress?.page_number) || 1;
@@ -450,6 +468,7 @@ async function loadReader() {
 
     furthestPageNumberReached = Math.max(savedPageNumber, actualInitialPageNumber);
 
+    updateReaderHeader();
     setState('content');
     await renderCurrentPage({ shouldSaveProgress: true });
   } catch (err) {
@@ -460,7 +479,7 @@ async function loadReader() {
     currentPageIndex = 0;
     furthestPageNumberReached = 1;
     userOwnsStoryAccess = false;
-    readerAccessMode = 'full';
+    readerAccessMode = 'preview';
     previewPageLimit = 0;
 
     if (titleEl) titleEl.textContent = 'Unable to load story';
@@ -478,8 +497,8 @@ function attachEvents() {
   readerEventsAttached = true;
 
   document.querySelectorAll('.logout-link').forEach((el) => {
-    el.addEventListener('click', async (e) => {
-      e.preventDefault();
+    el.addEventListener('click', async (event) => {
+      event.preventDefault();
 
       const result = await logout();
 
@@ -504,14 +523,14 @@ function attachEvents() {
     });
   }
 
-  document.addEventListener('keydown', async (e) => {
+  document.addEventListener('keydown', async (event) => {
     if (!contentEl || contentEl.style.display !== 'block') return;
 
-    if (e.key === 'ArrowLeft') {
+    if (event.key === 'ArrowLeft') {
       await goToPreviousPage();
     }
 
-    if (e.key === 'ArrowRight') {
+    if (event.key === 'ArrowRight') {
       await goToNextPage();
     }
   });
