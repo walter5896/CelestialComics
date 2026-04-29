@@ -52,15 +52,18 @@
     </div>
   </header>
 
+  <div id="vote-status-banner" class="vote-status-banner" aria-live="polite">
+    Checking voting status...
+  </div>
+
   <main class="vote-page">
     <section class="vote-hero" aria-labelledby="vote-page-title">
       <div class="vote-hero-inner">
-        <p class="vote-kicker">Community Tournament</p>
-        <h1 id="vote-page-title">Vote on the Next Story</h1>
-        <p>
-          Review the competing Celestial Comics concepts and help decide which story
-          should move forward into production.
-        </p>
+        <h1 id="vote-page-title">
+          Voting Is Currently:
+          <span class="vote-open-word" id="vote-hero-status-word">Open!</span>
+        </h1>
+        <p id="vote-hero-subtitle">Scroll down to see who’s competing this week.</p>
       </div>
     </section>
 
@@ -70,8 +73,8 @@
           <span class="vote-state-badge">Login Required</span>
           <h2>Please Log In to Vote</h2>
           <p>
-            You can browse the tournament, but you need to log in before casting a vote.
-            Sign in to participate in the current concept round.
+            You can view the current tournament, but you need to log in before casting a vote.
+            Sign in or create an account to participate in the current concept round.
           </p>
 
           <div class="vote-state-actions">
@@ -101,7 +104,7 @@
               <h2>Choose Your Champion</h2>
               <p>
                 Cast your vote for the story concept you want to see produced next.
-                You can open each concept for more details before voting.
+                Open each concept for more details before voting.
               </p>
             </div>
 
@@ -119,7 +122,6 @@
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
 
       <nav class="footer-nav" aria-label="Footer navigation">
-        <a href="/">Home</a>
         <a href="/vote/">Vote</a>
         <a href="/history/">Winner</a>
         <a href="/gallery/">Gallery</a>
@@ -198,16 +200,50 @@
       const loginPrompt = document.getElementById('login-prompt');
       const votingOpen = document.getElementById('voting-open');
       const votingClosed = document.getElementById('voting-closed');
+      const voteStatusBanner = document.getElementById('vote-status-banner');
+      const voteHeroStatusWord = document.getElementById('vote-hero-status-word');
+      const voteHeroSubtitle = document.getElementById('vote-hero-subtitle');
 
       if (loginPrompt) loginPrompt.style.display = state === 'login' ? 'block' : 'none';
       if (votingOpen) votingOpen.style.display = state === 'open' ? 'block' : 'none';
       if (votingClosed) votingClosed.style.display = state === 'closed' ? 'block' : 'none';
+
+      if (!voteStatusBanner) return;
+
+      voteStatusBanner.style.display = 'flex';
+
+      if (state === 'open') {
+        voteStatusBanner.innerHTML = 'VOTING OPEN! <a href="#story-grid">Click HERE to vote</a>';
+
+        if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
+        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Scroll down to see who’s competing this week.';
+        return;
+      }
+
+      if (state === 'closed') {
+        voteStatusBanner.innerHTML = 'VOTING CLOSED <a href="/history/">Click HERE to see the winner details</a>';
+
+        if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Closed';
+        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Visit the Winner page or browse the Gallery while the next round is prepared.';
+        return;
+      }
+
+      if (state === 'login') {
+        voteStatusBanner.innerHTML = 'LOGIN REQUIRED <a href="/login/">Click HERE to vote</a>';
+
+        if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
+        if (voteHeroSubtitle) voteHeroSubtitle.textContent = 'Log in to cast your vote in the current tournament.';
+        return;
+      }
+
+      voteStatusBanner.innerHTML = 'CHECKING VOTING STATUS...';
     }
 
     async function initVotePage() {
       updateUI();
       bindNavToggle();
       bindLogoutLinks();
+      setVotePageState('loading');
 
       const user = await getCurrentUserAsync();
 
