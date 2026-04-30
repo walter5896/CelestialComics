@@ -267,7 +267,7 @@
   font-size: 0.82rem;
 }
 
-.vote-cast-count {
+.vote-total-count {
   min-height: 38px;
   display: inline-flex;
   align-items: center;
@@ -282,7 +282,7 @@
   line-height: 1;
 }
 
-.vote-cast-count[hidden] {
+.vote-total-count[hidden] {
   display: none;
 }
 
@@ -349,7 +349,7 @@
 
   .vote-state-actions .btn,
   .vote-matchup-actions .btn,
-  .vote-cast-count {
+  .vote-total-count {
     width: 100%;
   }
 }

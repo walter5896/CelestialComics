@@ -114,27 +114,28 @@ function getVoteIndicatorForButton(btn) {
   const storyId = btn?.dataset?.storyId;
   if (!storyId) return null;
 
-  return document.querySelector(`.vote-cast-count[data-story-id="${CSS.escape(storyId)}"]`);
+  return document.querySelector(`.vote-total-count[data-story-id="${CSS.escape(storyId)}"]`);
 }
 
-function updateVoteCastIndicator(btn, count) {
+function updateVoteTotalIndicator(btn, totalVotes) {
   const indicator = getVoteIndicatorForButton(btn);
   if (!indicator) return;
 
-  const safeCount = Number(count) || 0;
+  const safeTotal = Number(totalVotes) || 0;
 
-  indicator.textContent = safeCount > 0
-    ? `You: ${safeCount}`
-    : '';
-
-  indicator.hidden = safeCount <= 0;
+  indicator.textContent = `${safeTotal} Total Vote${safeTotal === 1 ? '' : 's'}`;
+  indicator.hidden = false;
 }
 
-function updateVoteButtonLabel(btn, status = 'open', userVoteCount = 0) {
+function updateVoteButtonLabel(btn, status = 'open', totalVotes = 0, userVoteCount = 0) {
   if (!btn) return;
 
+  const safeTotal = Number(totalVotes) || 0;
+
   if (status === 'open') {
-    btn.textContent = userVoteCount > 0 ? 'Add Vote' : 'Vote';
+    btn.textContent = userVoteCount > 0
+      ? `Add Vote (${safeTotal})`
+      : `Vote (${safeTotal})`;
     return;
   }
 
@@ -143,7 +144,7 @@ function updateVoteButtonLabel(btn, status = 'open', userVoteCount = 0) {
     return;
   }
 
-  btn.textContent = 'Voting Closed';
+  btn.textContent = `Voting Closed (${safeTotal})`;
 }
 
 /* =======================
@@ -812,13 +813,13 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
           data-story-id="${safeStoryId}"
           data-vote-count="${voteCount}"
           data-user-vote-count="0">
-          Vote
+          Vote (${voteCount})
         </button>
 
         <span
-          class="vote-cast-count"
-          data-story-id="${safeStoryId}"
-          hidden>
+          class="vote-total-count"
+          data-story-id="${safeStoryId}">
+          ${voteCount} Total Vote${voteCount === 1 ? '' : 's'}
         </span>
 
         <a href="${detailUrl}" class="btn btn-secondary">View Concept</a>
@@ -936,28 +937,30 @@ export function updateVoteButtons(userVotes, stories) {
 
     const status = story.voting_status || 'upcoming';
     const userVoteCountForStory = userVoteMap.get(storyId) || 0;
+    const publicVoteCount = Number(story.vote_count) || getButtonVoteCount(btn);
 
+    setButtonVoteCount(btn, publicVoteCount);
     setUserVoteCountForButton(btn, userVoteCountForStory);
-    updateVoteCastIndicator(btn, userVoteCountForStory);
+    updateVoteTotalIndicator(btn, publicVoteCount);
 
     btn.classList.toggle('voted', userVoteCountForStory > 0);
 
     if (status === 'open') {
       btn.disabled = false;
-      updateVoteButtonLabel(btn, 'open', userVoteCountForStory);
+      updateVoteButtonLabel(btn, 'open', publicVoteCount, userVoteCountForStory);
       return;
     }
 
     if (status === 'upcoming') {
       btn.disabled = true;
       btn.classList.remove('voted');
-      updateVoteButtonLabel(btn, 'upcoming', userVoteCountForStory);
+      updateVoteButtonLabel(btn, 'upcoming', publicVoteCount, userVoteCountForStory);
       return;
     }
 
     btn.disabled = true;
     btn.classList.remove('voted');
-    updateVoteButtonLabel(btn, 'closed', userVoteCountForStory);
+    updateVoteButtonLabel(btn, 'closed', publicVoteCount, userVoteCountForStory);
   });
 }
 
@@ -1006,8 +1009,8 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
           setButtonVoteCount(btn, updatedPublicCount);
           setUserVoteCountForButton(btn, updatedUserVoteCount);
 
-          updateVoteButtonLabel(btn, 'open', updatedUserVoteCount);
-          updateVoteCastIndicator(btn, updatedUserVoteCount);
+          updateVoteButtonLabel(btn, 'open', updatedPublicCount, updatedUserVoteCount);
+          updateVoteTotalIndicator(btn, updatedPublicCount);
 
           btn.classList.add('voted');
           btn.disabled = false;
@@ -1027,8 +1030,9 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
         }
 
         btn.textContent = originalText;
+        setButtonVoteCount(btn, originalPublicCount);
         setUserVoteCountForButton(btn, originalUserVoteCount);
-        updateVoteCastIndicator(btn, originalUserVoteCount);
+        updateVoteTotalIndicator(btn, originalPublicCount);
         btn.disabled = false;
 
         if (result.reason === 'not_logged_in') {
@@ -1045,8 +1049,9 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
         console.error('Vote click error:', err);
         btn.disabled = false;
         btn.textContent = originalText;
+        setButtonVoteCount(btn, originalPublicCount);
         setUserVoteCountForButton(btn, originalUserVoteCount);
-        updateVoteCastIndicator(btn, originalUserVoteCount);
+        updateVoteTotalIndicator(btn, originalPublicCount);
         alert('Could not submit vote.');
       }
     });
