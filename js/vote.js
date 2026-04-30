@@ -74,18 +74,6 @@ function getStoryStatusLabel(story) {
   }
 }
 
-function getVotingStatusLabel(status) {
-  switch (status) {
-    case 'open':
-      return 'Voting Open';
-    case 'upcoming':
-      return 'Voting Starts Soon';
-    case 'closed':
-    default:
-      return 'Voting Closed';
-  }
-}
-
 function getStoryDetailUrl(story) {
   return `/gallery/story.html?id=${encodeId(story?.id)}`;
 }
@@ -652,17 +640,6 @@ function renderPreviewButton(story) {
   `;
 }
 
-function renderVoteStatusMeta(story) {
-  const status = story?.voting_status || 'closed';
-  const label = getVotingStatusLabel(status);
-
-  return `
-    <p class="story-card-vote-status">
-      ${escapeHtml(label)}
-    </p>
-  `;
-}
-
 /* =======================
    RENDERERS
 ======================= */
@@ -766,37 +743,33 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
     const safeTitle = escapeHtml(story.title || 'Untitled Story');
     const safeStoryId = escapeHtml(story.id);
     const voteCount = Number(story.vote_count) || 0;
+    const image = getStoryImage(story);
+    const detailUrl = getStoryDetailUrl(story);
 
     const card = document.createElement('article');
-    card.className = 'story-card vote-story-card';
+    card.className = 'vote-matchup-card';
 
     card.innerHTML = `
-      ${renderStoryArtwork(story, safeTitle)}
+      <h3 class="vote-matchup-title">${safeTitle}</h3>
 
-      <div class="story-card-body">
-        <span class="story-status">${escapeHtml(getStoryStatusLabel(story))}</span>
-        <h3>${safeTitle}</h3>
-        ${renderStoryCardMeta(story)}
+      <a href="${detailUrl}" class="vote-matchup-art-link" aria-label="View ${safeTitle}">
+        ${
+          image
+            ? `<img src="${escapeHtml(image)}" alt="${safeTitle}" loading="lazy" />`
+            : `<span class="vote-matchup-art-empty">No Artwork Yet</span>`
+        }
+      </a>
 
-        <div class="story-card-vote-summary">
-          <p class="story-card-votes">
-            ${voteCount} vote${voteCount === 1 ? '' : 's'}
-          </p>
-          ${renderVoteStatusMeta(story)}
-        </div>
+      <div class="vote-matchup-actions">
+        <button
+          type="button"
+          class="btn btn-primary vote-btn"
+          data-story-id="${safeStoryId}"
+          data-vote-count="${voteCount}">
+          Vote
+        </button>
 
-        <div class="story-actions">
-          <button
-            type="button"
-            class="btn btn-primary vote-btn"
-            data-story-id="${safeStoryId}"
-            data-vote-count="${voteCount}">
-            Vote (${voteCount})
-          </button>
-
-          <a href="${getStoryDetailUrl(story)}" class="btn btn-secondary">View Concept</a>
-          ${renderPreviewButton(story)}
-        </div>
+        <a href="${detailUrl}" class="btn btn-secondary">View Concept</a>
       </div>
     `;
 
@@ -911,27 +884,24 @@ export function updateVoteButtons(userVotes, stories) {
 
     const status = story.voting_status || 'upcoming';
     const userVoteCountForStory = userVoteMap.get(storyId) || 0;
-    const publicVoteCount = getButtonVoteCount(btn);
 
     btn.classList.toggle('voted', userVoteCountForStory > 0);
 
     if (status === 'open') {
       btn.disabled = false;
-      btn.textContent = userVoteCountForStory > 0
-        ? `Add Vote (${publicVoteCount})`
-        : `Vote (${publicVoteCount})`;
+      btn.textContent = userVoteCountForStory > 0 ? 'Add Vote' : 'Vote';
       return;
     }
 
     if (status === 'upcoming') {
       btn.disabled = true;
-      btn.textContent = 'Voting starts soon';
+      btn.textContent = 'Voting Starts Soon';
       btn.classList.remove('voted');
       return;
     }
 
     btn.disabled = true;
-    btn.textContent = `Voting Closed (${publicVoteCount})`;
+    btn.textContent = 'Voting Closed';
     btn.classList.remove('voted');
   });
 }
@@ -977,7 +947,7 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
           const updatedCount = originalCount + 1;
 
           setButtonVoteCount(btn, updatedCount);
-          btn.textContent = `Add Vote (${updatedCount})`;
+          btn.textContent = 'Add Vote';
           btn.classList.add('voted');
           btn.disabled = false;
 

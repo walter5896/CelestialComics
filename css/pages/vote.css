@@ -183,7 +183,8 @@
 }
 
 /* =========================
-   Vote Cards
+   Dynamic Vote Matchup Items
+   Rendered by /js/vote.js
 ========================= */
 
 .vote-story-grid,
@@ -191,124 +192,77 @@
   width: 100%;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
-  gap: 1rem;
-  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
+  gap: clamp(1rem, 3vw, 2rem);
+  align-items: start;
 }
 
-.vote-story-card,
-.story-card {
+.vote-matchup-card {
   min-width: 0;
-  height: 100%;
-  min-height: 470px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: rgba(8, 35, 73, 0.72);
-  border: 1px solid rgba(93, 154, 211, 0.24);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  text-align: center;
 }
 
-.story-card-art {
+.vote-matchup-title {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-base);
+  font-size: clamp(1rem, 1.7vw, 1.25rem);
+  line-height: 1.15;
+  font-weight: 900;
+  color: var(--color-text);
+}
+
+.vote-matchup-art-link {
   width: 100%;
-  height: clamp(210px, 24vw, 300px);
-  flex: 0 0 auto;
+  max-width: 390px;
+  height: clamp(260px, 34vw, 420px);
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 45%),
-    rgba(255, 255, 255, 0.04);
+  background: rgba(3, 23, 47, 0.42);
+  border: 1px solid rgba(93, 154, 211, 0.22);
+  border-radius: 0.35rem;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
-.story-card-art img {
+.vote-matchup-art-link:hover,
+.vote-matchup-art-link:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(242, 178, 74, 0.55);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+}
+
+.vote-matchup-art-link img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
 }
 
-.story-card-art-empty {
+.vote-matchup-art-empty {
   color: var(--color-text-soft);
+  font-size: 0.85rem;
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.story-card-body {
-  min-height: 255px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  padding: 0.85rem;
-  text-align: center;
-}
-
-.story-status {
-  display: none;
-}
-
-.story-card-body h3 {
-  margin: 0 0 0.45rem;
-  font-family: var(--font-base);
-  font-size: clamp(1rem, 1.8vw, 1.25rem);
-  line-height: 1.1;
-  font-weight: 900;
-  color: var(--color-text);
-}
-
-.story-card-author {
-  margin: 0 0 0.45rem;
-  color: var(--color-text);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.story-card-description {
-  margin: 0 auto;
-  max-width: 440px;
-  color: var(--color-text-soft);
-  font-size: 0.85rem;
-  line-height: 1.35;
-
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.story-card-vote-summary {
-  margin-top: auto;
-  padding-top: 0.75rem;
-}
-
-.story-card-votes {
-  margin: 0;
-  color: var(--color-accent-soft);
-  font-size: 0.95rem;
-  font-weight: 900;
-}
-
-.story-card-vote-status {
-  display: none;
-}
-
-.story-actions {
+.vote-matchup-actions {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.65rem;
   margin-top: 0.75rem;
-  padding-top: 0;
 }
 
-.story-actions .btn {
+.vote-matchup-actions .btn {
   margin: 0;
   min-height: 38px;
-  padding: 0.55rem 0.85rem;
+  padding: 0.55rem 0.95rem;
   font-size: 0.82rem;
 }
 
@@ -331,6 +285,27 @@
 }
 
 /* =========================
+   Legacy Vote Card Cleanup
+   Keeps old classes from interfering if cached markup appears
+========================= */
+
+.vote-story-card,
+.story-card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.story-status,
+.story-card-author,
+.story-card-description,
+.story-card-vote-summary,
+.story-card-vote-status,
+.story-card-votes {
+  display: none;
+}
+
+/* =========================
    Responsive
 ========================= */
 
@@ -341,28 +316,19 @@
     width: min(560px, 100%);
   }
 
-  .vote-story-card,
-  .story-card {
-    min-height: auto;
-  }
-
-  .story-card-art {
-    height: 300px;
-  }
-
-  .story-card-body {
-    min-height: auto;
+  .vote-matchup-art-link {
+    height: 330px;
   }
 }
 
 @media (max-width: 720px) {
   .vote-state-actions,
-  .story-actions {
+  .vote-matchup-actions {
     flex-direction: column;
   }
 
   .vote-state-actions .btn,
-  .story-actions .btn {
+  .vote-matchup-actions .btn {
     width: 100%;
   }
 }
@@ -385,7 +351,7 @@
     padding: 0.75rem;
   }
 
-  .story-card-art {
+  .vote-matchup-art-link {
     height: 280px;
   }
 }
