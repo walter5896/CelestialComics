@@ -1,6 +1,64 @@
 /* /css/pages/home.css */
 
 /* =========================
+   Homepage Type/Spacing Scale
+   Keep these values in mind as we standardize the rest of the site
+========================= */
+
+:root {
+  --fs-home-hero-title: clamp(2.8rem, 5vw, 5.2rem);
+  --fs-home-banner-title: clamp(2.2rem, 4vw, 4rem);
+  --fs-home-banner-subtitle: clamp(1.4rem, 2vw, 2.3rem);
+  --fs-home-section-title: clamp(2.25rem, 4.5vw, 4rem);
+  --fs-home-card-title: clamp(1.65rem, 3vw, 2.5rem);
+  --fs-home-body-lg: clamp(1.05rem, 1.6vw, 1.25rem);
+  --fs-home-body: 1rem;
+  --fs-home-small: 0.82rem;
+}
+
+/* =========================
+   Announcement Strip
+   Same banner pattern we can reuse on Winner/Gallery
+========================= */
+
+.announcement-strip {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.35rem 1rem;
+  background: linear-gradient(90deg, #7454c7, #8b5fd8);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.announcement-strip span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.announcement-strip a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.announcement-strip a:hover,
+.announcement-strip a:focus-visible {
+  color: var(--color-accent-soft);
+}
+
+/* =========================
    Homepage Hero
 ========================= */
 
@@ -60,7 +118,8 @@
   place-items: center;
   color: var(--color-text-soft);
   text-align: center;
-  font-size: 1rem;
+  font-size: var(--fs-home-body);
+  line-height: 1.55;
 }
 
 .hero-panel {
@@ -92,7 +151,7 @@
 .hero-panel .hero-title {
   margin: 0 0 1rem;
   font-family: var(--font-heading);
-  font-size: clamp(2.8rem, 5vw, 5.2rem);
+  font-size: var(--fs-home-hero-title);
   line-height: 0.85;
   color: #f6d16f;
   text-transform: uppercase;
@@ -138,7 +197,7 @@
 .brand-banner-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(2.2rem, 4vw, 4rem);
+  font-size: var(--fs-home-banner-title);
   line-height: 0.9;
   color: #f6f0e6;
   text-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
@@ -147,7 +206,7 @@
 .brand-banner-subtitle {
   margin: 0.35rem 0 0;
   font-family: var(--font-heading);
-  font-size: clamp(1.4rem, 2vw, 2.3rem);
+  font-size: var(--fs-home-banner-subtitle);
   color: rgba(246, 240, 230, 0.86);
 }
 
@@ -244,6 +303,43 @@
 }
 
 /* =========================
+   Homepage Card Image Fill
+   Makes card images fill their visual frames
+========================= */
+
+.continue-grid .story-card-media,
+.story-grid-custom .story-card-media {
+  height: 340px;
+  min-height: 340px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.continue-grid .story-card-media img,
+.story-grid-custom .story-card-media img {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 10px;
+}
+
+.story-grid-custom .story-card {
+  overflow: hidden;
+}
+
+.continue-grid .story-card-media {
+  height: 360px;
+  min-height: 360px;
+}
+
+.continue-grid .story-card-media img {
+  object-fit: cover;
+  object-position: center;
+}
+
+/* =========================
    Responsive Homepage
 ========================= */
 
@@ -274,6 +370,13 @@
 }
 
 @media (max-width: 720px) {
+  .announcement-strip {
+    min-height: 30px;
+    padding: 0.32rem 0.85rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
   .hero-section {
     padding-top: 1.5rem;
   }
@@ -310,52 +413,6 @@
     min-height: 280px;
   }
 
-  .continue-grid .story-card-media,
-  .story-grid-custom .story-card-media {
-    min-height: 240px;
-  }
-}
-/* =========================
-   Homepage Card Image Fill
-   Makes card images fill their visual frames
-========================= */
-
-.continue-grid .story-card-media,
-.story-grid-custom .story-card-media {
-  height: 340px;
-  min-height: 340px;
-  padding: 0;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.continue-grid .story-card-media img,
-.story-grid-custom .story-card-media img {
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  object-fit: cover;
-  object-position: center;
-  border-radius: 10px;
-}
-
-/* Story cards should feel more like polished feature cards */
-.story-grid-custom .story-card {
-  overflow: hidden;
-}
-
-/* Continue Reading is wider, so give it a slightly more cinematic crop */
-.continue-grid .story-card-media {
-  height: 360px;
-  min-height: 360px;
-}
-
-.continue-grid .story-card-media img {
-  object-fit: cover;
-  object-position: center;
-}
-
-/* Mobile: keep images strong but not gigantic */
-@media (max-width: 720px) {
   .continue-grid .story-card-media,
   .story-grid-custom .story-card-media {
     height: 260px;
