@@ -319,25 +319,36 @@
   margin-top: 0.65rem;
 }
 
+/* Clean, raw concept image display:
+   Keeps the image uncropped, but removes the visible inner frame/background. */
 .concept-art-frame {
   min-height: 520px;
   margin: 0;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 45%),
-    rgba(255, 255, 255, 0.04);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .concept-art-frame img,
 .story-hero-img {
-  width: 100%;
-  height: 100%;
-  min-height: 520px;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 680px;
+  min-height: 0;
+  margin: 0 auto;
   object-fit: contain;
   object-position: center;
-  background: rgba(255, 255, 255, 0.03);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .concept-related {
@@ -566,10 +577,13 @@
     grid-template-columns: 1fr;
   }
 
-  .concept-art-frame,
+  .concept-art-frame {
+    min-height: 420px;
+  }
+
   .concept-art-frame img,
   .story-hero-img {
-    min-height: 420px;
+    max-height: 620px;
   }
 }
 
@@ -644,10 +658,13 @@
     padding: 1rem;
   }
 
-  .concept-art-frame,
+  .concept-art-frame {
+    min-height: 320px;
+  }
+
   .concept-art-frame img,
   .story-hero-img {
-    min-height: 320px;
+    max-height: 560px;
   }
 
   .concept-actions,
