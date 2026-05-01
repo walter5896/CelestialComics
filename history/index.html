@@ -52,11 +52,7 @@
   </header>
 
   <div class="announcement-strip" role="status" aria-live="polite">
-    <span>
-      WINNER HUB
-      <span aria-hidden="true">•</span>
-      <a href="#featured-winner-heading">Jump to latest winner</a>
-    </span>
+    <span id="winner-status-text">Loading voting status...</span>
   </div>
 
   <main class="winner-page">
@@ -250,6 +246,7 @@
 
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes } from '/js/vote.js';
 
     const navToggle = document.querySelector('.nav-toggle');
     const mainNav = document.querySelector('.main-nav');
@@ -298,7 +295,30 @@
       });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function renderWinnerVotingStrip(stories) {
+      const statusText = document.getElementById('winner-status-text');
+      if (!statusText) return;
+
+      const safeStories = Array.isArray(stories) ? stories : [];
+      const visibleStories = safeStories.filter((story) => story?.active);
+
+      const hasOpenVoting = visibleStories.some((story) => story?.voting_status === 'open');
+      const hasUpcomingVoting = visibleStories.some((story) => story?.voting_status === 'upcoming');
+
+      if (hasOpenVoting) {
+        statusText.innerHTML = 'VOTING OPEN <span aria-hidden="true">•</span> <a href="/vote/">Click here to vote</a>';
+        return;
+      }
+
+      if (hasUpcomingVoting) {
+        statusText.innerHTML = 'VOTING STARTS SOON <span aria-hidden="true">•</span> <a href="/vote/">See upcoming vote</a>';
+        return;
+      }
+
+      statusText.innerHTML = 'VOTING CLOSED <span aria-hidden="true">•</span> <a href="/history/">View current winner</a>';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
       bindNavToggle();
 
@@ -309,6 +329,14 @@
           window.location.href = '/';
         });
       });
+
+      try {
+        const stories = await fetchStoriesWithVotes();
+        renderWinnerVotingStrip(stories);
+      } catch (err) {
+        console.error('Winner voting strip load error:', err);
+        renderWinnerVotingStrip([]);
+      }
     });
   </script>
 </body>

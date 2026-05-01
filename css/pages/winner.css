@@ -15,7 +15,7 @@
 
 /* =========================
    Announcement Strip
-   Shared homepage-style banner pattern
+   Shared homepage-style voting CTA banner
 ========================= */
 
 .announcement-strip {
@@ -36,7 +36,8 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-.announcement-strip span {
+.announcement-strip span,
+.announcement-strip #winner-status-text {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -54,6 +55,10 @@
 .announcement-strip a:focus-visible {
   color: var(--color-accent-soft);
 }
+
+/* =========================
+   Page Shell / Hero
+========================= */
 
 .winner-page {
   width: 100%;
@@ -104,6 +109,10 @@
   line-height: 1.55;
 }
 
+/* =========================
+   Sections
+========================= */
+
 .winner-section {
   padding: 2rem 0;
 }
@@ -138,6 +147,10 @@
   box-shadow: var(--shadow-card);
   padding: clamp(1rem, 2vw, 1.5rem);
 }
+
+/* =========================
+   Featured Winner
+========================= */
 
 .featured-winner-layout {
   display: grid;
@@ -189,6 +202,10 @@
   font-size: var(--fs-public-body);
   line-height: 1.55;
 }
+
+/* =========================
+   Grids / Cards
+========================= */
 
 .production-grid,
 .release-grid,
@@ -252,6 +269,10 @@
   line-height: 1.5;
 }
 
+/* =========================
+   Production Progress
+========================= */
+
 .production-timeline {
   display: grid;
   gap: 0.75rem;
@@ -286,6 +307,10 @@
     linear-gradient(90deg, var(--color-accent), var(--color-accent-soft));
   box-shadow: 0 0 18px rgba(242, 178, 74, 0.35);
 }
+
+/* =========================
+   Status Pills
+========================= */
 
 .status-pill,
 .production-status,
@@ -328,6 +353,10 @@
   border-color: rgba(242, 178, 74, 0.34);
   color: #fde7bd;
 }
+
+/* =========================
+   Round / Standings / Empty States
+========================= */
 
 .round-summary {
   display: grid;
@@ -374,6 +403,10 @@
   font-size: 0.92rem;
   color: var(--color-text-muted);
 }
+
+/* =========================
+   Responsive
+========================= */
 
 @media (max-width: 1100px) {
   .featured-winner-layout {
