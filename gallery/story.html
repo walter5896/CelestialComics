@@ -37,7 +37,6 @@
 
       <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
-          <li><a href="/">Home</a></li>
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/history/">Winner</a></li>
           <li><a href="/gallery/" aria-current="page">Gallery</a></li>
@@ -51,6 +50,10 @@
       </nav>
     </div>
   </header>
+
+  <div class="announcement-strip" role="status" aria-live="polite">
+    <span id="story-status-text">Loading voting status...</span>
+  </div>
 
   <main class="concept-page">
     <section class="concept-detail-hero" aria-labelledby="concept-title">
@@ -116,7 +119,6 @@
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
 
       <nav class="footer-nav" aria-label="Footer navigation">
-        <a href="/">Home</a>
         <a href="/vote/">Vote</a>
         <a href="/history/">Winner</a>
         <a href="/gallery/">Gallery</a>
@@ -199,6 +201,29 @@
       });
     }
 
+    function renderStoryVotingStrip(stories) {
+      const statusText = document.getElementById('story-status-text');
+      if (!statusText) return;
+
+      const safeStories = Array.isArray(stories) ? stories : [];
+      const visibleStories = safeStories.filter((story) => story?.active);
+
+      const hasOpenVoting = visibleStories.some((story) => story?.voting_status === 'open');
+      const hasUpcomingVoting = visibleStories.some((story) => story?.voting_status === 'upcoming');
+
+      if (hasOpenVoting) {
+        statusText.innerHTML = 'VOTING OPEN <span aria-hidden="true">•</span> <a href="/vote/">Click here to vote</a>';
+        return;
+      }
+
+      if (hasUpcomingVoting) {
+        statusText.innerHTML = 'VOTING STARTS SOON <span aria-hidden="true">•</span> <a href="/vote/">See upcoming vote</a>';
+        return;
+      }
+
+      statusText.innerHTML = 'VOTING CLOSED <span aria-hidden="true">•</span> <a href="/history/">View current winner</a>';
+    }
+
     function updateReadPreviewLink(story) {
       const readPreviewLink = document.getElementById('read-preview-link');
       if (!readPreviewLink || !story?.id) return;
@@ -222,6 +247,17 @@
       bindNavToggle();
       bindLogoutLinks();
 
+      let activeVoteStories = [];
+
+      try {
+        activeVoteStories = await fetchStoriesWithVotes();
+        renderStoryVotingStrip(activeVoteStories);
+      } catch (err) {
+        console.error('Story voting strip load error:', err);
+        activeVoteStories = [];
+        renderStoryVotingStrip([]);
+      }
+
       const story = await loadStory();
       if (!story) return;
 
@@ -236,7 +272,6 @@
         statusLabel.textContent = 'Concept Bank';
       }
 
-      const activeVoteStories = await fetchStoriesWithVotes();
       const matchingActiveStory = activeVoteStories.find(
         (item) => String(item.id) === String(storyId)
       );
