@@ -37,7 +37,6 @@
 
       <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
-          <li><a href="/">Home</a></li>
           <li><a href="/vote/">Vote</a></li>
           <li><a href="/history/">Winner</a></li>
           <li><a href="/gallery/" aria-current="page">Gallery</a></li>
@@ -52,10 +51,17 @@
     </div>
   </header>
 
+  <div class="announcement-strip" role="status" aria-live="polite">
+    <span id="gallery-status-text">Loading voting status...</span>
+  </div>
+
   <main class="gallery-page">
     <section class="gallery-hero" aria-labelledby="gallery-page-title">
       <div class="gallery-hero-inner">
+        <p class="gallery-kicker">Concept Archive</p>
+
         <h1 id="gallery-page-title">The Gallery</h1>
+
         <p>
           Browse Celestial Comics story concepts, explore the worlds behind each pitch,
           and keep an eye on the ideas that may enter a future voting tournament.
@@ -95,7 +101,6 @@
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
 
       <nav class="footer-nav" aria-label="Footer navigation">
-        <a href="/">Home</a>
         <a href="/vote/">Vote</a>
         <a href="/history/">Winner</a>
         <a href="/gallery/">Gallery</a>
@@ -112,6 +117,7 @@
 
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes } from '/js/vote.js';
 
     const navToggle = document.querySelector('.nav-toggle');
     const mainNav = document.querySelector('.main-nav');
@@ -160,7 +166,30 @@
       });
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function renderGalleryVotingStrip(stories) {
+      const statusText = document.getElementById('gallery-status-text');
+      if (!statusText) return;
+
+      const safeStories = Array.isArray(stories) ? stories : [];
+      const visibleStories = safeStories.filter((story) => story?.active);
+
+      const hasOpenVoting = visibleStories.some((story) => story?.voting_status === 'open');
+      const hasUpcomingVoting = visibleStories.some((story) => story?.voting_status === 'upcoming');
+
+      if (hasOpenVoting) {
+        statusText.innerHTML = 'VOTING OPEN <span aria-hidden="true">•</span> <a href="/vote/">Click here to vote</a>';
+        return;
+      }
+
+      if (hasUpcomingVoting) {
+        statusText.innerHTML = 'VOTING STARTS SOON <span aria-hidden="true">•</span> <a href="/vote/">See upcoming vote</a>';
+        return;
+      }
+
+      statusText.innerHTML = 'VOTING CLOSED <span aria-hidden="true">•</span> <a href="/history/">View current winner</a>';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
       bindNavToggle();
 
@@ -171,6 +200,14 @@
           window.location.href = '/';
         });
       });
+
+      try {
+        const stories = await fetchStoriesWithVotes();
+        renderGalleryVotingStrip(stories);
+      } catch (err) {
+        console.error('Gallery voting strip load error:', err);
+        renderGalleryVotingStrip([]);
+      }
     });
   </script>
 </body>

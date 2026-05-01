@@ -1,6 +1,62 @@
 /* /css/pages/gallery.css */
 
 /* =========================
+   Gallery / Story Detail / Reader
+========================= */
+
+:root {
+  --fs-public-page-title: clamp(3rem, 6vw, 5rem);
+  --fs-public-section-title: clamp(2.25rem, 4.5vw, 4rem);
+  --fs-public-card-title: clamp(1.55rem, 2.6vw, 2.35rem);
+  --fs-public-body-lg: clamp(1.02rem, 1.55vw, 1.2rem);
+  --fs-public-body: 1rem;
+  --fs-public-small: 0.82rem;
+}
+
+/* =========================
+   Announcement Strip
+   Shared homepage-style voting CTA banner
+========================= */
+
+.announcement-strip {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.35rem 1rem;
+  background: linear-gradient(90deg, #7454c7, #8b5fd8);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.announcement-strip span,
+.announcement-strip #gallery-status-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.announcement-strip a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.announcement-strip a:hover,
+.announcement-strip a:focus-visible {
+  color: var(--color-accent-soft);
+}
+
+/* =========================
    Gallery Page
 ========================= */
 
@@ -10,7 +66,7 @@
 }
 
 .gallery-hero {
-  padding: 3rem 0 3.25rem;
+  padding: 3rem 0 2.75rem;
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.14), transparent 34%),
@@ -30,17 +86,17 @@
   background: rgba(126, 97, 191, 0.32);
   border: 1px solid rgba(229, 220, 255, 0.22);
   color: var(--color-accent-soft);
-  font-size: 0.82rem;
+  font-size: var(--fs-public-small);
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .gallery-hero h1 {
-  margin: 0 0 1.15rem;
+  margin: 0 0 1rem;
   font-family: var(--font-heading);
-  font-size: clamp(4rem, 10vw, 8rem);
-  line-height: 0.86;
+  font-size: var(--fs-public-page-title);
+  line-height: 0.92;
   color: var(--color-accent-soft);
   text-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
 }
@@ -48,8 +104,8 @@
 .gallery-hero p {
   max-width: 900px;
   margin: 0 auto;
-  color: var(--color-text);
-  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body-lg);
   line-height: 1.55;
 }
 
@@ -68,7 +124,7 @@
   background:
     linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(9, 37, 77, 0.9));
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
 }
 
@@ -80,17 +136,18 @@
 .gallery-toolbar h2 {
   margin: 0 0 0.5rem;
   font-family: var(--font-heading);
-  font-size: clamp(2.4rem, 5vw, 4.5rem);
-  line-height: 0.98;
+  font-size: var(--fs-public-section-title);
+  line-height: 0.95;
+  color: var(--color-text);
   letter-spacing: 0.01em;
 }
 
 .gallery-toolbar p {
   margin: 0;
   max-width: 760px;
-  color: var(--color-text);
-  font-size: clamp(1rem, 1.6vw, 1.25rem);
-  line-height: 1.45;
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.55;
 }
 
 .gallery-toolbar .btn {
@@ -146,8 +203,8 @@
 .gallery-card h3 {
   margin: 1rem 1rem 0.45rem;
   font-family: var(--font-heading);
-  font-size: clamp(1.8rem, 3vw, 2.35rem);
-  line-height: 1.02;
+  font-size: var(--fs-public-card-title);
+  line-height: 1;
   letter-spacing: 0.01em;
   color: var(--color-text);
 }
@@ -157,6 +214,8 @@
 .gallery-card p {
   margin: 0.35rem 1rem;
   color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.5;
 }
 
 .story-grid .btn,
@@ -207,7 +266,7 @@
   background:
     linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(9, 37, 77, 0.92));
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
 }
 
@@ -223,6 +282,8 @@
   max-width: 780px;
   margin: 0;
   color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.55;
 }
 
 /* =========================
@@ -286,8 +347,8 @@
 .concept-detail-copy .story-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(3rem, 7vw, 6rem);
-  line-height: 0.98;
+  font-size: var(--fs-public-page-title);
+  line-height: 0.96;
   letter-spacing: 0.01em;
   color: var(--color-accent-soft);
   text-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
@@ -308,7 +369,8 @@
 .story-content p {
   margin: 0;
   color: var(--color-text-soft);
-  font-size: 1.05rem;
+  font-size: var(--fs-public-body);
+  line-height: 1.55;
 }
 
 .concept-actions,
@@ -595,6 +657,13 @@
 }
 
 @media (max-width: 720px) {
+  .announcement-strip {
+    min-height: 30px;
+    padding: 0.32rem 0.85rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
   .reader-page {
     padding: 1.25rem 1rem 3rem;
   }
@@ -625,7 +694,11 @@
 
 @media (max-width: 640px) {
   .gallery-hero {
-    padding: 2.25rem 0 2.5rem;
+    padding: 2.25rem 0 2.25rem;
+  }
+
+  .gallery-hero h1 {
+    font-size: clamp(2.6rem, 14vw, 4rem);
   }
 
   .gallery-section {
@@ -635,6 +708,10 @@
   .gallery-toolbar {
     text-align: center;
     justify-content: center;
+  }
+
+  .gallery-toolbar h2 {
+    font-size: clamp(2rem, 11vw, 3.25rem);
   }
 
   .gallery-toolbar .btn {
@@ -656,6 +733,10 @@
 
   .concept-detail-panel {
     padding: 1rem;
+  }
+
+  .concept-detail-copy .story-title {
+    font-size: clamp(2.5rem, 13vw, 4rem);
   }
 
   .concept-art-frame {
