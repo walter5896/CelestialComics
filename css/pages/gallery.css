@@ -493,24 +493,31 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Reader image cleanup:
+   The outer reader-card remains, but the comic page no longer sits inside
+   a second light-blue frame. */
 .reader-stage {
   min-height: 520px;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 45%),
-    rgba(255, 255, 255, 0.04);
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
 }
 
 .reader-image {
   display: block;
-  width: 100%;
+  width: auto;
+  height: auto;
+  max-width: 100%;
   max-height: 82vh;
+  margin: 0 auto;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .reader-caption {
