@@ -2,194 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="description"
+    content="Shop Celestial Comics merch, released comics, digital formats, paperback editions, bundles, and products that support future story production."
+  />
+
   <title>Shop | Celestial Comics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="/css/main.css" />
-  <style>
-    .shop-hero {
-      padding: 2rem 0 1rem;
-      text-align: center;
-    }
-
-    .shop-hero h1 {
-      margin-bottom: 0.75rem;
-    }
-
-    .shop-hero p {
-      max-width: 760px;
-      margin: 0 auto;
-      color: #555;
-    }
-
-    .shop-status-message {
-      text-align: center;
-      margin: 1rem 0 1.5rem;
-      min-height: 1.5rem;
-      font-weight: 500;
-    }
-
-    .shop-products-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.5rem;
-      padding-bottom: 3rem;
-    }
-
-    .shop-product-card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-
-    .shop-product-image,
-    .shop-product-image-placeholder {
-      width: 100%;
-      height: 240px;
-      object-fit: cover;
-      background: #f3f4f6;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #6b7280;
-      font-size: 0.95rem;
-      text-align: center;
-      padding: 1rem;
-    }
-
-    .shop-product-body {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      flex: 1;
-    }
-
-    .shop-product-badge-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .shop-product-badge {
-      display: inline-block;
-      padding: 0.22rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      background: #e5e7eb;
-      color: #111827;
-    }
-
-    .shop-product-badge.merch {
-      background: #dbeafe;
-      color: #1d4ed8;
-    }
-
-    .shop-product-badge.digital_comic {
-      background: #ede9fe;
-      color: #6d28d9;
-    }
-
-    .shop-product-badge.paperback {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .shop-product-badge.bundle {
-      background: #fce7f3;
-      color: #be185d;
-    }
-
-    .shop-product-story-link {
-      margin: 0;
-      font-size: 0.92rem;
-      color: #4b5563;
-    }
-
-    .shop-product-title {
-      margin: 0;
-      font-size: 1.2rem;
-    }
-
-    .shop-product-description {
-      margin: 0;
-      color: #4b5563;
-      line-height: 1.5;
-      flex: 1;
-    }
-
-    .shop-product-price {
-      margin: 0;
-      font-size: 1.1rem;
-      font-weight: 700;
-    }
-
-    .shop-product-votes {
-      margin: 0;
-      color: #2563eb;
-      font-weight: 600;
-    }
-
-    .shop-product-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 0.25rem;
-    }
-
-    .shop-buy-btn,
-    .shop-view-comic-btn {
-      flex: 1 1 180px;
-      margin-top: 0;
-      text-align: center;
-    }
-
-    .shop-view-comic-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .shop-empty-state {
-      text-align: center;
-      padding: 2rem 1rem 3rem;
-      color: #6b7280;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/pages/shop.css" />
 </head>
+
 <body>
-
-  <!-- HEADER -->
   <header class="site-header">
-    <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
 
-      <button class="nav-toggle" aria-label="Toggle navigation">
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
-          <li><a href="/">Home</a></li>
-          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
-          <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
-
-          <li class="profile-link" style="display:none;">
-            <a href="/profile/">My Profile</a>
-          </li>
-
-          <li class="admin-link" style="display:none;">
-            <a href="/admin/index.html">Admin Panel</a>
-          </li>
-
+          <li><a href="/history/">Winner</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/shop/" aria-current="page">Shop</a></li>
+          <li><a href="/team/">The Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -197,68 +51,162 @@
     </div>
   </header>
 
-  <!-- SHOP CONTENT -->
-  <main class="container shop-container">
-    <section class="shop-hero">
-      <h1>Shop</h1>
-      <p>
-        Browse Celestial Comics merch, released comic formats, and bundles.
-        Comic products will link you to the released comic page for preview and purchase context.
-      </p>
+  <div class="announcement-strip" role="status" aria-live="polite">
+    <span id="shop-status-text">Loading voting status...</span>
+  </div>
+
+  <main class="shop-page">
+    <section class="shop-hero" aria-labelledby="shop-page-title">
+      <div class="shop-hero-inner">
+        <h1 id="shop-page-title">Shop</h1>
+
+        <p>
+          Browse Celestial Comics merch, released comic formats, and story bundles.
+          Purchases help support future comic production and may include bonus vote rewards
+          when eligible products are available.
+        </p>
+      </div>
     </section>
 
-    <p id="shop-status-message" class="shop-status-message"></p>
+    <section class="shop-section" aria-labelledby="shop-products-title">
+      <div class="container">
+        <div class="shop-toolbar">
+          <div>
+            <h2 id="shop-products-title">Featured Products</h2>
+            <p>
+              Explore current products, released comic formats, and supporting merch from the Celestial Comics universe.
+            </p>
+          </div>
 
-    <section
-      id="products-container"
-      class="shop-products-grid"
-      aria-live="polite"
-    >
-      <div class="shop-empty-state">Loading products...</div>
+          <a href="/history/" class="btn btn-secondary">View Released Stories</a>
+        </div>
+
+        <p id="shop-status-message" class="shop-status-message" aria-live="polite"></p>
+
+        <section
+          id="products-container"
+          class="shop-products-grid"
+          aria-live="polite"
+        >
+          <div class="shop-empty-state">Loading products...</div>
+        </section>
+      </div>
     </section>
   </main>
 
-  <!-- FOOTER -->
   <footer class="site-footer">
-    <div class="container footer-container">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV -->
   <script src="/js/env.js"></script>
-
-  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
-
-  <!-- SHOP LOGIC -->
   <script type="module" src="/js/shop.js"></script>
+  <script type="module" src="/js/admin-nav.js"></script>
 
-  <!-- AUTH UI -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
+    import { fetchStoriesWithVotes } from '/js/vote.js';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    const navToggle = document.querySelector('.nav-toggle');
+    const mainNav = document.querySelector('.main-nav');
+
+    function closeNav() {
+      if (!navToggle || !mainNav) return;
+
+      mainNav.classList.remove('is-open');
+      navToggle.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function bindNavToggle() {
+      if (!navToggle || !mainNav) return;
+
+      navToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('is-open');
+
+        navToggle.classList.toggle('is-open', isOpen);
+        navToggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      mainNav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeNav();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 1180) {
+          closeNav();
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Node)) return;
+        if (mainNav.contains(target) || navToggle.contains(target)) return;
+
+        closeNav();
+      });
+    }
+
+    function renderShopVotingStrip(stories) {
+      const statusText = document.getElementById('shop-status-text');
+      if (!statusText) return;
+
+      const safeStories = Array.isArray(stories) ? stories : [];
+      const visibleStories = safeStories.filter((story) => story?.active);
+
+      const hasOpenVoting = visibleStories.some((story) => story?.voting_status === 'open');
+      const hasUpcomingVoting = visibleStories.some((story) => story?.voting_status === 'upcoming');
+
+      if (hasOpenVoting) {
+        statusText.innerHTML = 'VOTING OPEN <span aria-hidden="true">•</span> <a href="/vote/">Click here to vote</a>';
+        return;
+      }
+
+      if (hasUpcomingVoting) {
+        statusText.innerHTML = 'VOTING STARTS SOON <span aria-hidden="true">•</span> <a href="/vote/">See upcoming vote</a>';
+        return;
+      }
+
+      statusText.innerHTML = 'VOTING CLOSED <span aria-hidden="true">•</span> <a href="/history/">View current winner</a>';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
+      bindNavToggle();
 
       document.querySelectorAll('.logout-link').forEach((el) => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
+        el.addEventListener('click', async (event) => {
+          event.preventDefault();
           await logout();
           window.location.href = '/';
         });
       });
+
+      try {
+        const stories = await fetchStoriesWithVotes();
+        renderShopVotingStrip(stories);
+      } catch (err) {
+        console.error('Shop voting strip load error:', err);
+        renderShopVotingStrip([]);
+      }
     });
   </script>
-
-  <!-- ADMIN NAV LINK -->
-  <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
