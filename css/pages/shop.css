@@ -224,18 +224,27 @@
   width: 100%;
   min-height: 44px;
   padding: 0.65rem 2.3rem 0.65rem 0.75rem;
-  border: 1px solid rgba(242, 178, 74, 0.35);
+  border: 1px solid rgba(242, 178, 74, 0.45);
   border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(7, 31, 64, 0.96), rgba(3, 23, 47, 0.96));
-  color: var(--color-text);
+  background-color: #071f40;
+  color: #ffffff;
   font: inherit;
   font-weight: 800;
   cursor: pointer;
 }
 
+.shop-story-filter select option {
+  background-color: #071f40;
+  color: #ffffff;
+}
+
+.shop-story-filter select option:checked {
+  background-color: #f2b24a;
+  color: #071f40;
+}
+
 .shop-story-filter select:focus {
-  outline: 2px solid rgba(242, 178, 74, 0.35);
+  outline: 2px solid rgba(242, 178, 74, 0.45);
   outline-offset: 2px;
 }
 
