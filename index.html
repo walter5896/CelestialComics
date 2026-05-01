@@ -396,16 +396,16 @@
       const hasUpcomingVoting = visibleStories.some((story) => story?.voting_status === 'upcoming');
 
       if (hasOpenVoting) {
-        statusText.innerHTML = 'VOTING OPEN (<a href="/vote/">click HERE to vote</a>)';
+        statusText.innerHTML = 'VOTING OPEN <span aria-hidden="true">•</span> <a href="/vote/">Click here to vote</a>';
         return;
       }
 
       if (hasUpcomingVoting) {
-        statusText.innerHTML = 'VOTING STARTS SOON (<a href="/vote/">see upcoming stories</a>)';
+        statusText.innerHTML = 'VOTING STARTS SOON <span aria-hidden="true">•</span> <a href="/vote/">See upcoming vote</a>';
         return;
       }
 
-      statusText.innerHTML = 'VOTING CLOSED (<a href="/history/">click HERE to see the winner details</a>)';
+      statusText.innerHTML = 'VOTING CLOSED <span aria-hidden="true">•</span> <a href="/history/">View current winner</a>';
     }
 
     async function renderContinueReading() {
