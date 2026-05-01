@@ -11,12 +11,21 @@ import {
 const productsContainer = document.getElementById('products-container');
 const shopStatusMessage = document.getElementById('shop-status-message');
 
+const shopFilterButtons = Array.from(document.querySelectorAll('.shop-filter-btn'));
+const shopStoryFilter = document.getElementById('shop-story-filter');
+const shopClearFiltersBtn = document.getElementById('shop-clear-filters');
+
 let unsubscribeState = null;
 let shopBootstrapped = false;
 let shopClickHandlerAttached = false;
+let shopFilterHandlerAttached = false;
+
+let activeProductFilter = 'all';
+let activeStoryFilter = 'all';
 
 function setStatus(message = '', color = '') {
   if (!shopStatusMessage) return;
+
   shopStatusMessage.textContent = message;
   shopStatusMessage.style.color = color;
 }
@@ -33,6 +42,7 @@ function escapeHtml(value) {
 function formatPrice(priceCents) {
   const safeValue = Number(priceCents);
   if (!Number.isInteger(safeValue)) return 'Price unavailable';
+
   return `$${(safeValue / 100).toFixed(2)}`;
 }
 
@@ -82,7 +92,10 @@ async function getAccessToken() {
 
 function getOwnedStoryIdSet() {
   const { ownedStoryIds = [] } = getState();
-  return new Set((Array.isArray(ownedStoryIds) ? ownedStoryIds : []).map(String));
+
+  return new Set(
+    (Array.isArray(ownedStoryIds) ? ownedStoryIds : []).map(String)
+  );
 }
 
 function getRenderedProducts() {
@@ -102,6 +115,79 @@ function filterVisibleProducts(products) {
 
     return !!(product.stories && product.stories.story_status === 'released');
   });
+}
+
+function getFilteredProducts() {
+  const products = getRenderedProducts();
+
+  return products.filter((product) => {
+    const productType = String(product.product_type || 'merch');
+    const relatedStoryId = product.stories?.id ? String(product.stories.id) : '';
+
+    const matchesProductType =
+      activeProductFilter === 'all' || productType === activeProductFilter;
+
+    const matchesStory =
+      activeStoryFilter === 'all' || relatedStoryId === String(activeStoryFilter);
+
+    return matchesProductType && matchesStory;
+  });
+}
+
+function updateFilterButtonState() {
+  shopFilterButtons.forEach((button) => {
+    const isActive = button.dataset.shopFilter === activeProductFilter;
+
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
+}
+
+function populateStoryFilter(products) {
+  if (!shopStoryFilter) return;
+
+  const currentValue = shopStoryFilter.value || activeStoryFilter;
+  const storyMap = new Map();
+
+  (Array.isArray(products) ? products : []).forEach((product) => {
+    const story = product?.stories;
+
+    if (!story?.id || !story?.title) return;
+
+    storyMap.set(String(story.id), String(story.title));
+  });
+
+  const sortedStories = Array.from(storyMap.entries()).sort((a, b) =>
+    a[1].localeCompare(b[1])
+  );
+
+  shopStoryFilter.innerHTML = `
+    <option value="all">All Stories</option>
+    ${sortedStories
+      .map(([storyId, storyTitle]) => {
+        return `<option value="${escapeHtml(storyId)}">${escapeHtml(storyTitle)}</option>`;
+      })
+      .join('')}
+  `;
+
+  const optionStillExists = Array.from(shopStoryFilter.options).some(
+    (option) => option.value === currentValue
+  );
+
+  shopStoryFilter.value = optionStillExists ? currentValue : 'all';
+  activeStoryFilter = shopStoryFilter.value;
+}
+
+function resetFilters() {
+  activeProductFilter = 'all';
+  activeStoryFilter = 'all';
+
+  if (shopStoryFilter) {
+    shopStoryFilter.value = 'all';
+  }
+
+  updateFilterButtonState();
+  renderProducts();
 }
 
 async function loadProductsToState() {
@@ -135,6 +221,7 @@ async function loadProductsToState() {
 
   const visibleProducts = filterVisibleProducts(products || []);
   setProducts(visibleProducts);
+  populateStoryFilter(visibleProducts);
 }
 
 async function loadOwnedStoryAccessToState() {
@@ -166,12 +253,29 @@ async function loadOwnedStoryAccessToState() {
 function renderProducts() {
   if (!productsContainer) return;
 
-  const products = getRenderedProducts();
+  const allProducts = getRenderedProducts();
+  const products = getFilteredProducts();
   const ownedStoryIds = getOwnedStoryIdSet();
 
+  if (!allProducts.length) {
+    productsContainer.innerHTML = `
+      <div class="shop-empty-state">
+        No products are available right now.
+      </div>
+    `;
+
+    setStatus('No products are available right now.', '#cbd5e1');
+    return;
+  }
+
   if (!products.length) {
-    productsContainer.innerHTML = '<p>No products available right now.</p>';
-    setStatus('No products are available right now.', '#6b7280');
+    productsContainer.innerHTML = `
+      <div class="shop-empty-state">
+        No products match the current filters.
+      </div>
+    `;
+
+    setStatus('Try clearing the filters or choosing another category.', '#cbd5e1');
     return;
   }
 
@@ -288,6 +392,7 @@ async function handleBuyProduct(productId, buttonEl) {
     const ownedStoryIds = getOwnedStoryIdSet();
 
     const product = products.find((item) => String(item.id) === String(productId));
+
     if (!product) {
       throw new Error('Product not found.');
     }
@@ -299,7 +404,7 @@ async function handleBuyProduct(productId, buttonEl) {
       isDigitalAccessProduct(product.product_type);
 
     if (alreadyOwned) {
-      setStatus('You already own this digital comic.', '#6b7280');
+      setStatus('You already own this digital comic.', '#cbd5e1');
       renderProducts();
       return;
     }
@@ -367,19 +472,58 @@ function attachShopClickHandler() {
   shopClickHandlerAttached = true;
 }
 
+function attachShopFilterHandlers() {
+  if (shopFilterHandlerAttached) return;
+
+  shopFilterButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      activeProductFilter = button.dataset.shopFilter || 'all';
+
+      updateFilterButtonState();
+      renderProducts();
+    });
+  });
+
+  if (shopStoryFilter) {
+    shopStoryFilter.addEventListener('change', () => {
+      activeStoryFilter = shopStoryFilter.value || 'all';
+      renderProducts();
+    });
+  }
+
+  if (shopClearFiltersBtn) {
+    shopClearFiltersBtn.addEventListener('click', resetFilters);
+  }
+
+  shopFilterHandlerAttached = true;
+}
+
 async function refreshShopState() {
   if (!productsContainer) return;
 
   try {
-    setStatus('Loading products...', '#374151');
-    productsContainer.innerHTML = '<p>Loading products...</p>';
+    setStatus('Loading products...', '#cbd5e1');
+
+    productsContainer.innerHTML = `
+      <div class="shop-empty-state">
+        Loading products...
+      </div>
+    `;
 
     await loadProductsToState();
     await loadOwnedStoryAccessToState();
+
+    updateFilterButtonState();
     renderProducts();
   } catch (err) {
     console.error('Error loading shop products:', err);
-    productsContainer.innerHTML = '<p>Failed to load products.</p>';
+
+    productsContainer.innerHTML = `
+      <div class="shop-empty-state">
+        Failed to load products.
+      </div>
+    `;
+
     setStatus(err.message || 'Failed to load products.', 'red');
   }
 }
@@ -394,8 +538,11 @@ async function initShop() {
   }
 
   attachShopClickHandler();
+  attachShopFilterHandlers();
 
   unsubscribeState = subscribe(() => {
+    populateStoryFilter(getRenderedProducts());
+    updateFilterButtonState();
     renderProducts();
   });
 

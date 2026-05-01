@@ -68,28 +68,114 @@
       </div>
     </section>
 
-    <section class="shop-section" aria-labelledby="shop-products-title">
+    <section class="shop-catalog-section" aria-labelledby="shop-products-title">
       <div class="container">
-        <div class="shop-toolbar">
-          <div>
-            <h2 id="shop-products-title">Featured Products</h2>
-            <p>
-              Explore current products, released comic formats, and supporting merch from the Celestial Comics universe.
-            </p>
-          </div>
+        <div class="shop-catalog-shell">
+          <aside class="shop-filter-panel" aria-label="Shop filters">
+            <div class="shop-filter-header">
+              <h2>Browse</h2>
+              <p>Filter products by type or story.</p>
+            </div>
 
-          <a href="/history/" class="btn btn-secondary">View Released Stories</a>
+            <nav class="shop-category-nav" aria-label="Product categories">
+              <button
+                type="button"
+                class="shop-filter-btn is-active"
+                data-shop-filter="all"
+                aria-pressed="true"
+              >
+                <span aria-hidden="true">→</span>
+                All Products
+              </button>
+
+              <button
+                type="button"
+                class="shop-filter-btn"
+                data-shop-filter="digital_comic"
+                aria-pressed="false"
+              >
+                <span aria-hidden="true">→</span>
+                Graphic Novels
+              </button>
+
+              <button
+                type="button"
+                class="shop-filter-btn"
+                data-shop-filter="paperback"
+                aria-pressed="false"
+              >
+                <span aria-hidden="true">→</span>
+                Paperback
+              </button>
+
+              <button
+                type="button"
+                class="shop-filter-btn"
+                data-shop-filter="bundle"
+                aria-pressed="false"
+              >
+                <span aria-hidden="true">→</span>
+                Bundles
+              </button>
+
+              <button
+                type="button"
+                class="shop-filter-btn"
+                data-shop-filter="merch"
+                aria-pressed="false"
+              >
+                <span aria-hidden="true">→</span>
+                Merch
+              </button>
+
+              <div class="shop-category-subgroup" aria-label="Merch examples">
+                <span>◆ Stickers</span>
+                <span>◆ Buttons</span>
+                <span>◆ Keychains</span>
+                <span>◆ Prints</span>
+                <span>◆ Apparel</span>
+              </div>
+            </nav>
+
+            <div class="shop-story-filter">
+              <label for="shop-story-filter">Filter by Story</label>
+              <select id="shop-story-filter" name="story">
+                <option value="all">All Stories</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              id="shop-clear-filters"
+              class="btn btn-secondary shop-clear-filters"
+            >
+              Clear Filters
+            </button>
+          </aside>
+
+          <section class="shop-catalog-content" aria-labelledby="shop-products-title">
+            <div class="shop-toolbar">
+              <div>
+                <h2 id="shop-products-title">Featured Products</h2>
+                <p>
+                  Explore current products, released comic formats, and supporting merch from the Celestial Comics universe.
+                </p>
+              </div>
+
+              <a href="/history/" class="btn btn-secondary">View Released Stories</a>
+            </div>
+
+            <p id="shop-status-message" class="shop-status-message" aria-live="polite"></p>
+
+            <section
+              id="products-container"
+              class="shop-products-grid"
+              aria-live="polite"
+            >
+              <div class="shop-empty-state">Loading products...</div>
+            </section>
+          </section>
         </div>
-
-        <p id="shop-status-message" class="shop-status-message" aria-live="polite"></p>
-
-        <section
-          id="products-container"
-          class="shop-products-grid"
-          aria-live="polite"
-        >
-          <div class="shop-empty-state">Loading products...</div>
-        </section>
       </div>
     </section>
   </main>
