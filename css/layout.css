@@ -160,6 +160,7 @@ section {
   min-height: 46px;
   padding: 0.72rem 0.88rem;
   border-radius: var(--radius-pill);
+  border: 1px solid transparent;
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.055em;
@@ -170,7 +171,8 @@ section {
     background var(--transition-base),
     transform var(--transition-base),
     box-shadow var(--transition-base),
-    border-color var(--transition-base);
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
 
 .nav-list a:hover {
@@ -179,12 +181,47 @@ section {
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
 }
 
+/* =========================
+   Active Navigation State
+   Uses aria-current="page" on the current page link
+========================= */
+
+.nav-list a[aria-current="page"] {
+  background:
+    linear-gradient(180deg, rgba(242, 178, 74, 0.22), rgba(242, 178, 74, 0.08));
+  border-color: rgba(242, 178, 74, 0.42);
+  color: var(--color-accent-soft);
+  box-shadow:
+    0 0 0 1px rgba(242, 178, 74, 0.12),
+    0 10px 24px rgba(0, 0, 0, 0.16),
+    0 0 18px rgba(242, 178, 74, 0.16);
+}
+
+.nav-list a[aria-current="page"]:hover,
+.nav-list a[aria-current="page"]:focus-visible {
+  background:
+    linear-gradient(180deg, rgba(242, 178, 74, 0.28), rgba(242, 178, 74, 0.12));
+  color: #ffffff;
+  border-color: rgba(242, 178, 74, 0.58);
+}
+
 .nav-list .login-link,
 .nav-list .logout-link,
 .nav-list .admin-link a,
 .nav-list .profile-link a {
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.07);
+}
+
+/* Keep active styling stronger than utility nav button styling */
+.nav-list .login-link[aria-current="page"],
+.nav-list .logout-link[aria-current="page"],
+.nav-list .admin-link a[aria-current="page"],
+.nav-list .profile-link a[aria-current="page"] {
+  background:
+    linear-gradient(180deg, rgba(242, 178, 74, 0.22), rgba(242, 178, 74, 0.08));
+  border-color: rgba(242, 178, 74, 0.42);
+  color: var(--color-accent-soft);
 }
 
 /* =========================
@@ -470,11 +507,41 @@ section {
     background: rgba(255, 255, 255, 0.13);
   }
 
+  .nav-list a[aria-current="page"] {
+    background:
+      linear-gradient(90deg, rgba(242, 178, 74, 0.24), rgba(242, 178, 74, 0.08));
+    border-color: rgba(242, 178, 74, 0.42);
+    color: var(--color-accent-soft);
+    box-shadow:
+      0 0 0 1px rgba(242, 178, 74, 0.12),
+      0 10px 24px rgba(0, 0, 0, 0.18),
+      0 0 18px rgba(242, 178, 74, 0.12);
+  }
+
+  .nav-list a[aria-current="page"]:hover,
+  .nav-list a[aria-current="page"]:focus-visible {
+    transform: translateX(3px);
+    background:
+      linear-gradient(90deg, rgba(242, 178, 74, 0.3), rgba(242, 178, 74, 0.12));
+    color: #ffffff;
+    border-color: rgba(242, 178, 74, 0.58);
+  }
+
   .nav-list .login-link,
   .nav-list .logout-link,
   .nav-list .admin-link a,
   .nav-list .profile-link a {
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  .nav-list .login-link[aria-current="page"],
+  .nav-list .logout-link[aria-current="page"],
+  .nav-list .admin-link a[aria-current="page"],
+  .nav-list .profile-link a[aria-current="page"] {
+    background:
+      linear-gradient(90deg, rgba(242, 178, 74, 0.24), rgba(242, 178, 74, 0.08));
+    border-color: rgba(242, 178, 74, 0.42);
+    color: var(--color-accent-soft);
   }
 }
 
