@@ -2,34 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign Up | Celestial Comics</title>
-  <link rel="stylesheet" href="/css/main.css" />
-</head>
-<body>
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-      <button class="nav-toggle" aria-label="Toggle navigation">
+  <meta
+    name="description"
+    content="Create a Celestial Comics account to vote, save story concepts, purchase digital comics, and track your reader access."
+  />
+
+  <title>Sign Up | Celestial Comics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/pages/signup.css?v=auth-polish-1" />
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
-          <li><a href="/">Home</a></li>
-          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
+          <li><a href="/history/">Winner</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
-          <li class="profile-link" style="display:none;">
-            <a href="/profile/">My Profile</a>
-          </li>
-          <li class="admin-link" style="display:none;">
-            <a href="/admin/index.html">Admin Panel</a>
-          </li>
+          <li><a href="/team/">The Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -37,68 +51,192 @@
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="container auth-page">
-    <h1>Create an Account</h1>
+  <div class="announcement-strip" role="status" aria-live="polite">
+    <span>VOTING OPEN • <a href="/vote/">CLICK HERE TO VOTE</a></span>
+  </div>
 
-    <form id="signup-form">
-      <label for="email">Email</label>
-      <input type="email" id="email" placeholder="Your email" required />
+  <main class="auth-page">
+    <section class="auth-hero" aria-labelledby="auth-title">
+      <div class="auth-hero-inner">
+        <p class="auth-kicker">Join the Universe</p>
+        <h1 id="auth-title">Create Account</h1>
+        <p>
+          Sign up to vote on story concepts, save favorites, and unlock purchased comics.
+        </p>
+      </div>
+    </section>
 
-      <label for="password">Password</label>
-      <input type="password" id="password" placeholder="Your password" required />
+    <section class="auth-shell" aria-label="Signup form">
+      <article class="auth-card">
+        <div class="auth-card-header">
+          <p class="auth-card-kicker">Sign Up</p>
+          <h2>Begin Your Journey</h2>
+          <p>
+            Create your account with email and password. You may need to confirm your email before logging in.
+          </p>
+        </div>
 
-      <button type="submit" class="btn btn-primary">Sign Up</button>
-    </form>
+        <p id="signup-status" class="auth-status" aria-live="polite"></p>
 
-    <p>Already have an account? <a href="/login/">Login here</a></p>
+        <form id="signup-form" class="auth-form">
+          <div class="auth-field">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
+          </div>
+
+          <div class="auth-field">
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Create a password"
+              autocomplete="new-password"
+              minlength="6"
+              required
+            />
+            <small>Password must be at least 6 characters.</small>
+          </div>
+
+          <div class="auth-field">
+            <label for="confirm-password">Confirm Password</label>
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirm-password"
+              placeholder="Confirm your password"
+              autocomplete="new-password"
+              minlength="6"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn btn-primary auth-submit-btn">
+            Create Account
+          </button>
+        </form>
+
+        <div class="auth-email-note">
+          <h3>After signing up</h3>
+          <p>
+            Check your inbox for a confirmation email. If you do not see it, check spam or promotions.
+          </p>
+        </div>
+
+        <div class="auth-footer-note">
+          <p>Already have an account?</p>
+          <a href="/login/">Log in here</a>
+        </div>
+      </article>
+
+      <aside class="auth-side-panel">
+        <p class="auth-card-kicker">Account Perks</p>
+        <h2>What You Unlock</h2>
+
+        <ul class="auth-benefit-list">
+          <li>Start with your round voting balance.</li>
+          <li>Earn bonus votes from eligible purchases.</li>
+          <li>Save story concepts to revisit later.</li>
+          <li>Keep purchased digital comics in your library.</li>
+        </ul>
+      </aside>
+    </section>
   </main>
 
-  <!-- FOOTER -->
   <footer class="site-footer">
-    <div class="container footer-container">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV -->
   <script src="/js/env.js"></script>
-
-  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- SIGNUP / AUTH UI -->
   <script type="module">
     import { signup } from '/js/auth-signup.js';
     import { updateUI, logout } from '/js/auth.js';
 
-    // =========================
-    // SIGNUP PAGE INITIALIZER
-    // =========================
-    // Updates auth-aware navigation, wires logout behavior,
-    // and handles signup form submission.
+    function setSignupStatus(message = '', type = '') {
+      const status = document.getElementById('signup-status');
+      if (!status) return;
+
+      status.textContent = message;
+      status.className = 'auth-status';
+
+      if (type) {
+        status.classList.add(`auth-status--${type}`);
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
       const form = document.getElementById('signup-form');
+      const submitBtn = form?.querySelector('button[type="submit"]');
 
       form?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const email = document.getElementById('email')?.value || '';
         const password = document.getElementById('password')?.value || '';
+        const confirmPassword = document.getElementById('confirm-password')?.value || '';
 
-        const success = await signup(email, password);
+        setSignupStatus('');
 
-        if (success) {
-          window.location.href = '/';
+        if (password !== confirmPassword) {
+          setSignupStatus('Passwords do not match.', 'error');
+          return;
+        }
+
+        if (password.length < 6) {
+          setSignupStatus('Password must be at least 6 characters long.', 'error');
+          return;
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Creating Account...';
+        }
+
+        try {
+          const result = await signup(email, password);
+
+          if (!result.success) {
+            setSignupStatus(result.error || 'Could not create account.', 'error');
+            return;
+          }
+
+          if (result.needsEmailConfirmation) {
+            setSignupStatus(result.message, 'success');
+            form.reset();
+            return;
+          }
+
+          setSignupStatus('Account created. Redirecting to your profile...', 'success');
+          window.location.href = '/profile/';
+        } catch (err) {
+          console.error('Signup page error:', err);
+          setSignupStatus('Something went wrong while creating your account. Please try again.', 'error');
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Account';
+          }
         }
       });
 
@@ -112,7 +250,6 @@
     });
   </script>
 
-  <!-- ADMIN NAV LINK -->
   <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
