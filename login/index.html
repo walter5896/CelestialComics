@@ -20,7 +20,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/signup.css?v=auth-polish-1" />
+  <link rel="stylesheet" href="/css/pages/signup.css?v=auth-polish-2" />
 </head>
 
 <body>
@@ -148,7 +148,11 @@
 
     function setLoginStatus(message = '', type = '') {
       const status = document.getElementById('login-status');
-      if (!status) return;
+
+      if (!status) {
+        if (message) alert(message);
+        return;
+      }
 
       status.textContent = message;
       status.className = 'auth-status';
@@ -171,21 +175,33 @@
         const password = document.getElementById('password')?.value || '';
 
         setLoginStatus('');
+
+        if (!email.trim() || !password) {
+          setLoginStatus('Email and password are required.', 'error');
+          return;
+        }
+
         if (submitBtn) {
           submitBtn.disabled = true;
           submitBtn.textContent = 'Logging In...';
         }
 
         try {
-          const success = await login(email, password);
+          const result = await login(email, password);
 
-          if (success) {
-            setLoginStatus('Login successful. Redirecting...', 'success');
-            window.location.href = '/profile/';
+          if (!result?.success) {
+            setLoginStatus(
+              result?.error || 'Login failed. Check your email and password, then try again.',
+              'error'
+            );
             return;
           }
 
-          setLoginStatus('Login failed. Check your email and password, then try again.', 'error');
+          setLoginStatus('Login successful. Redirecting...', 'success');
+
+          await updateUI();
+
+          window.location.href = '/profile/';
         } catch (err) {
           console.error('Login page error:', err);
           setLoginStatus('Something went wrong while logging in. Please try again.', 'error');
