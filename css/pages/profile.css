@@ -54,7 +54,7 @@
 }
 
 .profile-kicker {
-  margin: 0 auto 1.45rem;
+  margin: 0 auto 1.65rem;
 }
 
 .profile-section-kicker {
@@ -317,7 +317,6 @@
    Bigger image, less frame-in-frame
 ========================= */
 
-/* Remove extra wrapper styling if JS inserts extra image shells */
 .owned-story-card .story-image-wrap,
 .owned-story-card .story-image-frame,
 .owned-story-card .story-image-container,
@@ -332,7 +331,6 @@
   overflow: hidden;
 }
 
-/* Make the top image larger and flush */
 .owned-story-card > img,
 .owned-story-card .story-image,
 .owned-story-card .story-cover,
@@ -354,7 +352,6 @@
   box-shadow: none;
 }
 
-/* Placeholder image block if no image */
 .owned-story-card .story-image-placeholder {
   width: 100%;
   height: 290px;
@@ -371,7 +368,6 @@
   box-shadow: none;
 }
 
-/* Card content area */
 .owned-story-card .story-card-content,
 .owned-story-card .story-content,
 .owned-story-card .card-content {
@@ -471,7 +467,6 @@
   flex: 1;
 }
 
-/* If content is direct on the card, this still helps */
 #my-saved-stories-container .story-card h2,
 #my-saved-stories-container .story-card h3,
 #my-saved-stories-container .gallery-card h2,
@@ -494,7 +489,6 @@
   line-height: 1.5;
 }
 
-/* Preferred button wrapper if present */
 #my-saved-stories-container .story-actions,
 #my-saved-stories-container .card-actions {
   display: grid;
@@ -515,7 +509,6 @@
   text-align: center;
 }
 
-/* Fallback if buttons are direct children on the card */
 #my-saved-stories-container .story-card > .btn:first-of-type,
 #my-saved-stories-container .gallery-card > .btn:first-of-type,
 #my-saved-stories-container article > .btn:first-of-type,
@@ -620,6 +613,129 @@
 }
 
 /* =========================
+   FINAL PROFILE OVERRIDES
+   Match actual profile.js markup
+========================= */
+
+#owned-stories-container.profile-story-grid {
+  align-items: stretch;
+}
+
+#owned-stories-container .owned-story-card {
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(18, 75, 137, 0.78), rgba(7, 31, 64, 0.96)) !important;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+#owned-stories-container .owned-story-card > img.story-image {
+  width: 100% !important;
+  height: 340px !important;
+  min-height: 340px !important;
+  display: block;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: cover;
+  object-position: center;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+#owned-stories-container .owned-story-card > .story-image-placeholder {
+  width: 100% !important;
+  height: 340px !important;
+  min-height: 340px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+#owned-stories-container .owned-story-card .story-card-content {
+  padding: 1.25rem 1.35rem 1.35rem !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+#owned-stories-container .owned-story-card .story-actions {
+  margin-top: auto !important;
+  padding-top: 1rem;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+#owned-stories-container .owned-story-card .story-actions .btn {
+  width: 100%;
+  margin: 0 !important;
+  min-height: 52px;
+}
+
+#my-saved-stories-container > article,
+#my-saved-stories-container .story-card,
+#my-saved-stories-container .gallery-card {
+  height: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+#my-saved-stories-container > article > img,
+#my-saved-stories-container .story-card > img,
+#my-saved-stories-container .gallery-card > img {
+  width: 100% !important;
+  height: 260px !important;
+  min-height: 260px !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  object-fit: cover;
+  object-position: center;
+}
+
+#my-saved-stories-container .story-card-actions,
+#my-saved-stories-container .story-actions,
+#my-saved-stories-container .card-actions {
+  margin-top: auto !important;
+  padding: 1rem !important;
+  display: grid !important;
+  gap: 0.75rem;
+}
+
+#my-saved-stories-container article > .btn:first-of-type,
+#my-saved-stories-container .story-card > .btn:first-of-type,
+#my-saved-stories-container .gallery-card > .btn:first-of-type,
+#my-saved-stories-container article > button:first-of-type,
+#my-saved-stories-container .story-card > button:first-of-type,
+#my-saved-stories-container .gallery-card > button:first-of-type {
+  margin-top: auto !important;
+}
+
+#my-saved-stories-container article > .btn,
+#my-saved-stories-container .story-card > .btn,
+#my-saved-stories-container .gallery-card > .btn,
+#my-saved-stories-container article > button,
+#my-saved-stories-container .story-card > button,
+#my-saved-stories-container .gallery-card > button {
+  width: calc(100% - 2rem) !important;
+  max-width: 210px;
+  min-height: 52px;
+  margin-left: 1rem !important;
+  margin-right: 1rem !important;
+}
+
+.profile-kicker {
+  margin-bottom: 1.65rem !important;
+}
+
+/* =========================
    Responsive
 ========================= */
 
@@ -700,6 +816,23 @@
   .profile-section .gallery-card img,
   .profile-section .story-grid img {
     height: 220px;
+  }
+
+  #owned-stories-container .owned-story-card > img.story-image,
+  #owned-stories-container .owned-story-card > .story-image-placeholder {
+    height: 240px !important;
+    min-height: 240px !important;
+  }
+
+  #owned-stories-container .owned-story-card .story-actions {
+    grid-template-columns: 1fr;
+  }
+
+  #my-saved-stories-container > article > img,
+  #my-saved-stories-container .story-card > img,
+  #my-saved-stories-container .gallery-card > img {
+    height: 220px !important;
+    min-height: 220px !important;
   }
 
   #my-saved-stories-container .story-card > .btn,
