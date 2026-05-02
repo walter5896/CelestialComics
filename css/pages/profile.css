@@ -15,6 +15,7 @@
 
 /* =========================
    Page Shell / Hero
+   Styled closer to Winner page
 ========================= */
 
 .profile-page {
@@ -23,7 +24,7 @@
 }
 
 .profile-hero {
-  padding: 3rem 0 2.4rem;
+  padding: 3.5rem 0 3rem;
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.14), transparent 34%),
@@ -38,8 +39,10 @@
 .profile-kicker,
 .profile-section-kicker {
   width: fit-content;
-  margin: 0 auto 1rem;
-  padding: 0.35rem 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.95rem;
   border-radius: var(--radius-pill);
   background: rgba(126, 97, 191, 0.32);
   border: 1px solid rgba(229, 220, 255, 0.22);
@@ -50,8 +53,16 @@
   text-transform: uppercase;
 }
 
+.profile-kicker {
+  margin: 0 auto 1.45rem;
+}
+
+.profile-section-kicker {
+  margin: 0 0 0.75rem;
+}
+
 .profile-hero h1 {
-  margin: 0 0 1rem;
+  margin: 0 0 1.15rem;
   font-family: var(--font-heading);
   font-size: var(--fs-public-page-title);
   line-height: 0.92;
@@ -72,11 +83,11 @@
 ========================= */
 
 .profile-section {
-  padding: 1.5rem 0;
+  padding: 1.35rem 0;
 }
 
 .profile-section:first-of-type {
-  padding-top: 1.75rem;
+  padding-top: 1.65rem;
 }
 
 .profile-section-inner {
@@ -91,9 +102,9 @@
 }
 
 .profile-section-header {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.35rem;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1.25rem;
   flex-wrap: wrap;
@@ -101,10 +112,6 @@
 
 .profile-section-header > div {
   min-width: 0;
-}
-
-.profile-section-kicker {
-  margin: 0 0 0.65rem;
 }
 
 .profile-section-header h2 {
@@ -287,11 +294,15 @@
   min-width: 0;
 }
 
+/* Base card styling */
 .owned-story-card,
 .profile-story-grid article,
 .profile-section .story-card,
 .profile-section .gallery-card {
   min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background:
     linear-gradient(180deg, rgba(18, 75, 137, 0.78), rgba(7, 31, 64, 0.96));
   border: 1px solid var(--color-border);
@@ -301,32 +312,70 @@
   color: var(--color-text);
 }
 
-.owned-story-card {
-  display: flex;
-  flex-direction: column;
+/* =========================
+   Owned Comics Card Fix
+   Bigger image, less frame-in-frame
+========================= */
+
+/* Remove extra wrapper styling if JS inserts extra image shells */
+.owned-story-card .story-image-wrap,
+.owned-story-card .story-image-frame,
+.owned-story-card .story-image-container,
+.owned-story-card .story-media,
+.owned-story-card .story-cover-wrap {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
 }
 
+/* Make the top image larger and flush */
+.owned-story-card > img,
 .owned-story-card .story-image,
-.owned-story-card .story-image-placeholder {
+.owned-story-card .story-cover,
+.owned-story-card .story-image-wrap img,
+.owned-story-card .story-image-frame img,
+.owned-story-card .story-image-container img,
+.owned-story-card .story-media img,
+.owned-story-card .story-cover-wrap img {
   width: 100%;
-  height: 260px;
+  height: 290px;
   object-fit: cover;
   object-position: center;
+  display: block;
   margin: 0;
-  background: rgba(255, 255, 255, 0.04);
+  padding: 0;
+  background: transparent;
   border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0;
+  box-shadow: none;
+}
+
+/* Placeholder image block if no image */
+.owned-story-card .story-image-placeholder {
+  width: 100%;
+  height: 290px;
+  margin: 0;
+  padding: 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
   text-align: center;
-  padding: 1rem;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.owned-story-card .story-card-content {
-  padding: 1rem;
+/* Card content area */
+.owned-story-card .story-card-content,
+.owned-story-card .story-content,
+.owned-story-card .card-content {
+  padding: 1.1rem 1.2rem 1.2rem;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -382,9 +431,125 @@
 .owned-story-card .story-actions .btn {
   flex: 1 1 160px;
   text-align: center;
+  margin: 0;
 }
 
-/* Saved story cards rendered from shared helpers */
+/* =========================
+   Saved Stories Card Fix
+   Align buttons consistently
+========================= */
+
+#my-saved-stories-container .story-card,
+#my-saved-stories-container .gallery-card,
+#my-saved-stories-container article {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#my-saved-stories-container .story-card img,
+#my-saved-stories-container .gallery-card img,
+#my-saved-stories-container article img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#my-saved-stories-container .story-card .story-card-content,
+#my-saved-stories-container .gallery-card .story-card-content,
+#my-saved-stories-container article .story-card-content,
+#my-saved-stories-container .story-card .card-content,
+#my-saved-stories-container .gallery-card .card-content,
+#my-saved-stories-container article .card-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* If content is direct on the card, this still helps */
+#my-saved-stories-container .story-card h2,
+#my-saved-stories-container .story-card h3,
+#my-saved-stories-container .gallery-card h2,
+#my-saved-stories-container .gallery-card h3,
+#my-saved-stories-container article h2,
+#my-saved-stories-container article h3 {
+  margin: 1rem 1rem 0.45rem;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: var(--fs-public-card-title);
+  line-height: 1;
+}
+
+#my-saved-stories-container .story-card p,
+#my-saved-stories-container .gallery-card p,
+#my-saved-stories-container article p {
+  margin: 0.35rem 1rem;
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.5;
+}
+
+/* Preferred button wrapper if present */
+#my-saved-stories-container .story-actions,
+#my-saved-stories-container .card-actions {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding: 0 1rem 1rem;
+}
+
+#my-saved-stories-container .story-actions .btn,
+#my-saved-stories-container .card-actions .btn {
+  margin: 0;
+  width: 100%;
+  max-width: 190px;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Fallback if buttons are direct children on the card */
+#my-saved-stories-container .story-card > .btn:first-of-type,
+#my-saved-stories-container .gallery-card > .btn:first-of-type,
+#my-saved-stories-container article > .btn:first-of-type,
+#my-saved-stories-container .story-card > button:first-of-type,
+#my-saved-stories-container .gallery-card > button:first-of-type,
+#my-saved-stories-container article > button:first-of-type {
+  margin-top: auto;
+}
+
+#my-saved-stories-container .story-card > .btn,
+#my-saved-stories-container .gallery-card > .btn,
+#my-saved-stories-container article > .btn,
+#my-saved-stories-container .story-card > button,
+#my-saved-stories-container .gallery-card > button,
+#my-saved-stories-container article > button {
+  width: 100%;
+  max-width: 190px;
+  min-height: 46px;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  margin-bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Generic story cards outside owned section */
+.profile-section .story-card,
+.profile-section .gallery-card,
+.profile-section .story-grid article {
+  min-width: 0;
+}
+
 .profile-section .story-card img,
 .profile-section .gallery-card img,
 .profile-section .story-grid img {
@@ -466,11 +631,27 @@
   .profile-section-header {
     align-items: flex-start;
   }
+
+  .owned-story-card > img,
+  .owned-story-card .story-image,
+  .owned-story-card .story-cover,
+  .owned-story-card .story-image-wrap img,
+  .owned-story-card .story-image-frame img,
+  .owned-story-card .story-image-container img,
+  .owned-story-card .story-media img,
+  .owned-story-card .story-cover-wrap img,
+  .owned-story-card .story-image-placeholder {
+    height: 250px;
+  }
 }
 
 @media (max-width: 640px) {
   .profile-hero {
-    padding: 2.5rem 0 2rem;
+    padding: 2.8rem 0 2.2rem;
+  }
+
+  .profile-kicker {
+    margin-bottom: 1.2rem;
   }
 
   .profile-hero h1 {
@@ -503,11 +684,30 @@
     grid-template-columns: 1fr;
   }
 
+  .owned-story-card > img,
   .owned-story-card .story-image,
+  .owned-story-card .story-cover,
+  .owned-story-card .story-image-wrap img,
+  .owned-story-card .story-image-frame img,
+  .owned-story-card .story-image-container img,
+  .owned-story-card .story-media img,
+  .owned-story-card .story-cover-wrap img,
   .owned-story-card .story-image-placeholder,
+  #my-saved-stories-container .story-card img,
+  #my-saved-stories-container .gallery-card img,
+  #my-saved-stories-container article img,
   .profile-section .story-card img,
   .profile-section .gallery-card img,
   .profile-section .story-grid img {
-    height: 230px;
+    height: 220px;
+  }
+
+  #my-saved-stories-container .story-card > .btn,
+  #my-saved-stories-container .gallery-card > .btn,
+  #my-saved-stories-container article > .btn,
+  #my-saved-stories-container .story-card > button,
+  #my-saved-stories-container .gallery-card > button,
+  #my-saved-stories-container article > button {
+    max-width: none;
   }
 }
