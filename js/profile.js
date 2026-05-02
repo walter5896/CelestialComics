@@ -319,12 +319,18 @@ function renderOwnedStories(ownedStories) {
       const accessLabel = formatAccessType(item.access_type);
       const grantedDate = formatGrantedDate(item.granted_at);
       const safeStoryId = encodeURIComponent(story.id || '');
+      const viewComicUrl = `/comics/story.html?id=${safeStoryId}`;
+      const readComicUrl = `/gallery/read.html?id=${safeStoryId}`;
 
       return `
         <article class="story-card owned-story-card">
           ${
             safeImage
-              ? `<img src="${safeImage}" alt="${safeTitle} cover" class="story-image" />`
+              ? `
+                <a href="${viewComicUrl}" class="story-card-art-link owned-story-art-link" aria-label="View ${safeTitle}">
+                  <img src="${safeImage}" alt="${safeTitle} cover" class="story-image" loading="lazy" />
+                </a>
+              `
               : `<div class="story-image-placeholder">No cover available</div>`
           }
 
@@ -340,10 +346,10 @@ function renderOwnedStories(ownedStories) {
             }
 
             <div class="story-actions">
-              <a href="/comics/story.html?id=${safeStoryId}" class="btn btn-secondary">
+              <a href="${viewComicUrl}" class="btn btn-secondary">
                 View Comic
               </a>
-              <a href="/gallery/read.html?id=${safeStoryId}" class="btn btn-primary">
+              <a href="${readComicUrl}" class="btn btn-primary">
                 Read Now
               </a>
             </div>
@@ -404,6 +410,51 @@ async function fetchAndRenderOwnedStories() {
 }
 
 /* =======================
+   IMAGE CLICK FALLBACK
+   Makes saved story images behave like the View Concept button
+======================= */
+
+function attachProfileImageClickFallbacks() {
+  document.addEventListener('click', (e) => {
+    const image = e.target.closest('#my-saved-stories-container .story-card img');
+    if (!image) return;
+
+    const card = image.closest('.story-card');
+    if (!card) return;
+
+    const viewConceptLink =
+      card.querySelector('a.btn-primary[href]') ||
+      card.querySelector('a[href*="/gallery/story.html"]') ||
+      card.querySelector('a[href*="/story.html"]');
+
+    if (!viewConceptLink) return;
+
+    window.location.href = viewConceptLink.href;
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+
+    const image = e.target.closest?.('#my-saved-stories-container .story-card img');
+    if (!image) return;
+
+    e.preventDefault();
+
+    const card = image.closest('.story-card');
+    if (!card) return;
+
+    const viewConceptLink =
+      card.querySelector('a.btn-primary[href]') ||
+      card.querySelector('a[href*="/gallery/story.html"]') ||
+      card.querySelector('a[href*="/story.html"]');
+
+    if (!viewConceptLink) return;
+
+    window.location.href = viewConceptLink.href;
+  });
+}
+
+/* =======================
    ORCHESTRATION
 ======================= */
 
@@ -444,6 +495,8 @@ async function initProfile() {
   subscribe(() => {
     renderVoteBalancesFromState();
   });
+
+  attachProfileImageClickFallbacks();
 
   await refreshProfilePageData();
 

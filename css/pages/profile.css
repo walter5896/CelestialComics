@@ -14,8 +14,49 @@
 }
 
 /* =========================
+   Announcement Strip
+========================= */
+
+.announcement-strip {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.35rem 1rem;
+  background: linear-gradient(90deg, #7454c7, #8b5fd8);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.announcement-strip span,
+.announcement-strip #profile-status-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.announcement-strip a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.announcement-strip a:hover,
+.announcement-strip a:focus-visible {
+  color: var(--color-accent-soft);
+}
+
+/* =========================
    Page Shell / Hero
-   Styled closer to Winner page
 ========================= */
 
 .profile-page {
@@ -54,7 +95,7 @@
 }
 
 .profile-kicker {
-  margin: 0 auto 1.65rem;
+  margin: 0 auto 1.75rem;
 }
 
 .profile-section-kicker {
@@ -224,26 +265,6 @@
   color: var(--color-text);
 }
 
-.profile-list li > div,
-.profile-list li > span,
-.profile-list li > p {
-  min-width: 0;
-}
-
-.profile-list strong,
-.profile-list b {
-  color: var(--color-text);
-  font-family: var(--font-heading);
-  font-size: clamp(1.35rem, 2.4vw, 2rem);
-  line-height: 1;
-}
-
-.profile-list p {
-  margin: 0.25rem 0 0;
-  color: var(--color-text-soft);
-  font-size: 0.95rem;
-}
-
 .profile-list button {
   min-width: 140px;
   min-height: 44px;
@@ -254,11 +275,6 @@
   color: #fecaca;
   font-weight: 900;
   cursor: pointer;
-  transition:
-    transform var(--transition-base),
-    background var(--transition-base),
-    border-color var(--transition-base),
-    color var(--transition-base);
 }
 
 .profile-list button:hover:not(:disabled),
@@ -272,9 +288,6 @@
 .profile-list button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: var(--color-text-muted);
 }
 
 /* =========================
@@ -294,7 +307,6 @@
   min-width: 0;
 }
 
-/* Base card styling */
 .owned-story-card,
 .profile-story-grid article,
 .profile-section .story-card,
@@ -313,68 +325,73 @@
 }
 
 /* =========================
-   Owned Comics Card Fix
-   Bigger image, less frame-in-frame
+   Owned Comics Cards
 ========================= */
 
-.owned-story-card .story-image-wrap,
-.owned-story-card .story-image-frame,
-.owned-story-card .story-image-container,
-.owned-story-card .story-media,
-.owned-story-card .story-cover-wrap {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+#owned-stories-container.profile-story-grid {
+  align-items: stretch;
+}
+
+#owned-stories-container .owned-story-card {
+  padding: 0 !important;
+  gap: 0 !important;
   overflow: hidden;
 }
 
-.owned-story-card > img,
-.owned-story-card .story-image,
-.owned-story-card .story-cover,
-.owned-story-card .story-image-wrap img,
-.owned-story-card .story-image-frame img,
-.owned-story-card .story-image-container img,
-.owned-story-card .story-media img,
-.owned-story-card .story-cover-wrap img {
-  width: 100%;
-  height: 290px;
-  object-fit: cover;
-  object-position: center;
+#owned-stories-container .owned-story-card .story-card-art-link,
+#owned-stories-container .owned-story-card .owned-story-art-link {
   display: block;
-  margin: 0;
-  padding: 0;
+  width: 100%;
+  height: 340px;
+  overflow: hidden;
   background: transparent;
   border: 0;
   border-radius: 0;
-  box-shadow: none;
+  text-decoration: none;
 }
 
-.owned-story-card .story-image-placeholder {
-  width: 100%;
-  height: 290px;
-  margin: 0;
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: var(--color-text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+#owned-stories-container .owned-story-card > img.story-image,
+#owned-stories-container .owned-story-card .story-card-art-link img.story-image,
+#owned-stories-container .owned-story-card .owned-story-art-link img.story-image {
+  width: 100% !important;
+  height: 340px !important;
+  min-height: 340px !important;
+  display: block;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: cover;
+  object-position: center;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transition:
+    transform var(--transition-base),
+    filter var(--transition-base);
 }
 
-.owned-story-card .story-card-content,
-.owned-story-card .story-content,
-.owned-story-card .card-content {
-  padding: 1.1rem 1.2rem 1.2rem;
+#owned-stories-container .owned-story-card .story-card-art-link:hover img,
+#owned-stories-container .owned-story-card .story-card-art-link:focus-visible img,
+#owned-stories-container .owned-story-card .owned-story-art-link:hover img,
+#owned-stories-container .owned-story-card .owned-story-art-link:focus-visible img {
+  transform: scale(1.035);
+  filter: brightness(1.08);
+}
+
+#owned-stories-container .owned-story-card > .story-image-placeholder {
+  width: 100% !important;
+  height: 340px !important;
+  min-height: 340px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+#owned-stories-container .owned-story-card .story-card-content {
+  padding: 1.25rem 1.35rem 1.35rem !important;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.75rem;
   flex: 1;
 }
 
@@ -417,54 +434,75 @@
   line-height: 1.5;
 }
 
-.owned-story-card .story-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: auto;
+#owned-stories-container .owned-story-card .story-actions {
+  margin-top: auto !important;
+  padding-top: 1rem;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
-.owned-story-card .story-actions .btn {
-  flex: 1 1 160px;
-  text-align: center;
-  margin: 0;
+#owned-stories-container .owned-story-card .story-actions .btn {
+  width: 100%;
+  margin: 0 !important;
+  min-height: 52px;
 }
 
 /* =========================
-   Saved Stories Card Fix
-   Align buttons consistently
+   Saved Stories Cards
 ========================= */
 
+#my-saved-stories-container > article,
 #my-saved-stories-container .story-card,
-#my-saved-stories-container .gallery-card,
-#my-saved-stories-container article {
-  display: flex;
-  flex-direction: column;
+#my-saved-stories-container .gallery-card {
   height: 100%;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  gap: 0 !important;
 }
 
-#my-saved-stories-container .story-card img,
-#my-saved-stories-container .gallery-card img,
-#my-saved-stories-container article img {
+#my-saved-stories-container .story-card-art-link,
+#my-saved-stories-container .profile-story-art-link {
+  display: block;
   width: 100%;
   height: 260px;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  margin: 0;
-  border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  text-decoration: none;
 }
 
-#my-saved-stories-container .story-card .story-card-content,
-#my-saved-stories-container .gallery-card .story-card-content,
-#my-saved-stories-container article .story-card-content,
-#my-saved-stories-container .story-card .card-content,
-#my-saved-stories-container .gallery-card .card-content,
-#my-saved-stories-container article .card-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+#my-saved-stories-container > article > img,
+#my-saved-stories-container .story-card > img,
+#my-saved-stories-container .gallery-card > img,
+#my-saved-stories-container .story-card-art-link img,
+#my-saved-stories-container .profile-story-art-link img {
+  width: 100% !important;
+  height: 260px !important;
+  min-height: 260px !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  object-fit: cover;
+  object-position: center;
+  transition:
+    transform var(--transition-base),
+    filter var(--transition-base);
+}
+
+#my-saved-stories-container .story-card-art-link:hover img,
+#my-saved-stories-container .story-card-art-link:focus-visible img,
+#my-saved-stories-container .profile-story-art-link:hover img,
+#my-saved-stories-container .profile-story-art-link:focus-visible img {
+  transform: scale(1.035);
+  filter: brightness(1.08);
+}
+
+#my-saved-stories-container .story-card-body,
+#my-saved-stories-container .story-card-content,
+#my-saved-stories-container .card-content {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  padding: 1rem !important;
 }
 
 #my-saved-stories-container .story-card h2,
@@ -473,7 +511,7 @@
 #my-saved-stories-container .gallery-card h3,
 #my-saved-stories-container article h2,
 #my-saved-stories-container article h3 {
-  margin: 1rem 1rem 0.45rem;
+  margin: 0.65rem 0 0.45rem;
   color: var(--color-text);
   font-family: var(--font-heading);
   font-size: var(--fs-public-card-title);
@@ -483,103 +521,31 @@
 #my-saved-stories-container .story-card p,
 #my-saved-stories-container .gallery-card p,
 #my-saved-stories-container article p {
-  margin: 0.35rem 1rem;
+  margin: 0.35rem 0;
   color: var(--color-text-soft);
   font-size: var(--fs-public-body);
   line-height: 1.5;
 }
 
 #my-saved-stories-container .story-actions,
+#my-saved-stories-container .story-card-actions,
 #my-saved-stories-container .card-actions {
-  display: grid;
+  margin-top: auto !important;
+  padding-top: 1rem !important;
+  display: grid !important;
   gap: 0.75rem;
-  margin-top: auto;
-  padding: 0 1rem 1rem;
 }
 
 #my-saved-stories-container .story-actions .btn,
-#my-saved-stories-container .card-actions .btn {
-  margin: 0;
-  width: 100%;
-  max-width: 190px;
-  min-height: 46px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-#my-saved-stories-container .story-card > .btn:first-of-type,
-#my-saved-stories-container .gallery-card > .btn:first-of-type,
-#my-saved-stories-container article > .btn:first-of-type,
-#my-saved-stories-container .story-card > button:first-of-type,
-#my-saved-stories-container .gallery-card > button:first-of-type,
-#my-saved-stories-container article > button:first-of-type {
-  margin-top: auto;
-}
-
-#my-saved-stories-container .story-card > .btn,
-#my-saved-stories-container .gallery-card > .btn,
-#my-saved-stories-container article > .btn,
-#my-saved-stories-container .story-card > button,
-#my-saved-stories-container .gallery-card > button,
-#my-saved-stories-container article > button {
-  width: 100%;
-  max-width: 190px;
-  min-height: 46px;
-  margin-left: 1rem;
-  margin-right: 1rem;
-  margin-bottom: 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-/* Generic story cards outside owned section */
-.profile-section .story-card,
-.profile-section .gallery-card,
-.profile-section .story-grid article {
-  min-width: 0;
-}
-
-.profile-section .story-card img,
-.profile-section .gallery-card img,
-.profile-section .story-grid img {
-  width: 100%;
-  height: 260px;
-  object-fit: cover;
-  object-position: center;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.profile-section .story-card h2,
-.profile-section .story-card h3,
-.profile-section .gallery-card h2,
-.profile-section .gallery-card h3,
-.profile-section .story-grid h2,
-.profile-section .story-grid h3 {
-  margin: 1rem 1rem 0.45rem;
-  color: var(--color-text);
-  font-family: var(--font-heading);
-  font-size: var(--fs-public-card-title);
-  line-height: 1;
-}
-
-.profile-section .story-card p,
-.profile-section .gallery-card p,
-.profile-section .story-grid p {
-  margin: 0.35rem 1rem;
-  color: var(--color-text-soft);
-  font-size: var(--fs-public-body);
-  line-height: 1.5;
-}
-
-.profile-section .story-card .btn,
-.profile-section .gallery-card .btn,
-.profile-section .story-grid .btn {
-  margin: 1rem;
+#my-saved-stories-container .story-card-actions .btn,
+#my-saved-stories-container .card-actions .btn,
+#my-saved-stories-container .story-actions button,
+#my-saved-stories-container .story-card-actions button,
+#my-saved-stories-container .card-actions button {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 52px !important;
+  margin: 0 !important;
 }
 
 /* =========================
@@ -613,129 +579,6 @@
 }
 
 /* =========================
-   FINAL PROFILE OVERRIDES
-   Match actual profile.js markup
-========================= */
-
-#owned-stories-container.profile-story-grid {
-  align-items: stretch;
-}
-
-#owned-stories-container .owned-story-card {
-  padding: 0 !important;
-  gap: 0 !important;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(18, 75, 137, 0.78), rgba(7, 31, 64, 0.96)) !important;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-}
-
-#owned-stories-container .owned-story-card > img.story-image {
-  width: 100% !important;
-  height: 340px !important;
-  min-height: 340px !important;
-  display: block;
-  margin: 0 !important;
-  padding: 0 !important;
-  object-fit: cover;
-  object-position: center;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-#owned-stories-container .owned-story-card > .story-image-placeholder {
-  width: 100% !important;
-  height: 340px !important;
-  min-height: 340px !important;
-  margin: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-}
-
-#owned-stories-container .owned-story-card .story-card-content {
-  padding: 1.25rem 1.35rem 1.35rem !important;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  flex: 1;
-}
-
-#owned-stories-container .owned-story-card .story-actions {
-  margin-top: auto !important;
-  padding-top: 1rem;
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
-}
-
-#owned-stories-container .owned-story-card .story-actions .btn {
-  width: 100%;
-  margin: 0 !important;
-  min-height: 52px;
-}
-
-#my-saved-stories-container > article,
-#my-saved-stories-container .story-card,
-#my-saved-stories-container .gallery-card {
-  height: 100%;
-  display: flex !important;
-  flex-direction: column !important;
-  padding: 0 !important;
-  gap: 0 !important;
-}
-
-#my-saved-stories-container > article > img,
-#my-saved-stories-container .story-card > img,
-#my-saved-stories-container .gallery-card > img {
-  width: 100% !important;
-  height: 260px !important;
-  min-height: 260px !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  object-fit: cover;
-  object-position: center;
-}
-
-#my-saved-stories-container .story-card-actions,
-#my-saved-stories-container .story-actions,
-#my-saved-stories-container .card-actions {
-  margin-top: auto !important;
-  padding: 1rem !important;
-  display: grid !important;
-  gap: 0.75rem;
-}
-
-#my-saved-stories-container article > .btn:first-of-type,
-#my-saved-stories-container .story-card > .btn:first-of-type,
-#my-saved-stories-container .gallery-card > .btn:first-of-type,
-#my-saved-stories-container article > button:first-of-type,
-#my-saved-stories-container .story-card > button:first-of-type,
-#my-saved-stories-container .gallery-card > button:first-of-type {
-  margin-top: auto !important;
-}
-
-#my-saved-stories-container article > .btn,
-#my-saved-stories-container .story-card > .btn,
-#my-saved-stories-container .gallery-card > .btn,
-#my-saved-stories-container article > button,
-#my-saved-stories-container .story-card > button,
-#my-saved-stories-container .gallery-card > button {
-  width: calc(100% - 2rem) !important;
-  max-width: 210px;
-  min-height: 52px;
-  margin-left: 1rem !important;
-  margin-right: 1rem !important;
-}
-
-.profile-kicker {
-  margin-bottom: 1.65rem !important;
-}
-
-/* =========================
    Responsive
 ========================= */
 
@@ -747,27 +590,23 @@
   .profile-section-header {
     align-items: flex-start;
   }
-
-  .owned-story-card > img,
-  .owned-story-card .story-image,
-  .owned-story-card .story-cover,
-  .owned-story-card .story-image-wrap img,
-  .owned-story-card .story-image-frame img,
-  .owned-story-card .story-image-container img,
-  .owned-story-card .story-media img,
-  .owned-story-card .story-cover-wrap img,
-  .owned-story-card .story-image-placeholder {
-    height: 250px;
-  }
 }
 
 @media (max-width: 640px) {
+  .announcement-strip {
+    flex-wrap: wrap;
+    min-height: 34px;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+  }
+
   .profile-hero {
     padding: 2.8rem 0 2.2rem;
   }
 
   .profile-kicker {
-    margin-bottom: 1.2rem;
+    margin-bottom: 1.35rem;
   }
 
   .profile-hero h1 {
@@ -800,25 +639,11 @@
     grid-template-columns: 1fr;
   }
 
-  .owned-story-card > img,
-  .owned-story-card .story-image,
-  .owned-story-card .story-cover,
-  .owned-story-card .story-image-wrap img,
-  .owned-story-card .story-image-frame img,
-  .owned-story-card .story-image-container img,
-  .owned-story-card .story-media img,
-  .owned-story-card .story-cover-wrap img,
-  .owned-story-card .story-image-placeholder,
-  #my-saved-stories-container .story-card img,
-  #my-saved-stories-container .gallery-card img,
-  #my-saved-stories-container article img,
-  .profile-section .story-card img,
-  .profile-section .gallery-card img,
-  .profile-section .story-grid img {
-    height: 220px;
-  }
-
+  #owned-stories-container .owned-story-card .story-card-art-link,
+  #owned-stories-container .owned-story-card .owned-story-art-link,
   #owned-stories-container .owned-story-card > img.story-image,
+  #owned-stories-container .owned-story-card .story-card-art-link img.story-image,
+  #owned-stories-container .owned-story-card .owned-story-art-link img.story-image,
   #owned-stories-container .owned-story-card > .story-image-placeholder {
     height: 240px !important;
     min-height: 240px !important;
@@ -828,19 +653,14 @@
     grid-template-columns: 1fr;
   }
 
+  #my-saved-stories-container .story-card-art-link,
+  #my-saved-stories-container .profile-story-art-link,
   #my-saved-stories-container > article > img,
   #my-saved-stories-container .story-card > img,
-  #my-saved-stories-container .gallery-card > img {
+  #my-saved-stories-container .gallery-card > img,
+  #my-saved-stories-container .story-card-art-link img,
+  #my-saved-stories-container .profile-story-art-link img {
     height: 220px !important;
     min-height: 220px !important;
-  }
-
-  #my-saved-stories-container .story-card > .btn,
-  #my-saved-stories-container .gallery-card > .btn,
-  #my-saved-stories-container article > .btn,
-  #my-saved-stories-container .story-card > button,
-  #my-saved-stories-container .gallery-card > button,
-  #my-saved-stories-container article > button {
-    max-width: none;
   }
 }

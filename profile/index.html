@@ -20,7 +20,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-fix-1" />
+  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-dashboard-2" />
 </head>
 
 <body>
@@ -50,6 +50,10 @@
       </nav>
     </div>
   </header>
+
+  <div class="announcement-strip" role="status" aria-live="polite">
+    <span id="profile-status-text">VOTING OPEN • <a href="/vote/">CLICK HERE TO VOTE</a></span>
+  </div>
 
   <main class="profile-page">
     <section class="profile-hero" aria-labelledby="profile-page-title">
@@ -183,7 +187,7 @@
 
   <script src="/js/env.js"></script>
   <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/profile.js"></script>
+  <script type="module" src="/js/profile.js?v=profile-dashboard-2"></script>
 
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
