@@ -20,7 +20,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/signup.css?v=auth-polish-2" />
+  <link rel="stylesheet" href="/css/pages/signup.css?v=auth-polish-3" />
 </head>
 
 <body>
@@ -144,7 +144,13 @@
   <script type="module" src="/js/utils.js"></script>
 
   <script type="module">
-    import { login, logout, updateUI } from '/js/auth.js';
+    import {
+      login,
+      logout,
+      updateUI,
+      waitForAuthReady,
+      getCurrentUserAsync
+    } from '/js/auth.js';
 
     function setLoginStatus(message = '', type = '') {
       const status = document.getElementById('login-status');
@@ -162,14 +168,56 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      updateUI();
-
+    function setSubmitState(isLoading) {
       const form = document.getElementById('login-form');
       const submitBtn = form?.querySelector('button[type="submit"]');
 
+      if (!submitBtn) return;
+
+      submitBtn.disabled = isLoading;
+      submitBtn.textContent = isLoading ? 'Logging In...' : 'Log In';
+    }
+
+    async function redirectIfAlreadyLoggedIn() {
+      await waitForAuthReady();
+
+      const currentUser = await getCurrentUserAsync();
+
+      if (!currentUser) {
+        return false;
+      }
+
+      updateUI();
+      setSubmitState(false);
+      setLoginStatus('You are already logged in. Redirecting to your profile...', 'success');
+
+      window.setTimeout(() => {
+        window.location.href = '/profile/';
+      }, 650);
+
+      return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await waitForAuthReady();
+      updateUI();
+
+      const alreadyLoggedIn = await redirectIfAlreadyLoggedIn();
+      if (alreadyLoggedIn) return;
+
+      const form = document.getElementById('login-form');
+
       form?.addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        const existingUser = await getCurrentUserAsync();
+
+        if (existingUser) {
+          setLoginStatus('You are already logged in. Redirecting to your profile...', 'success');
+          setSubmitState(false);
+          window.location.href = '/profile/';
+          return;
+        }
 
         const email = document.getElementById('email')?.value || '';
         const password = document.getElementById('password')?.value || '';
@@ -178,13 +226,11 @@
 
         if (!email.trim() || !password) {
           setLoginStatus('Email and password are required.', 'error');
+          setSubmitState(false);
           return;
         }
 
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Logging In...';
-        }
+        setSubmitState(true);
 
         try {
           const result = await login(email, password);
@@ -194,22 +240,18 @@
               result?.error || 'Login failed. Check your email and password, then try again.',
               'error'
             );
+            setSubmitState(false);
             return;
           }
 
           setLoginStatus('Login successful. Redirecting...', 'success');
-
-          await updateUI();
+          updateUI();
 
           window.location.href = '/profile/';
         } catch (err) {
           console.error('Login page error:', err);
           setLoginStatus('Something went wrong while logging in. Please try again.', 'error');
-        } finally {
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Log In';
-          }
+          setSubmitState(false);
         }
       });
 
