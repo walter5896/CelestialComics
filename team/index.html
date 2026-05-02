@@ -3,29 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Team | Celestial Comics</title>
+  <title>The Team | Celestial Comics</title>
+
   <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/pages/team.css" />
 </head>
+
 <body>
   <!-- HEADER -->
   <header class="site-header">
     <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
+      <a href="/" class="logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo" />
+      </a>
 
       <button class="nav-toggle" aria-label="Toggle navigation">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
-          <li><a href="/">Home</a></li>
-          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
+          <li><a href="/history/">Winner</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
+          <li><a href="/team/" aria-current="page">The Team</a></li>
           <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
-          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -33,25 +37,96 @@
     </div>
   </header>
 
+  <!-- SITE-WIDE VOTING CTA -->
+  <a href="/vote/" class="team-voting-strip" aria-label="Go to voting page">
+    <span>VOTING OPEN</span>
+    <strong>•</strong>
+    <span>CLICK HERE TO VOTE</span>
+  </a>
+
   <!-- MAIN CONTENT -->
-  <main class="page-container">
-    <!-- HERO SECTION -->
-    <section class="hero hero-team">
-      <div class="container hero-container">
-        <h1 class="hero-title">Meet Our Team</h1>
-        <p class="hero-subtitle">
-          These are the people helping bring Celestial Comics to life.
+  <main class="team-page">
+    <!-- HERO -->
+    <section class="team-hero" aria-labelledby="team-page-title">
+      <div class="team-celestial-mark" aria-hidden="true">
+        <span class="team-sun-orb"></span>
+      </div>
+
+      <h1 id="team-page-title">The Team</h1>
+
+      <p>
+        Behind every great comic universe is a creative force bringing the
+        characters, worlds, and stories to life.
+      </p>
+    </section>
+
+    <!-- THE SUN -->
+    <section class="team-feature team-feature-sun">
+      <div class="team-image-panel">
+        <img
+          src="/assets/teampagepic.jpg"
+          alt="Kacey Doman, creator of Celestial Comics"
+          class="team-feature-image"
+        />
+      </div>
+
+      <div class="team-copy-panel">
+        <p class="team-eyebrow">THE SUN</p>
+        <h2>Kacey Doman</h2>
+        <p>
+          Kacey is the creative center of Celestial Comics — the original spark
+          behind the characters, worlds, and stories that shape this universe.
+          Her vision guides the tone, personality, and direction of each comic
+          concept as it grows from an idea into something readers can connect with.
+        </p>
+        <p>
+          As the heart of the project, she brings the warmth, imagination, and
+          story-first energy that keeps Celestial Comics moving forward.
         </p>
       </div>
     </section>
 
-    <!-- TEAM MEMBERS GRID -->
-    <section class="team-members">
-      <div class="container">
-        <h2>Our Team</h2>
-        <div id="team-grid" class="team-grid">
-          <!-- Team members will be rendered here -->
-        </div>
+    <!-- THE MOON -->
+    <section class="team-feature team-feature-moon team-feature-reverse">
+      <div class="team-copy-panel">
+        <p class="team-eyebrow">THE MOON</p>
+        <h2>Creative Support</h2>
+        <p>
+          The Moon represents the reflective side of the creative process:
+          revision, refinement, pacing, and polish. This role supports the
+          storytelling process by helping shape raw ideas into clearer,
+          stronger, and more emotionally engaging comic concepts.
+        </p>
+        <p>
+          From reviewing concepts to improving presentation, this part of the
+          team helps each story find its strongest form before it reaches readers.
+        </p>
+      </div>
+
+      <div class="team-placeholder-panel">
+        <span>Insert Image Here</span>
+      </div>
+    </section>
+
+    <!-- THE NORTH STAR -->
+    <section class="team-feature team-feature-star">
+      <div class="team-placeholder-panel">
+        <span>Insert Image Here</span>
+      </div>
+
+      <div class="team-copy-panel">
+        <p class="team-eyebrow">THE NORTH STAR</p>
+        <h2>Guidance &amp; Direction</h2>
+        <p>
+          The North Star represents the guiding direction of Celestial Comics:
+          keeping the project focused, organized, and moving toward launch.
+          This role helps connect the creative vision with the digital platform,
+          voting experience, reader flow, and shop system.
+        </p>
+        <p>
+          It keeps the larger universe aligned so each piece of the experience
+          supports the stories and the people reading them.
+        </p>
       </div>
     </section>
   </main>
@@ -60,12 +135,13 @@
   <footer class="site-footer">
     <div class="container footer-container">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/" aria-current="page">The Team</a>
       </nav>
     </div>
   </footer>
@@ -76,70 +152,10 @@
   <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
 
-  <!-- TEAM PAGE LOGIC -->
+  <!-- AUTH UI -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
-    // =========================
-    // TEAM MEMBER DATA
-    // =========================
-    // Static placeholder team data for the team page.
-    const teamMembers = [
-      {
-        name: 'Alice Johnson',
-        role: 'Project Lead',
-        image: '/images/team/alice.jpg',
-        bio: 'Alice leads the project with vision and precision.',
-        social: { twitter: '#', linkedin: '#' }
-      },
-      {
-        name: 'Bob Smith',
-        role: 'Lead Developer',
-        image: '/images/team/bob.jpg',
-        bio: 'Bob builds the magic behind the scenes.',
-        social: { twitter: '#', linkedin: '#' }
-      },
-      {
-        name: 'Carla Reyes',
-        role: 'Designer',
-        image: '/images/team/carla.jpg',
-        bio: 'Carla crafts beautiful and intuitive designs.',
-        social: { twitter: '#', linkedin: '#' }
-      }
-    ];
-
-    // =========================
-    // TEAM MEMBER RENDERER
-    // =========================
-    // Renders the team member cards into the team grid container.
-    function renderTeamMembers(containerId = 'team-grid') {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-
-      container.innerHTML = '';
-
-      teamMembers.forEach((member) => {
-        const card = document.createElement('article');
-        card.className = 'team-card';
-        card.innerHTML = `
-          <img src="${member.image}" alt="${member.name}" class="team-photo" />
-          <h3 class="team-name">${member.name}</h3>
-          <p class="team-role">${member.role}</p>
-          <p class="team-bio">${member.bio}</p>
-          <div class="team-social">
-            ${member.social.twitter ? `<a href="${member.social.twitter}" target="_blank" rel="noopener noreferrer">Twitter</a>` : ''}
-            ${member.social.linkedin ? `<a href="${member.social.linkedin}" target="_blank" rel="noopener noreferrer">LinkedIn</a>` : ''}
-          </div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    // =========================
-    // TEAM PAGE INITIALIZER
-    // =========================
-    // Updates auth-aware navigation, wires logout behavior,
-    // and renders the team member cards.
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
 
@@ -150,8 +166,6 @@
           window.location.href = '/';
         });
       });
-
-      renderTeamMembers();
     });
   </script>
 
