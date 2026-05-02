@@ -15,7 +15,6 @@
 
 /* =========================
    Announcement Strip
-   Keep this aligned with other public pages
 ========================= */
 
 .announcement-strip {
@@ -93,14 +92,18 @@
 .team-hero {
   width: min(920px, calc(100% - 2rem));
   margin-inline: auto;
-  padding: 2.35rem 0 2rem;
+  padding: 2.3rem 0 2rem;
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.1), transparent 34%),
     linear-gradient(180deg, rgba(11, 40, 82, 0.42), rgba(3, 23, 47, 0));
 }
 
-/* Hide the oversized decorative sun above the title */
+.team-hero-inner {
+  width: min(820px, 100%);
+  margin-inline: auto;
+}
+
 .team-celestial-mark {
   display: none;
 }
@@ -108,7 +111,7 @@
 .team-hero h1 {
   margin: 0 0 0.85rem;
   font-family: var(--font-heading);
-  font-size: clamp(3.35rem, 7vw, 5.4rem);
+  font-size: clamp(3.35rem, 6vw, 5rem);
   line-height: 0.92;
   color: var(--color-accent-soft);
   text-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
@@ -130,9 +133,9 @@
   width: min(1120px, calc(100% - 2rem));
   margin: 0 auto clamp(2.75rem, 6vw, 5rem);
   display: grid;
-  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 430px) minmax(0, 1fr);
   align-items: center;
-  gap: clamp(1.5rem, 4vw, 3.5rem);
+  gap: clamp(1.75rem, 4vw, 4rem);
 }
 
 .team-feature:last-child {
@@ -140,17 +143,17 @@
 }
 
 .team-feature-reverse {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 430px);
 }
 
 /* =========================
-   Image / Placeholder Panels
+   Shared Panels
 ========================= */
 
 .team-image-panel,
 .team-placeholder-panel {
-  width: min(100%, 420px);
-  min-height: 390px;
+  width: min(100%, 430px);
+  min-height: 380px;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(7, 31, 64, 0.94));
@@ -168,28 +171,48 @@
   justify-self: end;
 }
 
-.team-image-panel {
-  position: relative;
+/* =========================
+   Kacey SVG Image Treatment
+   Let the SVG breathe instead of forcing it into a card
+========================= */
+
+.team-feature-sun {
+  grid-template-columns: minmax(300px, 500px) minmax(0, 1fr);
 }
 
-.team-image-panel::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, transparent 55%, rgba(3, 23, 47, 0.14)),
-    radial-gradient(circle at 50% 0%, rgba(242, 178, 74, 0.08), transparent 55%);
-  pointer-events: none;
+.team-feature-sun .team-image-panel {
+  width: min(100%, 500px);
+  min-height: auto;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  justify-self: start;
 }
 
-.team-feature-image {
+.team-feature-sun .team-image-panel::after {
+  display: none;
+}
+
+.team-feature-sun .team-feature-image {
   display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 390px;
-  object-fit: cover;
-  object-position: 34% center;
+  width: min(100%, 500px);
+  height: auto;
+  min-height: 0;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.18),
+    0 0 34px rgba(242, 178, 74, 0.08);
 }
+
+/* =========================
+   Placeholder Panels
+========================= */
 
 .team-placeholder-panel {
   display: grid;
@@ -297,12 +320,6 @@
    Section-Specific Accent Glows
 ========================= */
 
-.team-feature-sun .team-image-panel {
-  box-shadow:
-    var(--shadow-card),
-    0 0 34px rgba(242, 178, 74, 0.08);
-}
-
 .team-feature-moon .team-placeholder-panel {
   box-shadow:
     var(--shadow-card),
@@ -325,6 +342,7 @@
   }
 
   .team-feature,
+  .team-feature-sun,
   .team-feature-reverse {
     grid-template-columns: 1fr;
     gap: 1.5rem;
@@ -346,8 +364,16 @@
     min-height: 330px;
   }
 
-  .team-feature-image {
-    min-height: 330px;
+  .team-feature-sun .team-image-panel {
+    width: 100%;
+    max-width: 540px;
+    justify-self: center;
+  }
+
+  .team-feature-sun .team-feature-image {
+    width: 100%;
+    max-width: 540px;
+    margin-inline: auto;
   }
 
   .team-copy-panel {
@@ -382,9 +408,12 @@
   }
 
   .team-image-panel,
-  .team-placeholder-panel,
-  .team-feature-image {
+  .team-placeholder-panel {
     min-height: 280px;
+  }
+
+  .team-feature-sun .team-image-panel {
+    min-height: 0;
   }
 
   .team-copy-panel h2 {
