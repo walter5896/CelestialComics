@@ -4,486 +4,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="description"
+    content="Admin dashboard for managing Celestial Comics users, voting periods, stories, products, homepage content, orders, and winner settings."
+  />
+
   <title>Admin Panel | Celestial Comics</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: #f9fafb;
-      color: #111827;
-      line-height: 1.6;
-    }
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    a { text-decoration: none; color: inherit; }
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
 
-    nav {
-      background: #1f2937;
-      color: #f9fafb;
-      padding: 0.75rem 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-
-    nav h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    nav ul {
-      list-style: none;
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    nav ul li a {
-      padding: 0.5rem 0.75rem;
-      border-radius: 0.375rem;
-      transition: background 0.2s;
-    }
-
-    nav ul li a:hover {
-      background: #374151;
-    }
-
-    .container {
-      max-width: 1280px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-    }
-
-    #status-message {
-      margin-bottom: 1rem;
-      font-size: 1rem;
-      text-align: center;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #ffffff;
-      border-radius: 0.5rem;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 2rem;
-    }
-
-    th, td {
-      padding: 0.75rem 1rem;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      background: #e5e7eb;
-      font-weight: 600;
-    }
-
-    tr:nth-child(even) { background: #f9fafb; }
-    tr:hover { background: #f3f4f6; }
-
-    select, button, input, textarea {
-      padding: 0.55rem 0.7rem;
-      border-radius: 0.375rem;
-      border: 1px solid #d1d5db;
-      font-size: 0.95rem;
-      width: 100%;
-      font-family: inherit;
-    }
-
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-
-    button {
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-      transition: background 0.2s;
-      margin-top: 0.5rem;
-      width: auto;
-      min-width: 160px;
-      border: none;
-    }
-
-    button:hover { background: #1d4ed8; }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .danger-btn { background: #dc2626; }
-    .danger-btn:hover { background: #b91c1c; }
-
-    .secondary-btn { background: #6b7280; }
-    .secondary-btn:hover { background: #4b5563; }
-
-    .section-card {
-      background: #ffffff;
-      padding: 1.5rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 2rem;
-    }
-
-    .section-card h2,
-    .section-card h3 {
-      margin-bottom: 1rem;
-    }
-
-    .section-card label {
-      display: block;
-      margin-bottom: 0.35rem;
-      font-weight: 600;
-    }
-
-    .field-group {
-      margin-bottom: 1rem;
-    }
-
-    .inline-checkbox {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .inline-checkbox input[type="checkbox"] {
-      width: auto;
-      margin: 0;
-    }
-
-    .section-message {
-      margin-top: 0.75rem;
-      font-size: 0.95rem;
-    }
-
-    .stories-list,
-    .story-pages-list,
-    .products-list,
-    .orders-list {
-      margin-top: 1.5rem;
-    }
-
-    .stories-list h3,
-    .story-pages-list h3,
-    .products-list h3,
-    .orders-list h3 {
-      margin-bottom: 0.75rem;
-    }
-
-    .story-chip-list,
-    .story-pages-grid,
-    .product-grid,
-    .orders-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 0.9rem;
-    }
-
-    .story-chip,
-    .story-page-card,
-    .product-card,
-    .summary-box,
-    .order-card {
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      border-radius: 0.75rem;
-      padding: 1rem;
-    }
-
-    .story-chip strong,
-    .story-page-card strong,
-    .product-card strong,
-    .order-card strong {
-      display: block;
-      margin-bottom: 0.35rem;
-    }
-
-    .story-chip img,
-    .story-page-card img,
-    .product-card img {
-      display: block;
-      width: 100%;
-      max-height: 220px;
-      object-fit: cover;
-      border-radius: 0.5rem;
-      margin-bottom: 0.5rem;
-      border: 1px solid #d1d5db;
-      background: #fff;
-    }
-
-    .product-card .product-meta,
-    .order-meta {
-      font-size: 0.92rem;
-      color: #374151;
-      margin-top: 0.25rem;
-    }
-
-    .action-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 0.5rem;
-    }
-
-    .helper-text {
-      font-size: 0.9rem;
-      color: #4b5563;
-      margin-top: 0.25rem;
-    }
-
-    .cover-preview,
-    .product-image-preview {
-      display: none;
-      max-width: 220px;
-      margin-top: 0.75rem;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
-      background: #fff;
-    }
-
-    .compact-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .compact-actions button {
-      min-width: 110px;
-      margin-top: 0;
-    }
-
-    .story-pages-section,
-    .product-management-inner,
-    .order-management-inner {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .winner-preview-box {
-      margin-top: 1rem;
-      padding: 1rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      background: #f9fafb;
-    }
-
-    .featured-winner-control {
-      margin-top: 1rem;
-      margin-bottom: 1rem;
-      padding: 1rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.75rem;
-      background: #f9fafb;
-    }
-
-    .featured-winner-control h3 {
-      margin-bottom: 0.35rem;
-    }
-
-    .featured-winner-current {
-      margin-top: 0.75rem;
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      color: #374151;
-      font-size: 0.94rem;
-    }
-
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-      margin-top: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .two-column-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem;
-    }
-
-    .three-column-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 0.22rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      background: #e5e7eb;
-      color: #111827;
-      margin-top: 0.25rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .status-badge.pending { background: #fef3c7; color: #92400e; }
-    .status-badge.paid { background: #dbeafe; color: #1d4ed8; }
-    .status-badge.processing { background: #ede9fe; color: #6d28d9; }
-    .status-badge.fulfilled { background: #dcfce7; color: #166534; }
-    .status-badge.canceled { background: #fee2e2; color: #b91c1c; }
-    .status-badge.failed { background: #f3f4f6; color: #4b5563; }
-
-    .order-section-divider {
-      margin-top: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .order-section-subtitle {
-      margin-bottom: 0.35rem;
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #111827;
-    }
-
-    .order-section-description {
-      color: #4b5563;
-      font-size: 0.94rem;
-      margin-bottom: 1rem;
-    }
-
-    .order-card {
-      background: #f9fafb;
-    }
-
-    .order-card.history-card {
-      background: #f3f4f6;
-      opacity: 0.96;
-    }
-
-    .order-card-header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 0.75rem;
-      margin-bottom: 0.75rem;
-    }
-
-    .order-card-header-main {
-      min-width: 0;
-      flex: 1 1 240px;
-    }
-
-    .order-id-text {
-      font-size: 0.88rem;
-      color: #4b5563;
-      word-break: break-word;
-    }
-
-    .order-items-list {
-      list-style: none;
-      padding: 0;
-      margin: 0.9rem 0 0;
-      display: grid;
-      gap: 0.55rem;
-    }
-
-    .order-items-list li {
-      background: #fff;
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      padding: 0.75rem;
-    }
-
-    .order-note-box {
-      margin-top: 0.9rem;
-    }
-
-    .order-note-box textarea {
-      min-height: 90px;
-    }
-
-    .order-shipping-box {
-      margin-top: 0.9rem;
-      padding: 0.85rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.6rem;
-      background: #ffffff;
-    }
-
-    .order-shipping-box h4 {
-      margin-bottom: 0.45rem;
-      font-size: 0.95rem;
-    }
-
-    .order-shipping-box .order-meta {
-      margin-top: 0.15rem;
-    }
-
-    .empty-orders-state {
-      padding: 1rem;
-      border: 1px dashed #d1d5db;
-      border-radius: 0.6rem;
-      background: #fafafa;
-      color: #6b7280;
-    }
-
-    .history-dropdown-shell {
-      display: grid;
-      gap: 1rem;
-    }
-
-    .history-controls {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 0.75rem;
-      padding: 1rem;
-    }
-
-    .history-summary-text {
-      color: #4b5563;
-      font-size: 0.9rem;
-      margin-top: 0.35rem;
-    }
-
-    .history-detail-shell {
-      min-height: 120px;
-    }
-
-    .history-detail-shell .order-card {
-      margin: 0;
-    }
-
-    code {
-      background: #eef2ff;
-      padding: 0.15rem 0.4rem;
-      border-radius: 0.25rem;
-      font-size: 0.9em;
-    }
-
-    @media (max-width: 768px) {
-      nav ul {
-        flex-direction: column;
-        width: 100%;
-        margin-top: 0.5rem;
-      }
-
-      table, th, td { font-size: 0.9rem; }
-      button, select, input, textarea { font-size: 0.9rem; }
-    }
-
-    @media (max-width: 480px) {
-      table { font-size: 0.82rem; }
-      th, td { padding: 0.5rem; }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/pages/admin.css?v=admin-cleanup-1" />
 </head>
-<body>
 
+<body>
   <nav>
     <h1>Admin Panel</h1>
+
     <ul>
       <li><a href="/index.html">Home</a></li>
       <li><a href="/admin/index.html">Admin</a></li>
@@ -666,11 +209,7 @@
 
           <div class="field-group">
             <label for="production-stage-label">Production Stage Label</label>
-            <input
-              type="text"
-              id="production-stage-label"
-              placeholder="Optional custom label"
-            />
+            <input type="text" id="production-stage-label" placeholder="Optional custom label" />
             <p class="helper-text">Optional display text. Leave blank to use the selected progress stage.</p>
           </div>
         </div>
@@ -891,38 +430,23 @@
       <form id="homepage-content-form">
         <div class="field-group">
           <label for="homepage-hero-heading">Hero Heading</label>
-          <input
-            type="text"
-            id="homepage-hero-heading"
-            placeholder="Current Winner"
-          />
+          <input type="text" id="homepage-hero-heading" placeholder="Current Winner" />
         </div>
 
         <div class="field-group">
           <label for="homepage-hero-description">Hero Description</label>
-          <textarea
-            id="homepage-hero-description"
-            placeholder="Homepage winner description..."
-          ></textarea>
+          <textarea id="homepage-hero-description" placeholder="Homepage winner description..."></textarea>
         </div>
 
         <div class="two-column-grid">
           <div class="field-group">
             <label for="homepage-hero-cta-text">Hero CTA Text</label>
-            <input
-              type="text"
-              id="homepage-hero-cta-text"
-              placeholder="Keep Reading"
-            />
+            <input type="text" id="homepage-hero-cta-text" placeholder="Keep Reading" />
           </div>
 
           <div class="field-group">
             <label for="homepage-hero-cta-link">Hero CTA Link</label>
-            <input
-              type="text"
-              id="homepage-hero-cta-link"
-              placeholder="/story.html?id=..."
-            />
+            <input type="text" id="homepage-hero-cta-link" placeholder="/story.html?id=..." />
           </div>
         </div>
 
@@ -936,9 +460,7 @@
 
       <div class="story-pages-section">
         <h3>Hero Image</h3>
-        <p class="helper-text">
-          This is the main featured homepage image.
-        </p>
+        <p class="helper-text">This is the main featured homepage image.</p>
 
         <div class="field-group">
           <label for="homepage-hero-image-file">Upload Hero Image</label>
@@ -947,29 +469,18 @@
             <button type="button" id="upload-homepage-hero-image-btn" class="secondary-btn">
               Upload Hero Image
             </button>
-            <button
-              type="button"
-              id="delete-homepage-hero-image-btn"
-              class="danger-btn"
-              style="display:none;"
-            >
+            <button type="button" id="delete-homepage-hero-image-btn" class="danger-btn" style="display:none;">
               Delete Hero Image
             </button>
           </div>
           <p id="homepage-hero-image-message" class="section-message"></p>
-          <img
-            id="homepage-hero-image-preview"
-            class="product-image-preview"
-            alt="Homepage hero preview"
-          />
+          <img id="homepage-hero-image-preview" class="product-image-preview" alt="Homepage hero preview" />
         </div>
       </div>
 
       <div class="story-pages-section">
         <h3>Secondary Homepage Image</h3>
-        <p class="helper-text">
-          This is the second featured homepage image or supporting concept image.
-        </p>
+        <p class="helper-text">This is the second featured homepage image or supporting concept image.</p>
 
         <div class="field-group">
           <label for="homepage-secondary-image-file">Upload Secondary Image</label>
@@ -978,21 +489,12 @@
             <button type="button" id="upload-homepage-secondary-image-btn" class="secondary-btn">
               Upload Secondary Image
             </button>
-            <button
-              type="button"
-              id="delete-homepage-secondary-image-btn"
-              class="danger-btn"
-              style="display:none;"
-            >
+            <button type="button" id="delete-homepage-secondary-image-btn" class="danger-btn" style="display:none;">
               Delete Secondary Image
             </button>
           </div>
           <p id="homepage-secondary-image-message" class="section-message"></p>
-          <img
-            id="homepage-secondary-image-preview"
-            class="product-image-preview"
-            alt="Homepage secondary preview"
-          />
+          <img id="homepage-secondary-image-preview" class="product-image-preview" alt="Homepage secondary preview" />
         </div>
       </div>
     </div>
