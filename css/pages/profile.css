@@ -65,7 +65,7 @@
 }
 
 .profile-hero {
-  padding: 3.5rem 0 3rem;
+  padding: 4rem 0 3.35rem;
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.14), transparent 34%),
@@ -95,7 +95,7 @@
 }
 
 .profile-kicker {
-  margin: 0 auto 1.75rem;
+  margin: 0 auto 2.35rem;
 }
 
 .profile-section-kicker {
@@ -326,6 +326,7 @@
 
 /* =========================
    Owned Comics Cards
+   Full-image treatment like Saved Stories
 ========================= */
 
 #owned-stories-container.profile-story-grid {
@@ -342,29 +343,30 @@
 #owned-stories-container .owned-story-card .owned-story-art-link {
   display: block;
   width: 100%;
-  height: 340px;
   overflow: hidden;
   background: transparent;
   border: 0;
   border-radius: 0;
   text-decoration: none;
+  cursor: pointer;
 }
 
 #owned-stories-container .owned-story-card > img.story-image,
 #owned-stories-container .owned-story-card .story-card-art-link img.story-image,
 #owned-stories-container .owned-story-card .owned-story-art-link img.story-image {
   width: 100% !important;
-  height: 340px !important;
-  min-height: 340px !important;
+  height: auto !important;
+  min-height: 0 !important;
   display: block;
   margin: 0 !important;
   padding: 0 !important;
-  object-fit: cover;
+  object-fit: contain !important;
   object-position: center;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
+  cursor: pointer;
   transition:
     transform var(--transition-base),
     filter var(--transition-base);
@@ -373,8 +375,9 @@
 #owned-stories-container .owned-story-card .story-card-art-link:hover img,
 #owned-stories-container .owned-story-card .story-card-art-link:focus-visible img,
 #owned-stories-container .owned-story-card .owned-story-art-link:hover img,
-#owned-stories-container .owned-story-card .owned-story-art-link:focus-visible img {
-  transform: scale(1.035);
+#owned-stories-container .owned-story-card .owned-story-art-link:focus-visible img,
+#owned-stories-container .owned-story-card > img.story-image:hover {
+  transform: scale(1.025);
   filter: brightness(1.08);
 }
 
@@ -466,9 +469,9 @@
 #my-saved-stories-container .profile-story-art-link {
   display: block;
   width: 100%;
-  height: 260px;
   overflow: hidden;
   text-decoration: none;
+  cursor: pointer;
 }
 
 #my-saved-stories-container > article > img,
@@ -477,12 +480,13 @@
 #my-saved-stories-container .story-card-art-link img,
 #my-saved-stories-container .profile-story-art-link img {
   width: 100% !important;
-  height: 260px !important;
-  min-height: 260px !important;
+  height: auto !important;
+  min-height: 0 !important;
   margin: 0 !important;
   border-radius: 0 !important;
-  object-fit: cover;
+  object-fit: contain !important;
   object-position: center;
+  cursor: pointer;
   transition:
     transform var(--transition-base),
     filter var(--transition-base);
@@ -491,8 +495,11 @@
 #my-saved-stories-container .story-card-art-link:hover img,
 #my-saved-stories-container .story-card-art-link:focus-visible img,
 #my-saved-stories-container .profile-story-art-link:hover img,
-#my-saved-stories-container .profile-story-art-link:focus-visible img {
-  transform: scale(1.035);
+#my-saved-stories-container .profile-story-art-link:focus-visible img,
+#my-saved-stories-container > article > img:hover,
+#my-saved-stories-container .story-card > img:hover,
+#my-saved-stories-container .gallery-card > img:hover {
+  transform: scale(1.025);
   filter: brightness(1.08);
 }
 
@@ -546,6 +553,16 @@
   max-width: none !important;
   min-height: 52px !important;
   margin: 0 !important;
+}
+
+/* Fallback for saved cards where buttons are direct children */
+#my-saved-stories-container article > .btn:first-of-type,
+#my-saved-stories-container .story-card > .btn:first-of-type,
+#my-saved-stories-container .gallery-card > .btn:first-of-type,
+#my-saved-stories-container article > button:first-of-type,
+#my-saved-stories-container .story-card > button:first-of-type,
+#my-saved-stories-container .gallery-card > button:first-of-type {
+  margin-top: auto !important;
 }
 
 /* =========================
@@ -602,11 +619,11 @@
   }
 
   .profile-hero {
-    padding: 2.8rem 0 2.2rem;
+    padding: 3rem 0 2.4rem;
   }
 
   .profile-kicker {
-    margin-bottom: 1.35rem;
+    margin-bottom: 1.85rem;
   }
 
   .profile-hero h1 {
@@ -639,28 +656,7 @@
     grid-template-columns: 1fr;
   }
 
-  #owned-stories-container .owned-story-card .story-card-art-link,
-  #owned-stories-container .owned-story-card .owned-story-art-link,
-  #owned-stories-container .owned-story-card > img.story-image,
-  #owned-stories-container .owned-story-card .story-card-art-link img.story-image,
-  #owned-stories-container .owned-story-card .owned-story-art-link img.story-image,
-  #owned-stories-container .owned-story-card > .story-image-placeholder {
-    height: 240px !important;
-    min-height: 240px !important;
-  }
-
   #owned-stories-container .owned-story-card .story-actions {
     grid-template-columns: 1fr;
-  }
-
-  #my-saved-stories-container .story-card-art-link,
-  #my-saved-stories-container .profile-story-art-link,
-  #my-saved-stories-container > article > img,
-  #my-saved-stories-container .story-card > img,
-  #my-saved-stories-container .gallery-card > img,
-  #my-saved-stories-container .story-card-art-link img,
-  #my-saved-stories-container .profile-story-art-link img {
-    height: 220px !important;
-    min-height: 220px !important;
   }
 }
