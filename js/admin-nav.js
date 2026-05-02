@@ -1,9 +1,8 @@
 // /js/admin-nav.js
-import { waitForAuthReady } from './auth.js';
+import { waitForAuthReady, refreshProfile } from './auth.js';
 import { getState, subscribe } from './state.js';
 
 let adminNavInitialized = false;
-let unsubscribeAdminNav = null;
 
 function setAdminLinksVisible(isVisible) {
   const adminLinks = document.querySelectorAll('.admin-link');
@@ -14,18 +13,22 @@ function setAdminLinksVisible(isVisible) {
   });
 }
 
+function isAdminProfile(profile) {
+  return String(profile?.role || '').toLowerCase() === 'admin';
+}
+
 /**
- * Uses shared auth/profile state to show or hide all admin nav links.
+ * Uses the loaded profile role to show or hide all admin nav links.
  */
 function updateAdminLinkVisibility() {
-  const { currentUser, profile, isAdmin } = getState();
+  const { currentUser, profile } = getState();
 
   if (!currentUser || !profile) {
     setAdminLinksVisible(false);
     return;
   }
 
-  setAdminLinksVisible(!!isAdmin);
+  setAdminLinksVisible(isAdminProfile(profile));
 }
 
 async function initAdminNav() {
@@ -33,14 +36,21 @@ async function initAdminNav() {
   adminNavInitialized = true;
 
   await waitForAuthReady();
+
+  try {
+    await refreshProfile();
+  } catch (error) {
+    console.error('Admin nav could not refresh profile:', error);
+  }
+
   updateAdminLinkVisibility();
 
-  unsubscribeAdminNav = subscribe(() => {
+  subscribe(() => {
     updateAdminLinkVisibility();
   });
 
-  // Keep backward compatibility with older page flows that still emit this.
   window.addEventListener('user-changed', updateAdminLinkVisibility);
+  window.addEventListener('auth-ready', updateAdminLinkVisibility);
 }
 
 document.addEventListener('DOMContentLoaded', initAdminNav);
