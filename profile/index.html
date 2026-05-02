@@ -2,218 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="description"
+    content="View your Celestial Comics profile, voting power, current round votes, owned comics, and saved story concepts."
+  />
+
   <title>My Profile | Celestial Comics</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="/css/main.css" />
-  <style>
-    .profile-page {
-      padding: 2rem 0 3rem;
-    }
-
-    .profile-hero {
-      margin-bottom: 2rem;
-      text-align: center;
-    }
-
-    .profile-hero h1 {
-      margin-bottom: 0.5rem;
-    }
-
-    .profile-hero p {
-      max-width: 700px;
-      margin: 0 auto;
-      color: #4b5563;
-    }
-
-    .profile-section {
-      margin-bottom: 2rem;
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-      padding: 1.5rem;
-    }
-
-    .profile-section h2 {
-      margin-bottom: 1rem;
-    }
-
-    .profile-vote-summary {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-    }
-
-    .vote-stat-card {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      padding: 1rem;
-      text-align: center;
-    }
-
-    .vote-stat-card h3 {
-      margin-bottom: 0.5rem;
-      font-size: 1rem;
-      color: #374151;
-    }
-
-    .vote-stat-card p {
-      margin: 0;
-      font-size: 2rem;
-      font-weight: 700;
-      color: #111827;
-    }
-
-    .vote-stat-card small {
-      display: block;
-      margin-top: 0.5rem;
-      color: #6b7280;
-      line-height: 1.4;
-    }
-
-    .profile-note {
-      margin-top: 1rem;
-      color: #4b5563;
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
-
-    .profile-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: grid;
-      gap: 0.75rem;
-    }
-
-    .profile-list li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.9rem 1rem;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      background: #f9fafb;
-      flex-wrap: wrap;
-    }
-
-    .profile-list button {
-      min-width: 130px;
-    }
-
-    .profile-empty-state {
-      color: #6b7280;
-      margin: 0.5rem 0 0;
-    }
-
-    .story-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem;
-    }
-
-    .owned-story-card .story-image,
-    .owned-story-card .story-image-placeholder {
-      width: 100%;
-      height: 220px;
-      object-fit: cover;
-      border-radius: 12px;
-      margin-bottom: 0.9rem;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #6b7280;
-      text-align: center;
-      padding: 1rem;
-    }
-
-    .owned-story-card .story-card-content {
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-
-    .owned-story-card .story-badge {
-      display: inline-block;
-      align-self: flex-start;
-      padding: 0.22rem 0.6rem;
-      border-radius: 999px;
-      background: #ede9fe;
-      color: #6d28d9;
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-
-    .owned-story-card h3 {
-      margin: 0;
-      font-size: 1.2rem;
-    }
-
-    .owned-story-card .story-author {
-      margin: 0;
-      color: #4b5563;
-      font-size: 0.95rem;
-    }
-
-    .owned-story-card .story-description {
-      margin: 0;
-      color: #374151;
-      line-height: 1.5;
-    }
-
-    .owned-story-card .story-meta {
-      margin: 0;
-      color: #6b7280;
-      font-size: 0.92rem;
-    }
-
-    .owned-story-card .story-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 0.25rem;
-    }
-
-    .owned-story-card .story-actions .btn {
-      flex: 1 1 160px;
-      text-align: center;
-    }
-
-    @media (max-width: 640px) {
-      .profile-list li {
-        align-items: flex-start;
-      }
-
-      .profile-list button {
-        width: 100%;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/css/pages/profile.css" />
 </head>
-<body>
-  <!-- HEADER -->
-  <header class="site-header">
-    <div class="container header-container">
-      <a href="/" class="logo">PROJECT LOGO</a>
 
-      <button class="nav-toggle" aria-label="Toggle navigation">
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
         <span class="hamburger"></span>
       </button>
 
-      <nav class="main-nav">
+      <nav class="main-nav" aria-label="Main navigation">
         <ul class="nav-list">
-          <li><a href="/">Home</a></li>
-          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/vote/">Vote</a></li>
-          <li><a href="/history/">History</a></li>
+          <li><a href="/history/">Winner</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
           <li><a href="/shop/">Shop</a></li>
-          <li><a href="/team/">Team</a></li>
-          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
-          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li><a href="/team/">The Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/" aria-current="page">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
           <li><a href="/login/" class="login-link">Login</a></li>
           <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
         </ul>
@@ -221,92 +51,140 @@
     </div>
   </header>
 
-  <!-- MAIN PROFILE DASHBOARD -->
-  <main class="container profile-page">
-    <section class="profile-hero">
-      <h1>My Profile</h1>
-      <p>
-        View your voting power, current round activity, saved concepts, and owned comics all in one place.
-      </p>
+  <main class="profile-page">
+    <section class="profile-hero" aria-labelledby="profile-page-title">
+      <div class="profile-hero-inner">
+        <p class="profile-kicker">Account Dashboard</p>
+
+        <h1 id="profile-page-title">My Profile</h1>
+
+        <p>
+          Track your voting power, current round activity, owned comics, and saved
+          story concepts all in one place.
+        </p>
+      </div>
     </section>
 
-    <section class="profile-section">
-      <h2>Your Voting Power</h2>
+    <section class="profile-section profile-voting-power" aria-labelledby="profile-voting-title">
+      <div class="profile-section-inner">
+        <div class="profile-section-header">
+          <div>
+            <p class="profile-section-kicker">Voting Power</p>
+            <h2 id="profile-voting-title">Your Votes</h2>
+          </div>
 
-      <div class="profile-vote-summary">
-        <div class="vote-stat-card">
-          <h3>Round Votes</h3>
-          <p id="round-vote-balance">—</p>
-          <small>These reset at the start of each new voting round.</small>
+          <a href="/vote/" class="btn btn-primary">Go Vote</a>
         </div>
 
-        <div class="vote-stat-card">
-          <h3>Bonus Votes</h3>
-          <p id="bonus-vote-balance">—</p>
-          <small>These come from purchases and do not reset each round.</small>
+        <div class="profile-vote-summary" aria-label="Vote balance summary">
+          <article class="vote-stat-card">
+            <h3>Round Votes</h3>
+            <p id="round-vote-balance">—</p>
+            <small>These reset at the start of each new voting round.</small>
+          </article>
+
+          <article class="vote-stat-card">
+            <h3>Bonus Votes</h3>
+            <p id="bonus-vote-balance">—</p>
+            <small>These come from purchases and do not reset each round.</small>
+          </article>
+
+          <article class="vote-stat-card vote-stat-card-total">
+            <h3>Total Available</h3>
+            <p id="total-vote-balance">—</p>
+            <small>Your current round votes plus any bonus votes.</small>
+          </article>
         </div>
 
-        <div class="vote-stat-card">
-          <h3>Total Available</h3>
-          <p id="total-vote-balance">—</p>
-          <small>Your current round votes plus any bonus votes.</small>
+        <div class="profile-note">
+          <p>
+            Round votes are used first when voting. Bonus votes come from eligible
+            purchases. Votes can only be recanted while the current voting round is open.
+          </p>
         </div>
       </div>
-
-      <p class="profile-note">
-        When you vote, your round votes should be used first before any bonus votes are spent.
-      </p>
     </section>
 
-    <section class="profile-section">
-      <h2>Owned Stories</h2>
-      <div id="owned-stories-container" class="story-grid"></div>
-      <p id="no-owned-stories" class="profile-empty-state" style="display:none;">
-        You do not own any digital comics yet.
-      </p>
+    <section class="profile-section" aria-labelledby="profile-current-votes-title">
+      <div class="profile-section-inner">
+        <div class="profile-section-header">
+          <div>
+            <p class="profile-section-kicker">Current Round</p>
+            <h2 id="profile-current-votes-title">My Votes</h2>
+          </div>
+        </div>
+
+        <ul id="vote-list" class="profile-list"></ul>
+
+        <div id="no-votes" class="profile-empty-state" style="display:none;">
+          <h3>No Current Votes Yet</h3>
+          <p>You haven’t voted in the current round yet.</p>
+          <a href="/vote/" class="btn btn-secondary">View Current Vote</a>
+        </div>
+      </div>
     </section>
 
-    <section class="profile-section">
-      <h2>My Votes</h2>
-      <ul id="vote-list" class="profile-list"></ul>
-      <p id="no-votes" class="profile-empty-state" style="display:none;">
-        You haven’t voted for any stories yet.
-      </p>
+    <section class="profile-section" aria-labelledby="profile-owned-title">
+      <div class="profile-section-inner">
+        <div class="profile-section-header">
+          <div>
+            <p class="profile-section-kicker">Library</p>
+            <h2 id="profile-owned-title">Owned Comics</h2>
+          </div>
+
+          <a href="/shop/" class="btn btn-secondary">Visit Shop</a>
+        </div>
+
+        <div id="owned-stories-container" class="profile-story-grid"></div>
+
+        <div id="no-owned-stories" class="profile-empty-state" style="display:none;">
+          <h3>No Owned Comics Yet</h3>
+          <p>Purchased digital comics and bundles will appear here after checkout.</p>
+          <a href="/shop/" class="btn btn-secondary">Browse Shop</a>
+        </div>
+      </div>
     </section>
 
-    <section class="profile-section">
-      <h2>Saved Stories</h2>
-      <div id="my-saved-stories-container" class="story-grid"></div>
-      <p id="no-saved-stories" class="profile-empty-state" style="display:none;">
-        You haven’t saved any stories yet.
-      </p>
+    <section class="profile-section" aria-labelledby="profile-saved-title">
+      <div class="profile-section-inner">
+        <div class="profile-section-header">
+          <div>
+            <p class="profile-section-kicker">Saved Concepts</p>
+            <h2 id="profile-saved-title">Saved Stories</h2>
+          </div>
+
+          <a href="/gallery/" class="btn btn-secondary">Browse Gallery</a>
+        </div>
+
+        <div id="my-saved-stories-container" class="profile-story-grid story-grid"></div>
+
+        <div id="no-saved-stories" class="profile-empty-state" style="display:none;">
+          <h3>No Saved Stories Yet</h3>
+          <p>Save concepts from the Gallery to find them here later.</p>
+          <a href="/gallery/" class="btn btn-secondary">Browse Gallery</a>
+        </div>
+      </div>
     </section>
   </main>
 
-  <!-- FOOTER -->
   <footer class="site-footer">
-    <div class="container footer-container">
+    <div class="footer-shell">
       <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
-      <nav class="footer-nav">
-        <a href="/gallery/">Gallery</a> |
-        <a href="/vote/">Vote</a> |
-        <a href="/history/">History</a> |
-        <a href="/shop/">Shop</a> |
-        <a href="/team/">Team</a>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
       </nav>
     </div>
   </footer>
 
-  <!-- ENV -->
   <script src="/js/env.js"></script>
-
-  <!-- SHARED UI / NAV -->
   <script type="module" src="/js/utils.js"></script>
-
-  <!-- PROFILE PAGE LOGIC -->
   <script type="module" src="/js/profile.js"></script>
 
-  <!-- AUTH UI -->
   <script type="module">
     import { updateUI, logout } from '/js/auth.js';
 
@@ -323,7 +201,6 @@
     });
   </script>
 
-  <!-- ADMIN NAV LINK -->
   <script type="module" src="/js/admin-nav.js"></script>
 </body>
 </html>
