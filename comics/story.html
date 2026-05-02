@@ -1,703 +1,274 @@
-/* /css/pages/profile.css */
-
-/* =========================
-   Profile Page
-========================= */
-
-:root {
-  --fs-public-page-title: clamp(3rem, 6vw, 5rem);
-  --fs-public-section-title: clamp(2.25rem, 4.5vw, 4rem);
-  --fs-public-card-title: clamp(1.45rem, 2.3vw, 2.35rem);
-  --fs-public-body-lg: clamp(1.02rem, 1.55vw, 1.2rem);
-  --fs-public-body: 1rem;
-  --fs-public-small: 0.82rem;
-}
-
-/* =========================
-   Announcement Strip
-========================= */
-
-.announcement-strip {
-  width: 100%;
-  min-height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  padding: 0.35rem 1rem;
-  background: linear-gradient(90deg, #7454c7, #8b5fd8);
-  color: #ffffff;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.03em;
-  text-align: center;
-  text-transform: uppercase;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.announcement-strip span,
-.announcement-strip #profile-status-text {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.announcement-strip a {
-  color: #ffffff;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.announcement-strip a:hover,
-.announcement-strip a:focus-visible {
-  color: var(--color-accent-soft);
-}
-
-/* =========================
-   Page Shell / Hero
-========================= */
-
-.profile-page {
-  width: 100%;
-  padding-bottom: var(--spacing-2xl);
-}
-
-.profile-hero {
-  padding: 4rem 0 3.4rem;
-  text-align: center;
-  background:
-    radial-gradient(circle at top center, rgba(242, 178, 74, 0.14), transparent 34%),
-    linear-gradient(180deg, rgba(11, 40, 82, 0.62), rgba(3, 23, 47, 0));
-}
-
-.profile-hero-inner {
-  width: min(920px, calc(100% - 2rem));
-  margin-inline: auto;
-}
-
-.profile-kicker,
-.profile-section-kicker {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.35rem 0.95rem;
-  border-radius: var(--radius-pill);
-  background: rgba(126, 97, 191, 0.32);
-  border: 1px solid rgba(229, 220, 255, 0.22);
-  color: var(--color-accent-soft);
-  font-size: var(--fs-public-small);
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.profile-kicker {
-  margin: 0 auto 0;
-}
-
-.profile-hero h1 {
-  margin: 0 0 1.15rem;
-  padding-top: 1.45rem;
-  font-family: var(--font-heading);
-  font-size: var(--fs-public-page-title);
-  line-height: 0.92;
-  color: var(--color-accent-soft);
-  text-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
-}
-
-.profile-hero p {
-  max-width: 780px;
-  margin: 0 auto;
-  color: var(--color-text-soft);
-  font-size: var(--fs-public-body-lg);
-  line-height: 1.55;
-}
-
-/* =========================
-   Sections
-========================= */
-
-.profile-section {
-  padding: 1.35rem 0;
-}
-
-.profile-section:first-of-type {
-  padding-top: 1.65rem;
-}
-
-.profile-section-inner {
-  width: min(1120px, calc(100% - 2rem));
-  margin-inline: auto;
-  padding: clamp(1.15rem, 2vw, 1.65rem);
-  background:
-    linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(9, 37, 77, 0.92));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-}
-
-.profile-section-header {
-  margin-bottom: 1.35rem;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.25rem;
-  flex-wrap: wrap;
-}
-
-.profile-section-header > div {
-  min-width: 0;
-}
-
-.profile-section-kicker {
-  margin: 0 0 0.75rem;
-}
-
-.profile-section-header h2 {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--fs-public-section-title);
-  line-height: 0.95;
-  color: var(--color-text);
-  letter-spacing: 0.01em;
-}
-
-/* =========================
-   Vote Balance Summary
-========================= */
-
-.profile-vote-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.vote-stat-card {
-  min-width: 0;
-  padding: clamp(1rem, 2vw, 1.35rem);
-  display: grid;
-  gap: 0.45rem;
-  align-content: start;
-  text-align: center;
-  background:
-    linear-gradient(180deg, rgba(7, 31, 64, 0.82), rgba(3, 23, 47, 0.94));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
-}
-
-.vote-stat-card h3 {
-  margin: 0;
-  color: var(--color-text);
-  font-size: 0.82rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.vote-stat-card p {
-  margin: 0;
-  color: var(--color-accent-soft);
-  font-family: var(--font-heading);
-  font-size: clamp(3rem, 6vw, 5rem);
-  font-weight: 700;
-  line-height: 0.95;
-  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-}
-
-.vote-stat-card small {
-  display: block;
-  max-width: 28ch;
-  margin: 0 auto;
-  color: var(--color-text-muted);
-  font-size: 0.86rem;
-  line-height: 1.45;
-}
-
-.vote-stat-card-total {
-  background:
-    radial-gradient(circle at top center, rgba(242, 178, 74, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(18, 75, 137, 0.88), rgba(7, 31, 64, 0.96));
-  border-color: rgba(242, 178, 74, 0.28);
-}
-
-.profile-note {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: rgba(126, 97, 191, 0.16);
-  border: 1px solid rgba(196, 181, 253, 0.24);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-soft);
-}
-
-.profile-note p {
-  margin: 0;
-  font-size: var(--fs-public-body);
-  line-height: 1.55;
-}
-
-/* =========================
-   Current Votes List
-========================= */
-
-.profile-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 0.85rem;
-}
-
-.profile-list li {
-  min-width: 0;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  background:
-    linear-gradient(180deg, rgba(7, 31, 64, 0.82), rgba(3, 23, 47, 0.94));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text);
-}
-
-.profile-list button {
-  min-width: 140px;
-  min-height: 44px;
-  padding: 0.75rem 1rem;
-  border: 1px solid rgba(248, 113, 113, 0.34);
-  border-radius: 0;
-  background: rgba(248, 113, 113, 0.12);
-  color: #fecaca;
-  font-weight: 900;
-  cursor: pointer;
-  transition:
-    transform var(--transition-base),
-    background var(--transition-base),
-    border-color var(--transition-base),
-    color var(--transition-base);
-}
-
-.profile-list button:hover:not(:disabled),
-.profile-list button:focus-visible:not(:disabled) {
-  transform: translateY(-2px);
-  background: rgba(248, 113, 113, 0.2);
-  border-color: rgba(248, 113, 113, 0.52);
-  color: #ffffff;
-}
-
-.profile-list button:disabled {
-  cursor: not-allowed;
-  opacity: 0.65;
-}
-
-/* =========================
-   Story Grids / Base Cards
-========================= */
-
-.profile-story-grid,
-.profile-section .story-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.profile-story-grid > *,
-.profile-section .story-grid > * {
-  min-width: 0;
-}
-
-.profile-story-grid article,
-.profile-section .story-card,
-.profile-section .gallery-card {
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background:
-    linear-gradient(180deg, rgba(18, 75, 137, 0.78), rgba(7, 31, 64, 0.96));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-  color: var(--color-text);
-}
-
-/* =========================
-   Owned Comics
-   No inner frame inside section
-========================= */
-
-#owned-stories-container.profile-story-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  justify-items: center;
-  align-items: stretch;
-}
-
-#owned-stories-container .owned-story-card {
-  width: min(100%, 560px);
-  min-width: 0;
-  height: auto;
-  display: flex;
-  flex-direction: column;
-  padding: 0 !important;
-  gap: 0 !important;
-  overflow: visible;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  color: var(--color-text);
-  cursor: default;
-}
-
-#owned-stories-container .owned-story-card .story-card-art-link,
-#owned-stories-container .owned-story-card .owned-story-art-link,
-#owned-stories-container .owned-story-card > a:first-child {
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  cursor: pointer !important;
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.18),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-#owned-stories-container .owned-story-card > img,
-#owned-stories-container .owned-story-card img,
-#owned-stories-container .owned-story-card > img.story-image,
-#owned-stories-container .owned-story-card .story-card-art-link img,
-#owned-stories-container .owned-story-card .owned-story-art-link img,
-#owned-stories-container .owned-story-card > a:first-child img {
-  width: 100% !important;
-  max-width: none !important;
-  height: auto !important;
-  max-height: none !important;
-  min-height: 0 !important;
-  display: block;
-  margin: 0 !important;
-  padding: 0 !important;
-  object-fit: contain !important;
-  object-position: center top;
-  border: 0 !important;
-  border-radius: var(--radius-sm) !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  cursor: pointer !important;
-  transition:
-    transform var(--transition-base),
-    filter var(--transition-base);
-}
-
-#owned-stories-container .owned-story-card > img.story-image {
-  box-shadow:
-    0 18px 42px rgba(0, 0, 0, 0.18),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-#owned-stories-container .owned-story-card:hover img,
-#owned-stories-container .owned-story-card a:hover img,
-#owned-stories-container .owned-story-card a:focus-visible img {
-  transform: scale(1.018);
-  filter: brightness(1.08);
-}
-
-#owned-stories-container .owned-story-card > .story-image-placeholder {
-  width: 100% !important;
-  height: 360px !important;
-  min-height: 360px !important;
-  margin: 0 !important;
-  border: 0 !important;
-  border-radius: var(--radius-sm) !important;
-  cursor: pointer !important;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-#owned-stories-container .owned-story-card .story-card-content {
-  padding: 1rem 0 0 !important;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem !important;
-  flex: 1;
-}
-
-.owned-story-card .story-badge {
-  width: fit-content;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.3rem 0.7rem;
-  border-radius: var(--radius-pill);
-  background: rgba(126, 97, 191, 0.22);
-  border: 1px solid rgba(126, 97, 191, 0.34);
-  color: #e5dcff;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.owned-story-card h3 {
-  margin: 0;
-  color: var(--color-text);
-  font-family: var(--font-heading);
-  font-size: clamp(1.35rem, 2.2vw, 2.1rem);
-  line-height: 1;
-}
-
-.owned-story-card .story-author,
-.owned-story-card .story-meta {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.92rem;
-  line-height: 1.45;
-}
-
-.owned-story-card .story-description {
-  margin: 0;
-  color: var(--color-text-soft);
-  font-size: var(--fs-public-body);
-  line-height: 1.45;
-}
-
-#owned-stories-container .owned-story-card .story-actions {
-  margin-top: auto !important;
-  padding-top: 0.85rem;
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
-  cursor: default;
-}
-
-#owned-stories-container .owned-story-card .story-actions .btn {
-  width: 100%;
-  margin: 0 !important;
-  min-height: 48px !important;
-  cursor: pointer !important;
-}
-
-/* =========================
-   Saved Stories Cards
-   Keep full-frame look
-========================= */
-
-#my-saved-stories-container > article,
-#my-saved-stories-container .story-card,
-#my-saved-stories-container .gallery-card {
-  height: 100%;
-  display: flex !important;
-  flex-direction: column !important;
-  padding: 0 !important;
-  gap: 0 !important;
-  cursor: pointer !important;
-}
-
-#my-saved-stories-container .story-card-art-link,
-#my-saved-stories-container .profile-story-art-link {
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  text-decoration: none;
-  cursor: pointer !important;
-}
-
-#my-saved-stories-container > article > img,
-#my-saved-stories-container .story-card > img,
-#my-saved-stories-container .gallery-card > img,
-#my-saved-stories-container article img,
-#my-saved-stories-container .story-card img,
-#my-saved-stories-container .gallery-card img,
-#my-saved-stories-container .story-card-art-link img,
-#my-saved-stories-container .profile-story-art-link img {
-  width: 100% !important;
-  height: auto !important;
-  max-height: none !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  object-fit: contain !important;
-  object-position: center top;
-  cursor: pointer !important;
-  transition:
-    transform var(--transition-base),
-    filter var(--transition-base);
-}
-
-#my-saved-stories-container .story-card:hover img,
-#my-saved-stories-container .gallery-card:hover img,
-#my-saved-stories-container article:hover img,
-#my-saved-stories-container a:hover img,
-#my-saved-stories-container a:focus-visible img {
-  transform: scale(1.018);
-  filter: brightness(1.08);
-}
-
-#my-saved-stories-container .story-card-body,
-#my-saved-stories-container .story-card-content,
-#my-saved-stories-container .card-content {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 !important;
-  padding: 1rem !important;
-}
-
-#my-saved-stories-container .story-card h2,
-#my-saved-stories-container .story-card h3,
-#my-saved-stories-container .gallery-card h2,
-#my-saved-stories-container .gallery-card h3,
-#my-saved-stories-container article h2,
-#my-saved-stories-container article h3 {
-  margin: 0.65rem 0 0.45rem;
-  color: var(--color-text);
-  font-family: var(--font-heading);
-  font-size: var(--fs-public-card-title);
-  line-height: 1;
-}
-
-#my-saved-stories-container .story-card p,
-#my-saved-stories-container .gallery-card p,
-#my-saved-stories-container article p {
-  margin: 0.35rem 0;
-  color: var(--color-text-soft);
-  font-size: var(--fs-public-body);
-  line-height: 1.5;
-}
-
-#my-saved-stories-container .story-actions,
-#my-saved-stories-container .story-card-actions,
-#my-saved-stories-container .card-actions {
-  margin-top: auto !important;
-  padding-top: 1rem !important;
-  display: grid !important;
-  gap: 0.75rem;
-}
-
-#my-saved-stories-container .story-actions .btn,
-#my-saved-stories-container .story-card-actions .btn,
-#my-saved-stories-container .card-actions .btn,
-#my-saved-stories-container .story-actions button,
-#my-saved-stories-container .story-card-actions button,
-#my-saved-stories-container .card-actions button {
-  width: 100% !important;
-  max-width: none !important;
-  min-height: 52px !important;
-  margin: 0 !important;
-  cursor: pointer !important;
-}
-
-#my-saved-stories-container article > .btn:first-of-type,
-#my-saved-stories-container .story-card > .btn:first-of-type,
-#my-saved-stories-container .gallery-card > .btn:first-of-type,
-#my-saved-stories-container article > button:first-of-type,
-#my-saved-stories-container .story-card > button:first-of-type,
-#my-saved-stories-container .gallery-card > button:first-of-type {
-  margin-top: auto !important;
-}
-
-/* =========================
-   Empty States
-========================= */
-
-.profile-empty-state {
-  margin: 0;
-  padding: clamp(1.25rem, 2.4vw, 1.8rem);
-  text-align: center;
-  background: rgba(7, 31, 64, 0.6);
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-soft);
-}
-
-.profile-empty-state h3 {
-  margin: 0 0 0.45rem;
-  color: var(--color-text);
-  font-family: var(--font-heading);
-  font-size: clamp(1.8rem, 3vw, 2.5rem);
-  line-height: 1;
-}
-
-.profile-empty-state p {
-  max-width: 520px;
-  margin: 0 auto 1rem;
-  color: var(--color-text-soft);
-  font-size: var(--fs-public-body);
-  line-height: 1.55;
-}
-
-/* =========================
-   Responsive
-========================= */
-
-@media (max-width: 900px) {
-  .profile-vote-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-section-header {
-    align-items: flex-start;
-  }
-}
-
-@media (max-width: 640px) {
-  .announcement-strip {
-    flex-wrap: wrap;
-    min-height: 34px;
-    padding: 0.45rem 0.85rem;
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-  }
-
-  .profile-hero {
-    padding: 3rem 0 2.4rem;
-  }
-
-  .profile-hero h1 {
-    padding-top: 1.25rem;
-    font-size: clamp(2.8rem, 14vw, 4.25rem);
-  }
-
-  .profile-section {
-    padding: 1rem 0;
-  }
-
-  .profile-section-header {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .profile-section-header .btn {
-    width: 100%;
-  }
-
-  .profile-list li {
-    align-items: stretch;
-  }
-
-  .profile-list button {
-    width: 100%;
-  }
-
-  .profile-story-grid,
-  .profile-section .story-grid {
-    grid-template-columns: 1fr;
-  }
-
-  #owned-stories-container .owned-story-card {
-    width: 100%;
-  }
-
-  #owned-stories-container .owned-story-card .story-actions {
-    grid-template-columns: 1fr;
-  }
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comic | Celestial Comics</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    .comic-page {
+      padding: 2rem 0 3rem;
+    }
+
+    .comic-back {
+      margin-bottom: 1.5rem;
+    }
+
+    .comic-hero {
+      display: grid;
+      grid-template-columns: minmax(260px, 380px) 1fr;
+      gap: 2rem;
+      align-items: start;
+      margin-bottom: 2rem;
+    }
+
+    .comic-cover {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      object-fit: cover;
+    }
+
+    .comic-status-badge {
+      display: inline-block;
+      margin-bottom: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .comic-title {
+      margin-bottom: 0.5rem;
+    }
+
+    .comic-meta {
+      color: #4b5563;
+      margin-bottom: 1rem;
+    }
+
+    .comic-description {
+      color: #374151;
+      line-height: 1.7;
+      margin-bottom: 1.25rem;
+    }
+
+    .comic-purchase-box,
+    .comic-preview-box {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+      margin-bottom: 1.5rem;
+    }
+
+    .comic-purchase-box h2,
+    .comic-preview-box h2 {
+      margin-bottom: 0.75rem;
+    }
+
+    .comic-purchase-intro,
+    .comic-preview-intro {
+      color: #4b5563;
+      margin-bottom: 1rem;
+    }
+
+    .comic-product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .comic-product-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1rem;
+      background: #f9fafb;
+    }
+
+    .comic-product-type {
+      display: inline-block;
+      margin-bottom: 0.5rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #ede9fe;
+      color: #6d28d9;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .comic-product-title {
+      margin-bottom: 0.5rem;
+      font-size: 1.05rem;
+    }
+
+    .comic-product-description {
+      color: #4b5563;
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+
+    .comic-product-price {
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+
+    .comic-preview-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .comic-preview-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .comic-preview-card img {
+      width: 100%;
+      display: block;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .comic-preview-card strong {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .comic-locked-box {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 12px;
+      background: #111827;
+      color: #f9fafb;
+    }
+
+    .comic-locked-box p {
+      margin-bottom: 0.75rem;
+      color: #e5e7eb;
+    }
+
+    .comic-empty-state {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    .comic-error {
+      color: #b91c1c;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+
+    .comic-status-message {
+      text-align: center;
+      min-height: 1.5rem;
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    @media (max-width: 900px) {
+      .comic-hero {
+        grid-template-columns: 1fr;
+      }
+
+      .comic-cover-wrap {
+        max-width: 380px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="site-header">
+    <div class="container header-container">
+      <a href="/" class="logo">PROJECT LOGO</a>
+
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span class="hamburger"></span>
+      </button>
+
+      <nav class="main-nav">
+        <ul class="nav-list">
+          <li><a href="/">Home</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">History</a></li>
+          <li><a href="/shop/">Shop</a></li>
+          <li><a href="/team/">Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin Panel</a></li>
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="container comic-page">
+    <div class="comic-back">
+      <a href="/winner/" class="btn btn-secondary">← Back to Winner</a>
+    </div>
+
+    <p id="comic-status-message" class="comic-status-message"></p>
+
+    <div id="comic-page-content">
+      <div class="comic-empty-state">Loading comic...</div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container footer-container">
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
+      <nav class="footer-nav">
+        <a href="/gallery/">Gallery</a> |
+        <a href="/vote/">Vote</a> |
+        <a href="/history/">History</a> |
+        <a href="/shop/">Shop</a> |
+        <a href="/team/">Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- ENV -->
+  <script src="/js/env.js"></script>
+
+  <!-- SHARED UI / NAV -->
+  <script type="module" src="/js/utils.js"></script>
+
+  <!-- PAGE LOGIC -->
+  <script type="module" src="/js/comics-story.js"></script>
+
+  <!-- AUTH UI -->
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
+
+      document.querySelectorAll('.logout-link').forEach((el) => {
+        el.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await logout();
+          window.location.href = '/';
+        });
+      });
+    });
+  </script>
+
+  <!-- ADMIN NAV LINK -->
+  <script type="module" src="/js/admin-nav.js"></script>
+</body>
+</html>

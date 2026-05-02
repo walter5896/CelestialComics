@@ -313,7 +313,6 @@
   min-width: 0;
 }
 
-.owned-story-card,
 .profile-story-grid article,
 .profile-section .story-card,
 .profile-section .gallery-card {
@@ -331,23 +330,32 @@
 }
 
 /* =========================
-   Owned Comics Cards
-   Match saved-card feel, but single-card sized
+   Owned Comics
+   No inner frame inside section
 ========================= */
 
 #owned-stories-container.profile-story-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 1fr;
   justify-items: center;
   align-items: stretch;
 }
 
 #owned-stories-container .owned-story-card {
   width: min(100%, 560px);
+  min-width: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
   padding: 0 !important;
   gap: 0 !important;
-  overflow: hidden;
-  cursor: pointer !important;
+  overflow: visible;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--color-text);
+  cursor: default;
 }
 
 #owned-stories-container .owned-story-card .story-card-art-link,
@@ -358,9 +366,12 @@
   overflow: hidden;
   background: transparent;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   text-decoration: none;
   cursor: pointer !important;
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 #owned-stories-container .owned-story-card > img,
@@ -370,8 +381,9 @@
 #owned-stories-container .owned-story-card .owned-story-art-link img,
 #owned-stories-container .owned-story-card > a:first-child img {
   width: 100% !important;
+  max-width: none !important;
   height: auto !important;
-  max-height: 520px !important;
+  max-height: none !important;
   min-height: 0 !important;
   display: block;
   margin: 0 !important;
@@ -379,13 +391,19 @@
   object-fit: contain !important;
   object-position: center top;
   border: 0 !important;
-  border-radius: 0 !important;
+  border-radius: var(--radius-sm) !important;
   box-shadow: none !important;
   background: transparent !important;
   cursor: pointer !important;
   transition:
     transform var(--transition-base),
     filter var(--transition-base);
+}
+
+#owned-stories-container .owned-story-card > img.story-image {
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 #owned-stories-container .owned-story-card:hover img,
@@ -401,12 +419,13 @@
   min-height: 360px !important;
   margin: 0 !important;
   border: 0 !important;
-  border-radius: 0 !important;
+  border-radius: var(--radius-sm) !important;
   cursor: pointer !important;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 #owned-stories-container .owned-story-card .story-card-content {
-  padding: 1rem 1.2rem 1.2rem !important;
+  padding: 1rem 0 0 !important;
   display: flex;
   flex-direction: column;
   gap: 0.55rem !important;
@@ -470,7 +489,7 @@
 
 /* =========================
    Saved Stories Cards
-   Keep reverted full-frame look
+   Keep full-frame look
 ========================= */
 
 #my-saved-stories-container > article,
