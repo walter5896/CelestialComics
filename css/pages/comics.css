@@ -1,0 +1,494 @@
+/* /css/pages/comics.css */
+
+/* =========================
+   Comic Detail Page
+========================= */
+
+:root {
+  --fs-public-page-title: clamp(3rem, 6vw, 5rem);
+  --fs-public-section-title: clamp(2.15rem, 4.3vw, 3.8rem);
+  --fs-public-card-title: clamp(1.45rem, 2.3vw, 2.35rem);
+  --fs-public-body-lg: clamp(1.02rem, 1.55vw, 1.2rem);
+  --fs-public-body: 1rem;
+  --fs-public-small: 0.82rem;
+}
+
+/* =========================
+   Announcement Strip
+========================= */
+
+.announcement-strip {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.35rem 1rem;
+  background: linear-gradient(90deg, #7454c7, #8b5fd8);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.announcement-strip span,
+.announcement-strip #comic-status-strip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.announcement-strip a {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.announcement-strip a:hover,
+.announcement-strip a:focus-visible {
+  color: var(--color-accent-soft);
+}
+
+/* =========================
+   Page Shell / Hero
+========================= */
+
+.comic-page {
+  width: 100%;
+  padding-bottom: var(--spacing-2xl);
+}
+
+.comic-page-hero {
+  padding: 4rem 0 3.4rem;
+  text-align: center;
+  background:
+    radial-gradient(circle at top center, rgba(242, 178, 74, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(11, 40, 82, 0.62), rgba(3, 23, 47, 0));
+}
+
+.comic-page-hero-inner {
+  width: min(920px, calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.comic-kicker {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0;
+  padding: 0.35rem 0.95rem;
+  border-radius: var(--radius-pill);
+  background: rgba(126, 97, 191, 0.32);
+  border: 1px solid rgba(229, 220, 255, 0.22);
+  color: var(--color-accent-soft);
+  font-size: var(--fs-public-small);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comic-page-hero h1 {
+  margin: 0 0 1.15rem;
+  padding-top: 1.45rem;
+  font-family: var(--font-heading);
+  font-size: var(--fs-public-page-title);
+  line-height: 0.92;
+  color: var(--color-accent-soft);
+  text-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
+}
+
+.comic-page-hero p {
+  max-width: 780px;
+  margin: 0 auto;
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body-lg);
+  line-height: 1.55;
+}
+
+.comic-shell {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding-top: 1.65rem;
+}
+
+.comic-back-row {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.comic-status-message {
+  min-height: 1.4rem;
+  margin: 0 0 1rem;
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* =========================
+   Dynamic Hero From JS
+========================= */
+
+.comic-hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 440px) minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+  margin-bottom: 1.35rem;
+  padding: clamp(1.15rem, 2.4vw, 1.75rem);
+  background:
+    linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(9, 37, 77, 0.92));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.comic-cover-wrap {
+  min-width: 0;
+}
+
+.comic-cover {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  object-fit: contain;
+}
+
+.comic-info {
+  min-width: 0;
+}
+
+.comic-status-badge,
+.comic-product-type {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 0.85rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--radius-pill);
+  background: rgba(126, 97, 191, 0.32);
+  border: 1px solid rgba(229, 220, 255, 0.22);
+  color: var(--color-accent-soft);
+  font-size: var(--fs-public-small);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.comic-status-note {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(126, 97, 191, 0.16);
+  border: 1px solid rgba(196, 181, 253, 0.24);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-soft);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.comic-status-note--owned {
+  background: rgba(20, 184, 166, 0.14);
+  border-color: rgba(94, 234, 212, 0.26);
+  color: #ccfbf1;
+}
+
+.comic-title {
+  margin: 0 0 0.65rem;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: clamp(2.4rem, 5vw, 4.4rem);
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+}
+
+.comic-meta {
+  margin: 0 0 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.comic-description {
+  color: var(--color-text-soft);
+}
+
+.comic-description p {
+  margin: 0;
+  max-width: 66ch;
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.65;
+}
+
+/* =========================
+   Purchase / Preview Boxes
+========================= */
+
+.comic-purchase-box,
+.comic-preview-box {
+  margin-bottom: 1.35rem;
+  padding: clamp(1.15rem, 2.4vw, 1.75rem);
+  background:
+    linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(9, 37, 77, 0.92));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.comic-purchase-box h2,
+.comic-preview-box h2 {
+  margin: 0 0 0.65rem;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: var(--fs-public-section-title);
+  line-height: 0.95;
+}
+
+.comic-purchase-intro,
+.comic-preview-intro {
+  max-width: 760px;
+  margin: 0 0 1.15rem;
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.6;
+}
+
+/* =========================
+   Product Cards
+========================= */
+
+.comic-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.comic-product-card {
+  min-width: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background:
+    linear-gradient(180deg, rgba(7, 31, 64, 0.82), rgba(3, 23, 47, 0.94));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+.comic-product-card .comic-product-type {
+  margin-bottom: 0;
+}
+
+.comic-product-title {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: var(--fs-public-card-title);
+  line-height: 1;
+}
+
+.comic-product-description {
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.5;
+}
+
+.comic-product-price {
+  margin: 0;
+  color: var(--color-accent-soft);
+  font-family: var(--font-heading);
+  font-size: clamp(1.65rem, 3vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.comic-product-card .btn {
+  margin-top: auto;
+  width: 100%;
+  min-height: 48px;
+}
+
+/* =========================
+   Preview Cards
+========================= */
+
+.comic-preview-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.comic-preview-card {
+  padding: 1rem;
+  background:
+    linear-gradient(180deg, rgba(7, 31, 64, 0.82), rgba(3, 23, 47, 0.94));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.comic-preview-card img {
+  width: 100%;
+  display: block;
+  margin: 0 0 0.85rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+}
+
+.comic-preview-card strong {
+  display: block;
+  margin: 0 0 0.35rem;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 2.5vw, 2rem);
+  line-height: 1;
+}
+
+.comic-preview-card p {
+  margin: 0;
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.5;
+}
+
+/* =========================
+   Access / Empty / Error States
+========================= */
+
+.comic-locked-box,
+.comic-empty-state,
+.comic-error {
+  padding: clamp(1.15rem, 2vw, 1.5rem);
+  background: rgba(7, 31, 64, 0.72);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-soft);
+}
+
+.comic-locked-box {
+  margin-top: 1rem;
+}
+
+.comic-locked-box h3 {
+  margin: 0 0 0.5rem;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1;
+}
+
+.comic-locked-box p,
+.comic-empty-state,
+.comic-error {
+  color: var(--color-text-soft);
+  font-size: var(--fs-public-body);
+  line-height: 1.55;
+}
+
+.comic-locked-box p {
+  max-width: 720px;
+  margin: 0 0 1rem;
+}
+
+.comic-empty-state,
+.comic-error {
+  text-align: center;
+}
+
+.comic-error {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.34);
+  background: rgba(127, 29, 29, 0.18);
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 900px) {
+  .comic-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .comic-cover-wrap {
+    max-width: 520px;
+    margin-inline: auto;
+  }
+
+  .comic-info {
+    text-align: center;
+  }
+
+  .comic-status-badge,
+  .comic-status-note,
+  .comic-product-type {
+    margin-inline: auto;
+  }
+
+  .comic-description p,
+  .comic-purchase-intro,
+  .comic-preview-intro,
+  .comic-locked-box p {
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .announcement-strip {
+    flex-wrap: wrap;
+    min-height: 34px;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+  }
+
+  .comic-page-hero {
+    padding: 3rem 0 2.4rem;
+  }
+
+  .comic-page-hero h1 {
+    padding-top: 1.25rem;
+    font-size: clamp(2.8rem, 14vw, 4.25rem);
+  }
+
+  .comic-shell {
+    width: min(100% - 1rem, 1120px);
+    padding-top: 1rem;
+  }
+
+  .comic-back-row {
+    display: grid;
+  }
+
+  .comic-back-row .btn {
+    width: 100%;
+  }
+
+  .comic-hero,
+  .comic-purchase-box,
+  .comic-preview-box {
+    padding: 1rem;
+  }
+
+  .comic-product-grid {
+    grid-template-columns: 1fr;
+  }
+}
