@@ -586,10 +586,13 @@ button:disabled {
   box-shadow: var(--admin-shadow-md);
 }
 
+#users-table thead {
+  position: static;
+}
+
 #users-table thead th {
-  position: sticky;
-  top: 72px;
-  z-index: 5;
+  position: static;
+  z-index: auto;
   background: #eef4fb;
   color: var(--admin-navy);
   font-size: 0.78rem;
@@ -598,11 +601,16 @@ button:disabled {
   text-transform: uppercase;
 }
 
+#users-table th,
+#users-table td {
+  position: static;
+}
+
 th,
 td {
   padding: 0.85rem 1rem;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   border-bottom: 1px solid var(--admin-border);
 }
 
