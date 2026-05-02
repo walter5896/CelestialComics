@@ -55,7 +55,6 @@
   color: var(--color-accent-soft);
 }
 
-/* Backward compatibility if older markup still exists */
 .team-voting-strip {
   width: 100%;
   min-height: 34px;
@@ -92,7 +91,7 @@
 .team-hero {
   width: min(920px, calc(100% - 2rem));
   margin-inline: auto;
-  padding: 2.3rem 0 2rem;
+  padding: 2.1rem 0 2rem;
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.1), transparent 34%),
@@ -105,7 +104,62 @@
 }
 
 .team-celestial-mark {
-  display: none;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.65rem;
+}
+
+.team-sun-orb {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, #fff7c0 0 10%, var(--color-accent-soft) 34%, var(--color-accent) 72%);
+  box-shadow:
+    0 0 18px rgba(242, 178, 74, 0.46),
+    0 0 34px rgba(242, 178, 74, 0.18);
+  animation: teamSunFloat 5.5s ease-in-out infinite;
+}
+
+.team-sun-orb::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(242, 178, 74, 0.92) 0deg 8deg,
+      transparent 8deg 18deg
+    );
+  z-index: -1;
+  animation: teamSunRays 12s linear infinite;
+}
+
+@keyframes teamSunFloat {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+
+  50% {
+    transform: translateY(-5px) rotate(8deg) scale(1.035);
+  }
+
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes teamSunRays {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .team-hero h1 {
@@ -172,8 +226,7 @@
 }
 
 /* =========================
-   Kacey SVG Image Treatment
-   Let the SVG breathe instead of forcing it into a card
+   Kit Image Treatment
 ========================= */
 
 .team-feature-sun {
@@ -204,7 +257,7 @@
   object-position: center;
   background: transparent;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   box-shadow:
     0 24px 70px rgba(0, 0, 0, 0.18),
     0 0 34px rgba(242, 178, 74, 0.08);
@@ -260,7 +313,6 @@
   line-height: 1;
 }
 
-/* Small celestial icons beside the label */
 .team-feature-sun .team-eyebrow::after,
 .team-feature-moon .team-eyebrow::after,
 .team-feature-star .team-eyebrow::after {
@@ -298,7 +350,7 @@
   margin: 0 0 1rem;
   color: var(--color-text);
   font-family: var(--font-heading);
-  font-size: var(--fs-public-section-title);
+  font-size: clamp(2.1rem, 4.1vw, 3.75rem);
   line-height: 0.95;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -403,6 +455,15 @@
     padding: 2rem 0 1.8rem;
   }
 
+  .team-sun-orb {
+    width: 36px;
+    height: 36px;
+  }
+
+  .team-sun-orb::before {
+    inset: -8px;
+  }
+
   .team-hero h1 {
     font-size: clamp(3rem, 14vw, 4.3rem);
   }
@@ -422,5 +483,12 @@
 
   .team-placeholder-panel span {
     font-size: 2.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team-sun-orb,
+  .team-sun-orb::before {
+    animation: none;
   }
 }
