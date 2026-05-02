@@ -65,7 +65,7 @@
 }
 
 .profile-hero {
-  padding: 4rem 0 3.35rem;
+  padding: 4rem 0 3.4rem;
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.14), transparent 34%),
@@ -95,15 +95,12 @@
 }
 
 .profile-kicker {
-  margin: 0 auto 2.35rem;
-}
-
-.profile-section-kicker {
-  margin: 0 0 0.75rem;
+  margin: 0 auto 0;
 }
 
 .profile-hero h1 {
   margin: 0 0 1.15rem;
+  padding-top: 1.45rem;
   font-family: var(--font-heading);
   font-size: var(--fs-public-page-title);
   line-height: 0.92;
@@ -153,6 +150,10 @@
 
 .profile-section-header > div {
   min-width: 0;
+}
+
+.profile-section-kicker {
+  margin: 0 0 0.75rem;
 }
 
 .profile-section-header h2 {
@@ -275,6 +276,11 @@
   color: #fecaca;
   font-weight: 900;
   cursor: pointer;
+  transition:
+    transform var(--transition-base),
+    background var(--transition-base),
+    border-color var(--transition-base),
+    color var(--transition-base);
 }
 
 .profile-list button:hover:not(:disabled),
@@ -291,7 +297,7 @@
 }
 
 /* =========================
-   Story Grids / Cards
+   Story Grids / Base Cards
 ========================= */
 
 .profile-story-grid,
@@ -326,7 +332,7 @@
 
 /* =========================
    Owned Comics Cards
-   Full-image treatment like Saved Stories
+   Controlled image size + clickable cursor
 ========================= */
 
 #owned-stories-container.profile-story-grid {
@@ -343,6 +349,8 @@
 #owned-stories-container .owned-story-card .owned-story-art-link {
   display: block;
   width: 100%;
+  height: 320px !important;
+  max-height: 320px !important;
   overflow: hidden;
   background: transparent;
   border: 0;
@@ -355,18 +363,19 @@
 #owned-stories-container .owned-story-card .story-card-art-link img.story-image,
 #owned-stories-container .owned-story-card .owned-story-art-link img.story-image {
   width: 100% !important;
-  height: auto !important;
-  min-height: 0 !important;
+  height: 320px !important;
+  min-height: 320px !important;
+  max-height: 320px !important;
   display: block;
   margin: 0 !important;
   padding: 0 !important;
-  object-fit: contain !important;
+  object-fit: cover !important;
   object-position: center;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
-  cursor: pointer;
+  cursor: pointer !important;
   transition:
     transform var(--transition-base),
     filter var(--transition-base);
@@ -383,18 +392,19 @@
 
 #owned-stories-container .owned-story-card > .story-image-placeholder {
   width: 100% !important;
-  height: 340px !important;
-  min-height: 340px !important;
+  height: 320px !important;
+  min-height: 320px !important;
+  max-height: 320px !important;
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
 }
 
 #owned-stories-container .owned-story-card .story-card-content {
-  padding: 1.25rem 1.35rem 1.35rem !important;
+  padding: 1rem 1.2rem 1.2rem !important;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.55rem !important;
   flex: 1;
 }
 
@@ -418,7 +428,7 @@
   margin: 0;
   color: var(--color-text);
   font-family: var(--font-heading);
-  font-size: var(--fs-public-card-title);
+  font-size: clamp(1.35rem, 2.2vw, 2.1rem);
   line-height: 1;
 }
 
@@ -434,25 +444,26 @@
   margin: 0;
   color: var(--color-text-soft);
   font-size: var(--fs-public-body);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 #owned-stories-container .owned-story-card .story-actions {
   margin-top: auto !important;
-  padding-top: 1rem;
+  padding-top: 0.85rem;
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
+  gap: 0.75rem;
 }
 
 #owned-stories-container .owned-story-card .story-actions .btn {
   width: 100%;
   margin: 0 !important;
-  min-height: 52px;
+  min-height: 48px !important;
 }
 
 /* =========================
    Saved Stories Cards
+   Large image feel, but capped
 ========================= */
 
 #my-saved-stories-container > article,
@@ -469,6 +480,7 @@
 #my-saved-stories-container .profile-story-art-link {
   display: block;
   width: 100%;
+  max-height: 390px !important;
   overflow: hidden;
   text-decoration: none;
   cursor: pointer;
@@ -481,12 +493,13 @@
 #my-saved-stories-container .profile-story-art-link img {
   width: 100% !important;
   height: auto !important;
+  max-height: 390px !important;
   min-height: 0 !important;
   margin: 0 !important;
   border-radius: 0 !important;
-  object-fit: contain !important;
-  object-position: center;
-  cursor: pointer;
+  object-fit: cover !important;
+  object-position: center top;
+  cursor: pointer !important;
   transition:
     transform var(--transition-base),
     filter var(--transition-base);
@@ -555,7 +568,6 @@
   margin: 0 !important;
 }
 
-/* Fallback for saved cards where buttons are direct children */
 #my-saved-stories-container article > .btn:first-of-type,
 #my-saved-stories-container .story-card > .btn:first-of-type,
 #my-saved-stories-container .gallery-card > .btn:first-of-type,
@@ -622,11 +634,8 @@
     padding: 3rem 0 2.4rem;
   }
 
-  .profile-kicker {
-    margin-bottom: 1.85rem;
-  }
-
   .profile-hero h1 {
+    padding-top: 1.25rem;
     font-size: clamp(2.8rem, 14vw, 4.25rem);
   }
 
@@ -656,7 +665,28 @@
     grid-template-columns: 1fr;
   }
 
+  #owned-stories-container .owned-story-card .story-card-art-link,
+  #owned-stories-container .owned-story-card .owned-story-art-link,
+  #owned-stories-container .owned-story-card > img.story-image,
+  #owned-stories-container .owned-story-card .story-card-art-link img.story-image,
+  #owned-stories-container .owned-story-card .owned-story-art-link img.story-image,
+  #owned-stories-container .owned-story-card > .story-image-placeholder {
+    height: 240px !important;
+    min-height: 240px !important;
+    max-height: 240px !important;
+  }
+
   #owned-stories-container .owned-story-card .story-actions {
     grid-template-columns: 1fr;
+  }
+
+  #my-saved-stories-container .story-card-art-link,
+  #my-saved-stories-container .profile-story-art-link,
+  #my-saved-stories-container > article > img,
+  #my-saved-stories-container .story-card > img,
+  #my-saved-stories-container .gallery-card > img,
+  #my-saved-stories-container .story-card-art-link img,
+  #my-saved-stories-container .profile-story-art-link img {
+    max-height: 260px !important;
   }
 }
