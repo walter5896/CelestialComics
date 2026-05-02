@@ -50,7 +50,7 @@
   </header>
 
   <div class="announcement-strip" role="status" aria-live="polite">
-    <span id="homepage-status-text">Loading voting status...</span>
+    <span id="homepage-status-text">NO ACCOUNT? <a href="/login/signup.html">SIGN UP HERE!</a></span>
   </div>
 
   <main class="page-shell">
@@ -385,29 +385,6 @@
       }
     }
 
-    function renderVotingStrip(stories) {
-      const statusText = document.getElementById('homepage-status-text');
-      if (!statusText) return;
-
-      const safeStories = Array.isArray(stories) ? stories : [];
-      const visibleStories = safeStories.filter((story) => story?.active);
-
-      const hasOpenVoting = visibleStories.some((story) => story?.voting_status === 'open');
-      const hasUpcomingVoting = visibleStories.some((story) => story?.voting_status === 'upcoming');
-
-      if (hasOpenVoting) {
-        statusText.innerHTML = 'VOTING OPEN <span aria-hidden="true">•</span> <a href="/vote/">Click here to vote</a>';
-        return;
-      }
-
-      if (hasUpcomingVoting) {
-        statusText.innerHTML = 'VOTING STARTS SOON <span aria-hidden="true">•</span> <a href="/vote/">See upcoming vote</a>';
-        return;
-      }
-
-      statusText.innerHTML = 'VOTING CLOSED <span aria-hidden="true">•</span> <a href="/history/">View current winner</a>';
-    }
-
     async function renderContinueReading() {
       const continueReadingSection = document.getElementById('continue-reading-section');
       if (!continueReadingSection) return;
@@ -556,11 +533,9 @@
 
       try {
         const stories = await fetchStoriesWithVotes();
-        renderVotingStrip(stories);
         renderStoriesGrid(stories);
       } catch (err) {
         console.error('Homepage stories load error:', err);
-        renderVotingStrip([]);
         renderStoriesGrid([]);
       }
     });
