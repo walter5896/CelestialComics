@@ -332,52 +332,45 @@
 
 /* =========================
    Owned Comics Cards
-   Bigger image + clickable cursor
+   Controlled image size + clickable cursor
 ========================= */
 
 #owned-stories-container.profile-story-grid {
   align-items: stretch;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
 }
 
 #owned-stories-container .owned-story-card {
   padding: 0 !important;
   gap: 0 !important;
   overflow: hidden;
-  cursor: pointer !important;
 }
 
 #owned-stories-container .owned-story-card .story-card-art-link,
-#owned-stories-container .owned-story-card .owned-story-art-link,
-#owned-stories-container .owned-story-card a:first-child {
+#owned-stories-container .owned-story-card .owned-story-art-link {
   display: block;
   width: 100%;
-  height: 432px !important;
-  min-height: 432px !important;
-  max-height: 432px !important;
+  height: 320px !important;
+  max-height: 320px !important;
   overflow: hidden;
   background: transparent;
   border: 0;
   border-radius: 0;
   text-decoration: none;
-  cursor: pointer !important;
+  cursor: pointer;
 }
 
-#owned-stories-container .owned-story-card > img,
-#owned-stories-container .owned-story-card img,
 #owned-stories-container .owned-story-card > img.story-image,
-#owned-stories-container .owned-story-card .story-card-art-link img,
-#owned-stories-container .owned-story-card .owned-story-art-link img,
-#owned-stories-container .owned-story-card a:first-child img {
+#owned-stories-container .owned-story-card .story-card-art-link img.story-image,
+#owned-stories-container .owned-story-card .owned-story-art-link img.story-image {
   width: 100% !important;
-  height: 432px !important;
-  min-height: 432px !important;
-  max-height: 432px !important;
+  height: 320px !important;
+  min-height: 320px !important;
+  max-height: 320px !important;
   display: block;
   margin: 0 !important;
   padding: 0 !important;
   object-fit: cover !important;
-  object-position: center top;
+  object-position: center;
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -388,22 +381,23 @@
     filter var(--transition-base);
 }
 
-#owned-stories-container .owned-story-card:hover img,
-#owned-stories-container .owned-story-card a:hover img,
-#owned-stories-container .owned-story-card a:focus-visible img {
+#owned-stories-container .owned-story-card .story-card-art-link:hover img,
+#owned-stories-container .owned-story-card .story-card-art-link:focus-visible img,
+#owned-stories-container .owned-story-card .owned-story-art-link:hover img,
+#owned-stories-container .owned-story-card .owned-story-art-link:focus-visible img,
+#owned-stories-container .owned-story-card > img.story-image:hover {
   transform: scale(1.025);
   filter: brightness(1.08);
 }
 
 #owned-stories-container .owned-story-card > .story-image-placeholder {
   width: 100% !important;
-  height: 432px !important;
-  min-height: 432px !important;
-  max-height: 432px !important;
+  height: 320px !important;
+  min-height: 320px !important;
+  max-height: 320px !important;
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
-  cursor: pointer !important;
 }
 
 #owned-stories-container .owned-story-card .story-card-content {
@@ -459,14 +453,12 @@
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
-  cursor: default;
 }
 
 #owned-stories-container .owned-story-card .story-actions .btn {
   width: 100%;
   margin: 0 !important;
   min-height: 48px !important;
-  cursor: pointer !important;
 }
 
 /* =========================
@@ -482,28 +474,21 @@
   flex-direction: column !important;
   padding: 0 !important;
   gap: 0 !important;
-  cursor: pointer !important;
 }
 
 #my-saved-stories-container .story-card-art-link,
-#my-saved-stories-container .profile-story-art-link,
-#my-saved-stories-container .story-card a:first-child,
-#my-saved-stories-container .gallery-card a:first-child,
-#my-saved-stories-container article a:first-child {
+#my-saved-stories-container .profile-story-art-link {
   display: block;
   width: 100%;
   max-height: 390px !important;
   overflow: hidden;
   text-decoration: none;
-  cursor: pointer !important;
+  cursor: pointer;
 }
 
 #my-saved-stories-container > article > img,
 #my-saved-stories-container .story-card > img,
 #my-saved-stories-container .gallery-card > img,
-#my-saved-stories-container article img,
-#my-saved-stories-container .story-card img,
-#my-saved-stories-container .gallery-card img,
 #my-saved-stories-container .story-card-art-link img,
 #my-saved-stories-container .profile-story-art-link img {
   width: 100% !important;
@@ -520,11 +505,13 @@
     filter var(--transition-base);
 }
 
-#my-saved-stories-container .story-card:hover img,
-#my-saved-stories-container .gallery-card:hover img,
-#my-saved-stories-container article:hover img,
-#my-saved-stories-container a:hover img,
-#my-saved-stories-container a:focus-visible img {
+#my-saved-stories-container .story-card-art-link:hover img,
+#my-saved-stories-container .story-card-art-link:focus-visible img,
+#my-saved-stories-container .profile-story-art-link:hover img,
+#my-saved-stories-container .profile-story-art-link:focus-visible img,
+#my-saved-stories-container > article > img:hover,
+#my-saved-stories-container .story-card > img:hover,
+#my-saved-stories-container .gallery-card > img:hover {
   transform: scale(1.025);
   filter: brightness(1.08);
 }
@@ -579,7 +566,6 @@
   max-width: none !important;
   min-height: 52px !important;
   margin: 0 !important;
-  cursor: pointer !important;
 }
 
 #my-saved-stories-container article > .btn:first-of-type,
@@ -633,10 +619,6 @@
   .profile-section-header {
     align-items: flex-start;
   }
-
-  #owned-stories-container.profile-story-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
@@ -685,17 +667,13 @@
 
   #owned-stories-container .owned-story-card .story-card-art-link,
   #owned-stories-container .owned-story-card .owned-story-art-link,
-  #owned-stories-container .owned-story-card a:first-child,
-  #owned-stories-container .owned-story-card > img,
-  #owned-stories-container .owned-story-card img,
   #owned-stories-container .owned-story-card > img.story-image,
-  #owned-stories-container .owned-story-card .story-card-art-link img,
-  #owned-stories-container .owned-story-card .owned-story-art-link img,
-  #owned-stories-container .owned-story-card a:first-child img,
+  #owned-stories-container .owned-story-card .story-card-art-link img.story-image,
+  #owned-stories-container .owned-story-card .owned-story-art-link img.story-image,
   #owned-stories-container .owned-story-card > .story-image-placeholder {
-    height: 300px !important;
-    min-height: 300px !important;
-    max-height: 300px !important;
+    height: 240px !important;
+    min-height: 240px !important;
+    max-height: 240px !important;
   }
 
   #owned-stories-container .owned-story-card .story-actions {
@@ -710,5 +688,74 @@
   #my-saved-stories-container .story-card-art-link img,
   #my-saved-stories-container .profile-story-art-link img {
     max-height: 260px !important;
+  }
+}
+/* =========================
+   PROFILE CARD CLICK + SIZE PATCH
+   Cursor hand + larger Owned Comics image
+========================= */
+
+/* Make saved story cards feel clickable */
+#my-saved-stories-container .story-card,
+#my-saved-stories-container .gallery-card,
+#my-saved-stories-container article,
+#my-saved-stories-container .story-card img,
+#my-saved-stories-container .gallery-card img,
+#my-saved-stories-container article img,
+#my-saved-stories-container .story-card-art-link,
+#my-saved-stories-container .profile-story-art-link,
+#my-saved-stories-container .story-card-art-link img,
+#my-saved-stories-container .profile-story-art-link img {
+  cursor: pointer !important;
+}
+
+/* Make owned story cards/images feel clickable too */
+#owned-stories-container .owned-story-card,
+#owned-stories-container .owned-story-card img,
+#owned-stories-container .owned-story-card .story-card-art-link,
+#owned-stories-container .owned-story-card .owned-story-art-link,
+#owned-stories-container .owned-story-card .story-card-art-link img,
+#owned-stories-container .owned-story-card .owned-story-art-link img {
+  cursor: pointer !important;
+}
+
+/* Owned Comics image: increase from 320px to roughly 35% larger */
+#owned-stories-container .owned-story-card .story-card-art-link,
+#owned-stories-container .owned-story-card .owned-story-art-link {
+  height: 432px !important;
+  max-height: 432px !important;
+}
+
+#owned-stories-container .owned-story-card > img.story-image,
+#owned-stories-container .owned-story-card .story-card-art-link img.story-image,
+#owned-stories-container .owned-story-card .owned-story-art-link img.story-image {
+  height: 432px !important;
+  min-height: 432px !important;
+  max-height: 432px !important;
+  object-fit: cover !important;
+  object-position: center top;
+  cursor: pointer !important;
+}
+
+/* Keep the hover feedback */
+#owned-stories-container .owned-story-card .story-card-art-link:hover img,
+#owned-stories-container .owned-story-card .owned-story-art-link:hover img,
+#my-saved-stories-container .story-card:hover img,
+#my-saved-stories-container .gallery-card:hover img,
+#my-saved-stories-container article:hover img {
+  transform: scale(1.025);
+  filter: brightness(1.08);
+}
+
+/* Mobile: don't let the image get massive on phones */
+@media (max-width: 640px) {
+  #owned-stories-container .owned-story-card .story-card-art-link,
+  #owned-stories-container .owned-story-card .owned-story-art-link,
+  #owned-stories-container .owned-story-card > img.story-image,
+  #owned-stories-container .owned-story-card .story-card-art-link img.story-image,
+  #owned-stories-container .owned-story-card .owned-story-art-link img.story-image {
+    height: 300px !important;
+    min-height: 300px !important;
+    max-height: 300px !important;
   }
 }
