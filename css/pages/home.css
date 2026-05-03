@@ -98,16 +98,21 @@
   width: 100%;
   height: 100%;
   min-height: 560px;
+  max-height: 680px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
 
-.hero-image-frame img {
+.hero-image-frame img,
+#homepage-hero-image {
+  display: block;
   width: 100%;
   height: 100%;
+  max-height: 680px;
   object-fit: cover;
+  object-position: center;
 }
 
 .hero-fallback {
@@ -252,6 +257,16 @@
   object-fit: contain;
 }
 
+/* Lower homepage feature image: safe to lazy load and constrain visually */
+#homepage-secondary-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 620px;
+  object-fit: contain;
+  object-position: center;
+}
+
 .concept-shell .cta-panel {
   min-height: 100%;
   justify-content: center;
@@ -358,6 +373,12 @@
 
   .hero-image-frame {
     min-height: 420px;
+    max-height: 560px;
+  }
+
+  .hero-image-frame img,
+  #homepage-hero-image {
+    max-height: 560px;
   }
 
   .hero-panel {
@@ -383,6 +404,12 @@
 
   .hero-image-frame {
     min-height: 320px;
+    max-height: 420px;
+  }
+
+  .hero-image-frame img,
+  #homepage-hero-image {
+    max-height: 420px;
   }
 
   .hero-panel {
