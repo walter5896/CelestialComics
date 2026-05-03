@@ -291,17 +291,27 @@ async function saveReadingProgressForCurrentPage() {
   const currentPageNumber = Number(currentPage?.page_number) || currentPageIndex + 1;
 
   if (readerAccessMode === 'full') {
-    if (currentPageNumber < furthestPageNumberReached) {
-      return;
+    // Preserve the furthest page reached, but still refresh updated_at
+    // when the user opens this owned comic again.
+    const pageToSave = Math.max(currentPageNumber, furthestPageNumberReached);
+
+    furthestPageNumberReached = pageToSave;
+
+    const result = await upsertReadingProgress(currentStory.id, pageToSave);
+
+    if (!result?.success) {
+      console.error('Failed to save full reading progress:', result);
     }
 
-    furthestPageNumberReached = currentPageNumber;
-    await upsertReadingProgress(currentStory.id, currentPageNumber);
     return;
   }
 
   if (readerAccessMode === 'preview') {
-    await upsertReadingProgress(currentStory.id, currentPageNumber);
+    const result = await upsertReadingProgress(currentStory.id, currentPageNumber);
+
+    if (!result?.success) {
+      console.error('Failed to save preview reading progress:', result);
+    }
   }
 }
 
