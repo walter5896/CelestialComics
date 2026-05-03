@@ -75,7 +75,33 @@ function getStoryStatusLabel(story) {
 }
 
 function getStoryDetailUrl(story) {
-  return `/gallery/story.html?id=${encodeId(story?.id)}`;
+  const safeStoryId = encodeId(story?.id);
+
+  switch (story?.story_status) {
+    case 'released':
+      return `/comics/story.html?id=${safeStoryId}`;
+
+    case 'winner_in_production':
+      return '/history/';
+
+    case 'active_vote':
+    case 'concept_bank':
+    default:
+      return `/gallery/story.html?id=${safeStoryId}`;
+  }
+}
+
+function getStoryActionLabel(story) {
+  switch (story?.story_status) {
+    case 'released':
+      return 'View Comic';
+    case 'winner_in_production':
+      return 'View Winner';
+    case 'active_vote':
+    case 'concept_bank':
+    default:
+      return 'View Concept';
+  }
 }
 
 function getStoryReadUrl(story) {
@@ -758,7 +784,7 @@ export function renderStoriesForGallery(stories, containerId = 'story-grid') {
         ${renderStoryCardMeta(story)}
 
         <div class="story-actions">
-          <a href="${getStoryDetailUrl(story)}" class="btn btn-primary">View Concept</a>
+          <a href="${getStoryDetailUrl(story)}" class="btn btn-primary">${escapeHtml(getStoryActionLabel(story))}</a>
           ${renderPreviewButton(story)}
         </div>
       </div>
@@ -822,7 +848,7 @@ export function renderStoriesForVote(stories, containerId = 'story-grid') {
           ${voteCount} Total Vote${voteCount === 1 ? '' : 's'}
         </span>
 
-        <a href="${detailUrl}" class="btn btn-secondary">View Concept</a>
+        <a href="${detailUrl}" class="btn btn-secondary">${escapeHtml(getStoryActionLabel(story))}</a>
       </div>
     `;
 
@@ -869,7 +895,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
               Recant 1 Vote
             </button>
 
-            <a href="${getStoryDetailUrl(story)}" class="btn btn-secondary">View Concept</a>
+            <a href="${getStoryDetailUrl(story)}" class="btn btn-secondary">${escapeHtml(getStoryActionLabel(story))}</a>
             ${renderPreviewButton(story)}
           </div>
         </div>
@@ -906,7 +932,7 @@ export function renderStoriesForProfile(votedStories, savedStories, votedContain
               Unsave
             </button>
 
-            <a href="${getStoryDetailUrl(story)}" class="btn btn-primary">View Concept</a>
+            <a href="${getStoryDetailUrl(story)}" class="btn btn-primary">${escapeHtml(getStoryActionLabel(story))}</a>
             ${renderPreviewButton(story)}
           </div>
         </div>

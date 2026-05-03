@@ -274,6 +274,42 @@
       }
     }
 
+    function getStoryCardAction(story) {
+      const safeStoryId = encodeURIComponent(story?.id || '');
+
+      switch (story?.story_status) {
+        case 'active_vote':
+          return {
+            label: 'View Concept',
+            href: `/gallery/story.html?id=${safeStoryId}`
+          };
+
+        case 'concept_bank':
+          return {
+            label: 'View Concept',
+            href: `/gallery/story.html?id=${safeStoryId}`
+          };
+
+        case 'winner_in_production':
+          return {
+            label: 'View Winner',
+            href: '/history/'
+          };
+
+        case 'released':
+          return {
+            label: 'View Comic',
+            href: `/comics/story.html?id=${safeStoryId}`
+          };
+
+        default:
+          return {
+            label: 'View Concept',
+            href: `/gallery/story.html?id=${safeStoryId}`
+          };
+      }
+    }
+
     function setImageVisibility({ shell, image, fallback, url, alt }) {
       if (!shell || !image) return;
 
@@ -504,6 +540,7 @@
         const imageMarkup = image
           ? `<img src="${escapeHtml(image)}" alt="${title}" />`
           : '<div class="empty-state">No cover image yet.</div>';
+        const action = getStoryCardAction(story);
 
         return `
           <article class="story-card">
@@ -515,7 +552,7 @@
             <p>${author}</p>
             <p>${description}</p>
             <div class="story-card-actions">
-              <a class="btn btn-primary" href="/story.html?id=${encodeURIComponent(story.id)}">Learn More</a>
+              <a class="btn btn-primary" href="${action.href}">${escapeHtml(action.label)}</a>
             </div>
           </article>
         `;

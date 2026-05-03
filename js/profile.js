@@ -424,6 +424,7 @@ function attachProfileImageClickFallbacks() {
 
     const viewConceptLink =
       card.querySelector('a.btn-primary[href]') ||
+      card.querySelector('a[href*="/comics/story.html"]') ||
       card.querySelector('a[href*="/gallery/story.html"]') ||
       card.querySelector('a[href*="/story.html"]');
 
@@ -445,6 +446,7 @@ function attachProfileImageClickFallbacks() {
 
     const viewConceptLink =
       card.querySelector('a.btn-primary[href]') ||
+      card.querySelector('a[href*="/comics/story.html"]') ||
       card.querySelector('a[href*="/gallery/story.html"]') ||
       card.querySelector('a[href*="/story.html"]');
 
