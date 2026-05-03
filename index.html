@@ -140,19 +140,6 @@
       </div>
     </section>
 
-    <section class="page-section" aria-labelledby="continue-reading-heading">
-      <div class="container section-card-shell">
-        <h2 id="continue-reading-heading" class="section-heading">Continue Reading</h2>
-        <p class="section-subheading">
-          Jump back into the latest page you were reading.
-        </p>
-
-        <div id="continue-reading-section" class="continue-grid">
-          <div class="empty-state">Loading your reading progress...</div>
-        </div>
-      </div>
-    </section>
-
     <section class="page-section" aria-labelledby="stories-heading">
       <div class="container section-card-shell">
         <h2 id="stories-heading" class="section-heading">Stories Yet Untold</h2>
@@ -210,10 +197,8 @@
   <script type="module" src="/js/admin-nav.js"></script>
 
   <script type="module">
-    import { updateUI, logout, getCurrentUserAsync } from '/js/auth.js';
-    import { supabase } from '/js/supabase.js';
+    import { updateUI, logout } from '/js/auth.js';
     import { fetchStoriesWithVotes } from '/js/vote.js';
-    import { fetchLatestReadingProgressRows } from '/js/reading-progress.js';
 
     const navToggle = document.querySelector('.nav-toggle');
     const mainNav = document.querySelector('.main-nav');
@@ -320,45 +305,6 @@
             href: `/gallery/story.html?id=${safeStoryId}`
           };
       }
-    }
-
-    function getPreviewPagesFromAllPages(allPages, story) {
-      const safePages = Array.isArray(allPages) ? allPages : [];
-      const previewCount = Number(story?.preview_page_count) || 0;
-
-      if (!story?.is_preview_enabled || previewCount <= 0) {
-        return [];
-      }
-
-      const explicitlyMarkedPreviewPages = safePages.filter((page) => page.is_preview_page);
-
-      if (explicitlyMarkedPreviewPages.length > 0) {
-        return explicitlyMarkedPreviewPages.slice(0, previewCount);
-      }
-
-      return safePages.slice(0, previewCount);
-    }
-
-    async function checkStoryOwnership(storyId) {
-      const user = await getCurrentUserAsync();
-
-      if (!user?.id || !storyId) {
-        return false;
-      }
-
-      const { data, error } = await supabase
-        .from('user_story_access')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('story_id', storyId)
-        .limit(1);
-
-      if (error) {
-        console.error('Error checking story access:', error);
-        return false;
-      }
-
-      return Array.isArray(data) && data.length > 0;
     }
 
     function setImageVisibility({ shell, image, fallback, url, alt }) {
@@ -478,175 +424,6 @@
       }
     }
 
-    async function fetchStoryProgressCard(progressRow) {
-      const requestedPage = Number(progressRow?.page_number) || 1;
-      const storyId = progressRow?.story_id;
-
-      if (!storyId) return null;
-
-      const [{ data: story, error: storyError }, { data: pages, error: pagesError }] = await Promise.all([
-        supabase
-          .from('stories')
-          .select(`
-            id,
-            title,
-            author,
-            cover_image_url,
-            image_url,
-            story_status,
-            is_preview_enabled,
-            preview_page_count
-          `)
-          .eq('id', storyId)
-          .maybeSingle(),
-        supabase
-          .from('story_pages')
-          .select('page_number, is_preview_page')
-          .eq('story_id', storyId)
-          .order('page_number', { ascending: true })
-      ]);
-
-      if (storyError || pagesError || !story) {
-        return null;
-      }
-
-      const allPages = Array.isArray(pages) ? pages : [];
-      if (!allPages.length) return null;
-
-      const ownsFullAccess =
-        story.story_status === 'released'
-          ? await checkStoryOwnership(story.id)
-          : false;
-
-      const accessiblePages = ownsFullAccess
-        ? allPages
-        : getPreviewPagesFromAllPages(allPages, story);
-
-      const accessiblePageNumbers = accessiblePages
-        .map((page) => Number(page.page_number))
-        .filter(Number.isFinite);
-
-      if (!accessiblePageNumbers.length) return null;
-
-      const resolvedPage = accessiblePageNumbers.includes(requestedPage)
-        ? requestedPage
-        : accessiblePageNumbers.includes(1)
-          ? 1
-          : accessiblePageNumbers[0];
-
-      const storyImage = story.cover_image_url || story.image_url || '';
-      const readerUrl = `/gallery/read.html?id=${encodeURIComponent(story.id)}&page=${encodeURIComponent(resolvedPage)}`;
-
-      return {
-        kind: ownsFullAccess ? 'owned' : 'preview',
-        updatedAt: progressRow?.updated_at || '',
-        title: story.title || 'Untitled Story',
-        author: story.author || 'Author not listed',
-        image: storyImage,
-        status: ownsFullAccess ? 'Continue Reading' : 'Continue Preview',
-        resumeText: ownsFullAccess
-          ? `Resume full comic from page ${resolvedPage}`
-          : `Resume preview from page ${resolvedPage}`,
-        buttonText: ownsFullAccess ? 'Continue Reading' : 'Continue Preview',
-        url: readerUrl
-      };
-    }
-
-    function renderProgressCard(card) {
-      if (!card) {
-        return `
-          <article class="story-card continue-reading-card continue-reading-card-empty">
-            <span class="story-card-status">Nothing Yet</span>
-            <h3>No Progress Found</h3>
-            <p>Start reading from the Gallery or your owned comics.</p>
-            <div class="story-card-actions">
-              <a class="btn btn-secondary" href="/gallery/">Browse Gallery</a>
-            </div>
-          </article>
-        `;
-      }
-
-      return `
-        <article class="story-card continue-reading-card">
-          <div class="story-card-media">
-            ${card.image ? `<img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.title)}" />` : ''}
-          </div>
-          <span class="story-card-status">${escapeHtml(card.status)}</span>
-          <h3>${escapeHtml(card.title)}</h3>
-          <p>${escapeHtml(card.author)}</p>
-          <p>${escapeHtml(card.resumeText)}</p>
-          <div class="story-card-actions">
-            <a class="btn btn-primary" href="${card.url}">
-              ${escapeHtml(card.buttonText)}
-            </a>
-          </div>
-        </article>
-      `;
-    }
-
-    async function renderContinueReading() {
-      const continueReadingSection = document.getElementById('continue-reading-section');
-      if (!continueReadingSection) return;
-
-      try {
-        const progressRows = await fetchLatestReadingProgressRows(12);
-
-        if (!progressRows.length) {
-          continueReadingSection.innerHTML = `
-            <div class="empty-state">
-              No reading progress yet. Start a story from the gallery.
-            </div>
-          `;
-          return;
-        }
-
-        const progressCards = [];
-
-        for (const row of progressRows) {
-          const card = await fetchStoryProgressCard(row);
-          if (card) progressCards.push(card);
-
-          const hasOwnedCard = progressCards.some((item) => item.kind === 'owned');
-          const hasPreviewCard = progressCards.some((item) => item.kind === 'preview');
-
-          if (hasOwnedCard && hasPreviewCard) break;
-        }
-
-        const ownedCard = progressCards.find((card) => card.kind === 'owned') || null;
-        const previewCard = progressCards.find((card) => card.kind === 'preview') || null;
-
-        if (!ownedCard && !previewCard) {
-          continueReadingSection.innerHTML = `
-            <div class="empty-state">
-              No readable progress found yet. Start a story from the gallery.
-            </div>
-          `;
-          return;
-        }
-
-        continueReadingSection.innerHTML = `
-          <div class="continue-reading-split-grid">
-            <div class="continue-reading-column">
-              <h3 class="continue-reading-column-title">Owned Comic</h3>
-              ${renderProgressCard(ownedCard)}
-            </div>
-
-            <div class="continue-reading-column">
-              <h3 class="continue-reading-column-title">Preview</h3>
-              ${renderProgressCard(previewCard)}
-            </div>
-          </div>
-        `;
-      } catch (err) {
-        console.error('Continue reading load error:', err);
-        continueReadingSection.innerHTML = `
-          <div class="empty-state">
-            Failed to load reading progress.
-          </div>
-        `;
-      }
-    }
-
     function renderStoriesGrid(stories) {
       const storyGrid = document.getElementById('story-grid');
       if (!storyGrid) return;
@@ -694,25 +471,6 @@
       }).join('');
     }
 
-
-    let continueReadingRefreshTimer = null;
-
-    function scheduleContinueReadingRefresh() {
-      clearTimeout(continueReadingRefreshTimer);
-
-      continueReadingRefreshTimer = setTimeout(() => {
-        renderContinueReading();
-      }, 250);
-    }
-
-    window.addEventListener('focus', scheduleContinueReadingRefresh);
-
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        scheduleContinueReadingRefresh();
-      }
-    });
-
     document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
       bindNavToggle();
@@ -726,7 +484,6 @@
       });
 
       await renderHomepageContent();
-      await renderContinueReading();
 
       try {
         const stories = await fetchStoriesWithVotes();
