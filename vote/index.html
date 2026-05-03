@@ -20,7 +20,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/vote.css" />
+  <link rel="stylesheet" href="/css/pages/vote.css?v=vote-banner-gradient-1" />
 </head>
 
 <body>
@@ -51,8 +51,8 @@
     </div>
   </header>
 
-  <div id="vote-status-banner" class="vote-status-banner" aria-live="polite">
-    Checking voting status...
+  <div id="vote-status-banner" class="vote-status-banner" role="status" aria-live="polite">
+    CHECKING VOTING STATUS...
   </div>
 
   <main class="vote-page">
@@ -77,7 +77,7 @@
 
           <div class="vote-state-actions">
             <a href="/login/" class="btn btn-primary">Login to Vote</a>
-            <a href="/signup/" class="btn btn-secondary">Create Account</a>
+            <a href="/login/signup.html" class="btn btn-secondary">Create Account</a>
           </div>
         </div>
 
@@ -94,10 +94,11 @@
           </div>
         </div>
 
-       <div class="vote-matchup-heading">
-  <h2>Current Matchup</h2>
-  <p>Choose the concept you want to see produced next.</p>
-</div>
+        <div id="voting-open" class="vote-matchup-panel" style="display:none;">
+          <div class="vote-matchup-heading">
+            <h2>Current Matchup</h2>
+            <p>Choose the concept you want to see produced next.</p>
+          </div>
 
           <div id="story-grid" class="story-grid vote-story-grid"></div>
         </div>
@@ -121,10 +122,15 @@
 
   <script src="/js/env.js"></script>
   <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/vote.js"></script>
 
   <script type="module">
-    import { getCurrentUserAsync, updateUI, logout } from '/js/auth.js';
+    import {
+      getCurrentUserAsync,
+      updateUI,
+      logout,
+      waitForAuthReady
+    } from '/js/auth.js';
+
     import { initVoting, fetchStoriesWithVotes } from '/js/vote.js';
 
     const navToggle = document.querySelector('.nav-toggle');
@@ -184,11 +190,18 @@
       });
     }
 
+    function setVoteBanner(content) {
+      const voteStatusBanner = document.getElementById('vote-status-banner');
+      if (!voteStatusBanner) return;
+
+      voteStatusBanner.style.display = 'flex';
+      voteStatusBanner.innerHTML = content;
+    }
+
     function setVotePageState(state) {
       const loginPrompt = document.getElementById('login-prompt');
       const votingOpen = document.getElementById('voting-open');
       const votingClosed = document.getElementById('voting-closed');
-      const voteStatusBanner = document.getElementById('vote-status-banner');
       const voteHeroStatusWord = document.getElementById('vote-hero-status-word');
       const voteHeroSubtitle = document.getElementById('vote-hero-subtitle');
 
@@ -196,10 +209,8 @@
       if (votingOpen) votingOpen.style.display = state === 'open' ? 'block' : 'none';
       if (votingClosed) votingClosed.style.display = state === 'closed' ? 'block' : 'none';
 
-      if (!voteStatusBanner) return;
-
       if (state === 'open') {
-        voteStatusBanner.style.display = 'none';
+        setVoteBanner('VOTING OPEN <span>•</span> CAST YOUR VOTE BELOW');
 
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
         if (voteHeroSubtitle) {
@@ -209,10 +220,8 @@
         return;
       }
 
-      voteStatusBanner.style.display = 'flex';
-
       if (state === 'closed') {
-        voteStatusBanner.innerHTML = 'VOTING CLOSED <span>•</span> <a href="/history/">See winner details</a>';
+        setVoteBanner('VOTING CLOSED <span>•</span> <a href="/history/">SEE WINNER DETAILS</a>');
 
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Closed';
         if (voteHeroSubtitle) {
@@ -223,21 +232,23 @@
       }
 
       if (state === 'login') {
-        voteStatusBanner.innerHTML = 'LOGIN REQUIRED <span>•</span> <a href="/login/">Log in to vote</a>';
+        setVoteBanner('WANT TO VOTE? <a href="/login/signup.html">SIGN UP</a> <span>OR</span> <a href="/login/">LOG IN FIRST</a>');
 
         if (voteHeroStatusWord) voteHeroStatusWord.textContent = 'Open!';
         if (voteHeroSubtitle) {
-          voteHeroSubtitle.textContent = 'Log in to cast your vote.';
+          voteHeroSubtitle.textContent = 'Log in or create an account to cast your vote.';
         }
 
         return;
       }
 
-      voteStatusBanner.innerHTML = 'CHECKING VOTING STATUS...';
+      setVoteBanner('CHECKING VOTING STATUS...');
     }
 
     async function initVotePage() {
+      await waitForAuthReady();
       updateUI();
+
       bindNavToggle();
       bindLogoutLinks();
       setVotePageState('loading');

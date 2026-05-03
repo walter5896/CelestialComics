@@ -6,19 +6,27 @@
 
 .vote-status-banner {
   width: 100%;
-  min-height: 30px;
-  display: none;
+  min-height: 34px;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  padding: 0.3rem 1rem;
+  padding: 0.35rem 1rem;
   background: linear-gradient(90deg, #7454c7, #8b5fd8);
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.03em;
   text-align: center;
+  text-transform: uppercase;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.vote-status-banner span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
 }
 
 .vote-status-banner a {
@@ -27,31 +35,36 @@
   text-underline-offset: 2px;
 }
 
+.vote-status-banner a:hover,
+.vote-status-banner a:focus-visible {
+  color: var(--color-accent-soft);
+}
+
 .vote-page {
   width: 100%;
   padding-bottom: 3rem;
 }
 
 .vote-hero {
-  padding: 1.35rem 0 1.15rem;
+  padding: 3rem 0 2rem;
   text-align: center;
   background:
-    radial-gradient(circle at top center, rgba(242, 178, 74, 0.08), transparent 28%),
-    linear-gradient(180deg, rgba(11, 40, 82, 0.48), rgba(3, 23, 47, 0));
+    radial-gradient(circle at top center, rgba(242, 178, 74, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(11, 40, 82, 0.5), rgba(3, 23, 47, 0));
 }
 
 .vote-hero-inner {
-  width: min(760px, calc(100% - 2rem));
+  width: min(920px, calc(100% - 2rem));
   margin-inline: auto;
 }
 
 .vote-hero h1 {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.8rem;
   font-family: var(--font-heading);
-  font-size: clamp(2.25rem, 4.5vw, 4rem);
-  line-height: 1.02;
+  font-size: clamp(2.75rem, 5.5vw, 4.85rem);
+  line-height: 0.95;
   color: var(--color-text);
-  text-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
+  text-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
 }
 
 .vote-open-word {
@@ -60,7 +73,7 @@
   margin-bottom: 0.35rem;
   color: var(--color-accent-soft);
   font-family: var(--font-base);
-  font-size: clamp(1.65rem, 3.6vw, 3rem);
+  font-size: clamp(1.85rem, 3.8vw, 3.15rem);
   font-weight: 1000;
   font-style: italic;
   letter-spacing: 0.03em;
@@ -71,15 +84,15 @@
 }
 
 .vote-hero p {
-  max-width: 620px;
+  max-width: 700px;
   margin: 0 auto;
-  color: var(--color-text);
-  font-size: clamp(0.9rem, 1.3vw, 1rem);
-  line-height: 1.45;
+  color: var(--color-text-soft);
+  font-size: clamp(0.98rem, 1.45vw, 1.12rem);
+  line-height: 1.5;
 }
 
 .vote-section {
-  padding: 0.9rem 0 3rem;
+  padding: 1rem 0 3rem;
 }
 
 .vote-container {
@@ -356,16 +369,23 @@
 
 @media (max-width: 640px) {
   .vote-status-banner {
-    min-height: 28px;
-    font-size: 0.72rem;
+    min-height: 34px;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    flex-wrap: wrap;
   }
 
   .vote-hero {
-    padding: 1rem 0 0.85rem;
+    padding: 2.5rem 0 1.65rem;
+  }
+
+  .vote-hero h1 {
+    font-size: clamp(2.45rem, 12vw, 4rem);
   }
 
   .vote-section {
-    padding-top: 0.65rem;
+    padding-top: 0.85rem;
   }
 
   .vote-matchup-panel {

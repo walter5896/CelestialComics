@@ -20,7 +20,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-dashboard-3" />
+  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-dashboard-4" />
 </head>
 
 <body>
@@ -52,7 +52,7 @@
   </header>
 
   <div class="announcement-strip" role="status" aria-live="polite">
-    <span id="profile-status-text">VOTING OPEN • <a href="/vote/">CLICK HERE TO VOTE</a></span>
+    <span id="profile-status-text">CHECKING ACCOUNT STATUS...</span>
   </div>
 
   <main class="profile-page">
@@ -187,13 +187,35 @@
 
   <script src="/js/env.js"></script>
   <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/profile.js?v=profile-dashboard-3"></script>
+  <script type="module" src="/js/profile.js?v=profile-dashboard-4"></script>
 
   <script type="module">
-    import { updateUI, logout } from '/js/auth.js';
+    import {
+      updateUI,
+      logout,
+      waitForAuthReady,
+      getCurrentUserAsync
+    } from '/js/auth.js';
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function setProfileBanner(user) {
+      const statusText = document.getElementById('profile-status-text');
+      if (!statusText) return;
+
+      if (user?.email) {
+        statusText.textContent = `SIGNED IN AS ${user.email}`;
+        return;
+      }
+
+      statusText.innerHTML = 'NOT SIGNED IN <span>•</span> <a href="/login/">LOG IN HERE</a>';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await waitForAuthReady();
+
       updateUI();
+
+      const user = await getCurrentUserAsync();
+      setProfileBanner(user);
 
       document.querySelectorAll('.logout-link').forEach((el) => {
         el.addEventListener('click', async (e) => {
