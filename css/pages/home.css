@@ -357,6 +357,41 @@
   object-position: center;
 }
 
+
+/* =========================
+   Split Continue Reading Cards
+========================= */
+
+.continue-reading-split-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.continue-reading-column {
+  min-width: 0;
+}
+
+.continue-reading-column-title {
+  margin: 0 0 0.85rem;
+  color: var(--color-text);
+  font-family: var(--font-heading);
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+  line-height: 1;
+}
+
+.continue-reading-card {
+  height: 100%;
+}
+
+.continue-reading-card-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+}
+
 /* =========================
    Responsive Homepage
 ========================= */
@@ -441,6 +476,14 @@
 
   .concept-image-frame {
     min-height: 280px;
+  }
+
+  .continue-reading-split-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .continue-reading-column-title {
+    text-align: left;
   }
 
   .continue-grid .story-card-media,

@@ -85,6 +85,35 @@ export async function fetchLatestReadingProgress() {
   }
 }
 
+
+export async function fetchLatestReadingProgressRows(limit = 12) {
+  const user = await getCurrentUserAsync();
+  const safeLimit = Math.min(Math.max(Number(limit) || 12, 1), 25);
+
+  if (!user) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('reading_progress')
+      .select('id, story_id, page_number, updated_at')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(safeLimit);
+
+    if (error) {
+      console.error('Error fetching latest reading progress rows:', error);
+      return [];
+    }
+
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Unexpected error fetching latest reading progress rows:', error);
+    return [];
+  }
+}
+
 // =========================
 // PROGRESS UPSERTER
 // =========================

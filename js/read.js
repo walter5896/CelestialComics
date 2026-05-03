@@ -285,18 +285,24 @@ function updateReaderHeader() {
 // =========================
 async function saveReadingProgressForCurrentPage() {
   if (!currentStory || !storyPages.length) return;
-  if (readerAccessMode !== 'full') return;
   if (!currentUser) return;
 
   const currentPage = storyPages[currentPageIndex];
   const currentPageNumber = Number(currentPage?.page_number) || currentPageIndex + 1;
 
-  if (currentPageNumber < furthestPageNumberReached) {
+  if (readerAccessMode === 'full') {
+    if (currentPageNumber < furthestPageNumberReached) {
+      return;
+    }
+
+    furthestPageNumberReached = currentPageNumber;
+    await upsertReadingProgress(currentStory.id, currentPageNumber);
     return;
   }
 
-  furthestPageNumberReached = currentPageNumber;
-  await upsertReadingProgress(currentStory.id, currentPageNumber);
+  if (readerAccessMode === 'preview') {
+    await upsertReadingProgress(currentStory.id, currentPageNumber);
+  }
 }
 
 // =========================
@@ -440,7 +446,7 @@ async function loadReader() {
 
       updateReaderHeader();
       setState('content');
-      await renderCurrentPage({ shouldSaveProgress: false });
+      await renderCurrentPage({ shouldSaveProgress: true });
       return;
     }
 

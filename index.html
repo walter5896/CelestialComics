@@ -213,7 +213,7 @@
     import { updateUI, logout, getCurrentUserAsync } from '/js/auth.js';
     import { supabase } from '/js/supabase.js';
     import { fetchStoriesWithVotes } from '/js/vote.js';
-    import { fetchLatestReadingProgress } from '/js/reading-progress.js';
+    import { fetchLatestReadingProgressRows } from '/js/reading-progress.js';
 
     const navToggle = document.querySelector('.nav-toggle');
     const mainNav = document.querySelector('.main-nav');
@@ -478,14 +478,120 @@
       }
     }
 
+    async function fetchStoryProgressCard(progressRow) {
+      const requestedPage = Number(progressRow?.page_number) || 1;
+      const storyId = progressRow?.story_id;
+
+      if (!storyId) return null;
+
+      const [{ data: story, error: storyError }, { data: pages, error: pagesError }] = await Promise.all([
+        supabase
+          .from('stories')
+          .select(`
+            id,
+            title,
+            author,
+            cover_image_url,
+            image_url,
+            story_status,
+            is_preview_enabled,
+            preview_page_count
+          `)
+          .eq('id', storyId)
+          .maybeSingle(),
+        supabase
+          .from('story_pages')
+          .select('page_number, is_preview_page')
+          .eq('story_id', storyId)
+          .order('page_number', { ascending: true })
+      ]);
+
+      if (storyError || pagesError || !story) {
+        return null;
+      }
+
+      const allPages = Array.isArray(pages) ? pages : [];
+      if (!allPages.length) return null;
+
+      const ownsFullAccess =
+        story.story_status === 'released'
+          ? await checkStoryOwnership(story.id)
+          : false;
+
+      const accessiblePages = ownsFullAccess
+        ? allPages
+        : getPreviewPagesFromAllPages(allPages, story);
+
+      const accessiblePageNumbers = accessiblePages
+        .map((page) => Number(page.page_number))
+        .filter(Number.isFinite);
+
+      if (!accessiblePageNumbers.length) return null;
+
+      const resolvedPage = accessiblePageNumbers.includes(requestedPage)
+        ? requestedPage
+        : accessiblePageNumbers.includes(1)
+          ? 1
+          : accessiblePageNumbers[0];
+
+      const storyImage = story.cover_image_url || story.image_url || '';
+      const readerUrl = `/gallery/read.html?id=${encodeURIComponent(story.id)}&page=${encodeURIComponent(resolvedPage)}`;
+
+      return {
+        kind: ownsFullAccess ? 'owned' : 'preview',
+        updatedAt: progressRow?.updated_at || '',
+        title: story.title || 'Untitled Story',
+        author: story.author || 'Author not listed',
+        image: storyImage,
+        status: ownsFullAccess ? 'Continue Reading' : 'Continue Preview',
+        resumeText: ownsFullAccess
+          ? `Resume full comic from page ${resolvedPage}`
+          : `Resume preview from page ${resolvedPage}`,
+        buttonText: ownsFullAccess ? 'Continue Reading' : 'Continue Preview',
+        url: readerUrl
+      };
+    }
+
+    function renderProgressCard(card) {
+      if (!card) {
+        return `
+          <article class="story-card continue-reading-card continue-reading-card-empty">
+            <span class="story-card-status">Nothing Yet</span>
+            <h3>No Progress Found</h3>
+            <p>Start reading from the Gallery or your owned comics.</p>
+            <div class="story-card-actions">
+              <a class="btn btn-secondary" href="/gallery/">Browse Gallery</a>
+            </div>
+          </article>
+        `;
+      }
+
+      return `
+        <article class="story-card continue-reading-card">
+          <div class="story-card-media">
+            ${card.image ? `<img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.title)}" />` : ''}
+          </div>
+          <span class="story-card-status">${escapeHtml(card.status)}</span>
+          <h3>${escapeHtml(card.title)}</h3>
+          <p>${escapeHtml(card.author)}</p>
+          <p>${escapeHtml(card.resumeText)}</p>
+          <div class="story-card-actions">
+            <a class="btn btn-primary" href="${card.url}">
+              ${escapeHtml(card.buttonText)}
+            </a>
+          </div>
+        </article>
+      `;
+    }
+
     async function renderContinueReading() {
       const continueReadingSection = document.getElementById('continue-reading-section');
       if (!continueReadingSection) return;
 
       try {
-        const latestProgress = await fetchLatestReadingProgress();
+        const progressRows = await fetchLatestReadingProgressRows(12);
 
-        if (!latestProgress) {
+        if (!progressRows.length) {
           continueReadingSection.innerHTML = `
             <div class="empty-state">
               No reading progress yet. Start a story from the gallery.
@@ -494,107 +600,42 @@
           return;
         }
 
-        const requestedPage = Number(latestProgress.page_number) || 1;
-        const storyId = latestProgress.story_id;
+        const progressCards = [];
 
-        const [{ data: story, error: storyError }, { data: pages, error: pagesError }] = await Promise.all([
-          supabase
-            .from('stories')
-            .select(`
-              id,
-              title,
-              author,
-              cover_image_url,
-              image_url,
-              story_status,
-              is_preview_enabled,
-              preview_page_count
-            `)
-            .eq('id', storyId)
-            .maybeSingle(),
-          supabase
-            .from('story_pages')
-            .select('page_number, is_preview_page')
-            .eq('story_id', storyId)
-            .order('page_number', { ascending: true })
-        ]);
+        for (const row of progressRows) {
+          const card = await fetchStoryProgressCard(row);
+          if (card) progressCards.push(card);
 
-        if (storyError || !story) {
+          const hasOwnedCard = progressCards.some((item) => item.kind === 'owned');
+          const hasPreviewCard = progressCards.some((item) => item.kind === 'preview');
+
+          if (hasOwnedCard && hasPreviewCard) break;
+        }
+
+        const ownedCard = progressCards.find((card) => card.kind === 'owned') || null;
+        const previewCard = progressCards.find((card) => card.kind === 'preview') || null;
+
+        if (!ownedCard && !previewCard) {
           continueReadingSection.innerHTML = `
             <div class="empty-state">
-              No recent story progress found.
+              No readable progress found yet. Start a story from the gallery.
             </div>
           `;
           return;
         }
 
-        const allPages = Array.isArray(pages) ? pages : [];
-        const ownsFullAccess =
-          story.story_status === 'released'
-            ? await checkStoryOwnership(story.id)
-            : false;
-
-        const accessiblePages = ownsFullAccess
-          ? allPages
-          : getPreviewPagesFromAllPages(allPages, story);
-
-        const accessiblePageNumbers = accessiblePages
-          .map((page) => Number(page.page_number))
-          .filter(Number.isFinite);
-
-        let resolvedPage = requestedPage;
-        let resumeNote = '';
-        let cardStatus = ownsFullAccess ? 'Continue Reading' : 'Continue Preview';
-        let buttonText = ownsFullAccess ? 'Continue Reading' : 'Continue Preview';
-        let resumeText = ownsFullAccess
-          ? `Resume from page ${resolvedPage}`
-          : `Resume preview from page ${resolvedPage}`;
-
-        if (pagesError || allPages.length === 0) {
-          resolvedPage = 1;
-          resumeText = 'Reader pages are not available yet.';
-          resumeNote = 'Saved page could not be validated.';
-        } else if (!accessiblePageNumbers.length) {
-          resolvedPage = 1;
-          resumeText = ownsFullAccess
-            ? 'Reader pages are not available yet.'
-            : 'Preview pages are not available yet.';
-          resumeNote = ownsFullAccess
-            ? 'This comic does not have readable pages yet.'
-            : 'This story does not currently have preview access enabled.';
-        } else if (!accessiblePageNumbers.includes(requestedPage)) {
-          resolvedPage = accessiblePageNumbers.includes(1)
-            ? 1
-            : accessiblePageNumbers[0];
-
-          resumeText = ownsFullAccess
-            ? `Resume from page ${resolvedPage}`
-            : `Resume preview from page ${resolvedPage}`;
-
-          resumeNote = ownsFullAccess
-            ? `Your saved page no longer exists, so resume was moved to page ${resolvedPage}.`
-            : `Your saved page is outside the available preview, so resume was moved to preview page ${resolvedPage}.`;
-        }
-
-        const storyImage = story.cover_image_url || story.image_url || '';
-        const readerUrl = `/gallery/read.html?id=${encodeURIComponent(story.id)}&page=${encodeURIComponent(resolvedPage)}`;
-
         continueReadingSection.innerHTML = `
-          <article class="story-card">
-            <div class="story-card-media">
-              ${storyImage ? `<img src="${escapeHtml(storyImage)}" alt="${escapeHtml(story.title)}" />` : ''}
+          <div class="continue-reading-split-grid">
+            <div class="continue-reading-column">
+              <h3 class="continue-reading-column-title">Owned Comic</h3>
+              ${renderProgressCard(ownedCard)}
             </div>
-            <span class="story-card-status">${escapeHtml(cardStatus)}</span>
-            <h3>${escapeHtml(story.title)}</h3>
-            <p>${story.author ? `By ${escapeHtml(story.author)}` : 'Author not listed'}</p>
-            <p>${escapeHtml(resumeText)}</p>
-            ${resumeNote ? `<p class="resume-note">${escapeHtml(resumeNote)}</p>` : ''}
-            <div class="story-card-actions">
-              <a class="btn btn-primary" href="${readerUrl}">
-                ${escapeHtml(buttonText)}
-              </a>
+
+            <div class="continue-reading-column">
+              <h3 class="continue-reading-column-title">Preview</h3>
+              ${renderProgressCard(previewCard)}
             </div>
-          </article>
+          </div>
         `;
       } catch (err) {
         console.error('Continue reading load error:', err);
@@ -652,6 +693,25 @@
         `;
       }).join('');
     }
+
+
+    let continueReadingRefreshTimer = null;
+
+    function scheduleContinueReadingRefresh() {
+      clearTimeout(continueReadingRefreshTimer);
+
+      continueReadingRefreshTimer = setTimeout(() => {
+        renderContinueReading();
+      }, 250);
+    }
+
+    window.addEventListener('focus', scheduleContinueReadingRefresh);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        scheduleContinueReadingRefresh();
+      }
+    });
 
     document.addEventListener('DOMContentLoaded', async () => {
       updateUI();
