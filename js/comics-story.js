@@ -45,6 +45,10 @@ function encodeId(value) {
   return encodeURIComponent(String(value ?? ''));
 }
 
+function getReaderHref(storyId) {
+  return `/gallery/read.html?id=${encodeId(storyId)}&page=1`;
+}
+
 function formatPrice(priceCents) {
   if (!Number.isInteger(Number(priceCents))) return 'Price unavailable';
   return `$${(Number(priceCents) / 100).toFixed(2)}`;
@@ -332,7 +336,7 @@ async function handleBuyProduct(productId, buttonEl) {
    RENDERERS
 ========================= */
 function renderHeroActions(story, previewPages, products, ownership) {
-  const readerHref = `/gallery/read.html?id=${encodeId(story.id)}`;
+  const readerHref = getReaderHref(story.id);
   const bestDigitalProduct = getBestDigitalProduct(products);
   const previewAvailable = hasPreview(story, previewPages);
 
@@ -495,7 +499,7 @@ function renderPreviewPages(previewPages, story, ownership) {
 }
 
 function renderAccessBox(story, previewPages, products, ownership) {
-  const readerHref = `/gallery/read.html?id=${encodeId(story.id)}`;
+  const readerHref = getReaderHref(story.id);
   const bestDigitalProduct = getBestDigitalProduct(products);
   const previewAvailable = hasPreview(story, previewPages);
 

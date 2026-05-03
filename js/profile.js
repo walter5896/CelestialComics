@@ -320,14 +320,14 @@ function renderOwnedStories(ownedStories) {
       const grantedDate = formatGrantedDate(item.granted_at);
       const safeStoryId = encodeURIComponent(story.id || '');
       const viewComicUrl = `/comics/story.html?id=${safeStoryId}`;
-      const readComicUrl = `/gallery/read.html?id=${safeStoryId}`;
+      const readComicUrl = `/gallery/read.html?id=${safeStoryId}&page=1`;
 
       return `
         <article class="story-card owned-story-card">
           ${
             safeImage
               ? `
-                <a href="${viewComicUrl}" class="story-card-art-link owned-story-art-link" aria-label="View ${safeTitle}">
+                <a href="${readComicUrl}" class="story-card-art-link owned-story-art-link" aria-label="Read ${safeTitle}">
                   <img src="${safeImage}" alt="${safeTitle} cover" class="story-image" loading="lazy" />
                 </a>
               `
