@@ -210,7 +210,7 @@
   <script type="module" src="/js/admin-nav.js"></script>
 
   <script type="module">
-    import { updateUI, logout } from '/js/auth.js';
+    import { updateUI, logout, getCurrentUserAsync } from '/js/auth.js';
     import { supabase } from '/js/supabase.js';
     import { fetchStoriesWithVotes } from '/js/vote.js';
     import { fetchLatestReadingProgress } from '/js/reading-progress.js';
@@ -320,6 +320,45 @@
             href: `/gallery/story.html?id=${safeStoryId}`
           };
       }
+    }
+
+    function getPreviewPagesFromAllPages(allPages, story) {
+      const safePages = Array.isArray(allPages) ? allPages : [];
+      const previewCount = Number(story?.preview_page_count) || 0;
+
+      if (!story?.is_preview_enabled || previewCount <= 0) {
+        return [];
+      }
+
+      const explicitlyMarkedPreviewPages = safePages.filter((page) => page.is_preview_page);
+
+      if (explicitlyMarkedPreviewPages.length > 0) {
+        return explicitlyMarkedPreviewPages.slice(0, previewCount);
+      }
+
+      return safePages.slice(0, previewCount);
+    }
+
+    async function checkStoryOwnership(storyId) {
+      const user = await getCurrentUserAsync();
+
+      if (!user?.id || !storyId) {
+        return false;
+      }
+
+      const { data, error } = await supabase
+        .from('user_story_access')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('story_id', storyId)
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking story access:', error);
+        return false;
+      }
+
+      return Array.isArray(data) && data.length > 0;
     }
 
     function setImageVisibility({ shell, image, fallback, url, alt }) {
@@ -461,12 +500,21 @@
         const [{ data: story, error: storyError }, { data: pages, error: pagesError }] = await Promise.all([
           supabase
             .from('stories')
-            .select('id, title, author, cover_image_url, image_url')
+            .select(`
+              id,
+              title,
+              author,
+              cover_image_url,
+              image_url,
+              story_status,
+              is_preview_enabled,
+              preview_page_count
+            `)
             .eq('id', storyId)
             .maybeSingle(),
           supabase
             .from('story_pages')
-            .select('page_number')
+            .select('page_number, is_preview_page')
             .eq('story_id', storyId)
             .order('page_number', { ascending: true })
         ]);
@@ -480,36 +528,70 @@
           return;
         }
 
-        const pageNumbers = Array.isArray(pages)
-          ? pages.map((page) => Number(page.page_number)).filter(Number.isFinite)
-          : [];
+        const allPages = Array.isArray(pages) ? pages : [];
+        const ownsFullAccess =
+          story.story_status === 'released'
+            ? await checkStoryOwnership(story.id)
+            : false;
+
+        const accessiblePages = ownsFullAccess
+          ? allPages
+          : getPreviewPagesFromAllPages(allPages, story);
+
+        const accessiblePageNumbers = accessiblePages
+          .map((page) => Number(page.page_number))
+          .filter(Number.isFinite);
 
         let resolvedPage = requestedPage;
         let resumeNote = '';
+        let cardStatus = ownsFullAccess ? 'Continue Reading' : 'Continue Preview';
+        let buttonText = ownsFullAccess ? 'Continue Reading' : 'Continue Preview';
+        let resumeText = ownsFullAccess
+          ? `Resume from page ${resolvedPage}`
+          : `Resume preview from page ${resolvedPage}`;
 
-        if (pagesError || pageNumbers.length === 0) {
+        if (pagesError || allPages.length === 0) {
           resolvedPage = 1;
-          resumeNote = 'Saved page could not be validated, so resume starts from page 1.';
-        } else if (!pageNumbers.includes(requestedPage)) {
-          resolvedPage = pageNumbers.includes(1) ? 1 : pageNumbers[pageNumbers.length - 1];
-          resumeNote = `Your saved page no longer exists, so resume was moved to page ${resolvedPage}.`;
+          resumeText = 'Reader pages are not available yet.';
+          resumeNote = 'Saved page could not be validated.';
+        } else if (!accessiblePageNumbers.length) {
+          resolvedPage = 1;
+          resumeText = ownsFullAccess
+            ? 'Reader pages are not available yet.'
+            : 'Preview pages are not available yet.';
+          resumeNote = ownsFullAccess
+            ? 'This comic does not have readable pages yet.'
+            : 'This story does not currently have preview access enabled.';
+        } else if (!accessiblePageNumbers.includes(requestedPage)) {
+          resolvedPage = accessiblePageNumbers.includes(1)
+            ? 1
+            : accessiblePageNumbers[0];
+
+          resumeText = ownsFullAccess
+            ? `Resume from page ${resolvedPage}`
+            : `Resume preview from page ${resolvedPage}`;
+
+          resumeNote = ownsFullAccess
+            ? `Your saved page no longer exists, so resume was moved to page ${resolvedPage}.`
+            : `Your saved page is outside the available preview, so resume was moved to preview page ${resolvedPage}.`;
         }
 
         const storyImage = story.cover_image_url || story.image_url || '';
+        const readerUrl = `/gallery/read.html?id=${encodeURIComponent(story.id)}&page=${encodeURIComponent(resolvedPage)}`;
 
         continueReadingSection.innerHTML = `
           <article class="story-card">
             <div class="story-card-media">
               ${storyImage ? `<img src="${escapeHtml(storyImage)}" alt="${escapeHtml(story.title)}" />` : ''}
             </div>
-            <span class="story-card-status">Continue Reading</span>
+            <span class="story-card-status">${escapeHtml(cardStatus)}</span>
             <h3>${escapeHtml(story.title)}</h3>
             <p>${story.author ? `By ${escapeHtml(story.author)}` : 'Author not listed'}</p>
-            <p>Resume from page ${resolvedPage}</p>
+            <p>${escapeHtml(resumeText)}</p>
             ${resumeNote ? `<p class="resume-note">${escapeHtml(resumeNote)}</p>` : ''}
             <div class="story-card-actions">
-              <a class="btn btn-primary" href="/gallery/read.html?id=${encodeURIComponent(story.id)}&page=${encodeURIComponent(resolvedPage)}">
-                Continue Reading
+              <a class="btn btn-primary" href="${readerUrl}">
+                ${escapeHtml(buttonText)}
               </a>
             </div>
           </article>
