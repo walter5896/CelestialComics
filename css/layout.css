@@ -571,12 +571,12 @@ section {
   .header-container,
   .header-inner {
     min-height: 96px;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   .site-logo,
   .logo {
-    gap: 0.15rem;
+    gap: 0;
   }
 
   .site-logo-text {
@@ -589,7 +589,7 @@ section {
     width: 90px;
     height: 90px;
     flex-basis: 90px;
-    margin-right: -18px;
+    margin-right: -38px;
   }
 
   .nav-toggle {
@@ -621,20 +621,28 @@ section {
 }
 
 @media (max-width: 460px) {
+  .site-logo,
+  .logo {
+    gap: 0;
+  }
+
   .site-logo-mark {
     width: 78px;
     height: 78px;
     flex-basis: 78px;
-    margin-right: -14px;
+    margin-right: -34px;
   }
 
   .site-logo-text {
-    max-width: 165px;
-    font-size: 1.8rem;
+    max-width: 170px;
+    font-size: 1.72rem;
+    white-space: normal;
+    line-height: 0.9;
   }
 
   .header-container,
   .header-inner {
     min-height: 92px;
+    gap: 0.35rem;
   }
 }
