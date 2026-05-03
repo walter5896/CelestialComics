@@ -156,8 +156,7 @@
 }
 
 /* =========================
-   Gallery Grid / Shared Card Defaults
-   These are used by gallery, saved stories, related stories, etc.
+   Gallery Grid / Shared Cards
 ========================= */
 
 .story-grid {
@@ -260,136 +259,6 @@
   border-radius: var(--radius-sm);
   color: var(--color-text-soft);
 }
-
-/* =========================
-   Gallery Floating Artwork Cards
-   Gallery page only: removes the boxed card frame and lets art float.
-========================= */
-
-.gallery-page .story-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: clamp(2rem, 4vw, 3.5rem) clamp(1.25rem, 3vw, 2rem);
-  align-items: start;
-}
-
-.gallery-page .story-grid > *,
-.gallery-page .story-grid .story-card,
-.gallery-page .story-grid .gallery-card,
-.gallery-page .story-grid .gallery-story-card {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;
-  color: var(--color-text);
-}
-
-.gallery-page .gallery-story-card {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
-
-.gallery-page .story-card-art-link {
-  display: block;
-  color: inherit;
-  text-decoration: none;
-}
-
-.gallery-page .story-card-art {
-  width: 100%;
-  height: auto;
-  min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.gallery-page .story-card-art img {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 560px;
-  object-fit: contain;
-  object-position: center;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.gallery-page .story-card-body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  padding: 1rem 0 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-}
-
-.gallery-page .story-card-body .story-status,
-.gallery-page .story-grid .status-badge,
-.gallery-page .story-grid .story-status,
-.gallery-page .story-grid .tag,
-.gallery-page .story-grid .badge {
-  width: fit-content;
-  margin: 0 0 0.85rem;
-}
-
-.gallery-page .story-grid h2,
-.gallery-page .story-grid h3,
-.gallery-page .story-card h2,
-.gallery-page .story-card h3,
-.gallery-page .gallery-card h2,
-.gallery-page .gallery-card h3 {
-  margin: 0 0 0.5rem;
-}
-
-.gallery-page .story-grid p,
-.gallery-page .story-card p,
-.gallery-page .gallery-card p {
-  margin: 0.35rem 0;
-}
-
-.gallery-page .story-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: auto;
-  padding-top: 1rem;
-}
-
-.gallery-page .story-actions .btn,
-.gallery-page .story-grid .btn,
-.gallery-page .story-card .btn,
-.gallery-page .gallery-card .btn {
-  margin: 0;
-  width: fit-content;
-}
-
-.gallery-page .story-card-art-empty {
-  min-height: 340px;
-  padding: 2rem;
-  display: grid;
-  place-items: center;
-  color: var(--color-text-soft);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  border-radius: var(--radius-sm);
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-/* =========================
-   Gallery Note Panel
-========================= */
 
 .gallery-note-panel {
   margin-top: 2rem;
@@ -689,7 +558,7 @@
 }
 
 /* =========================
-   Rendered Story Card Structure
+   Gallery Rendered Story Cards
 ========================= */
 
 .story-card-art-link {
@@ -792,14 +661,6 @@
   .story-card-art {
     height: 360px;
   }
-
-  .gallery-page .story-card-art {
-    height: auto;
-  }
-
-  .gallery-page .story-card-art img {
-    max-height: 500px;
-  }
 }
 
 @media (max-width: 720px) {
@@ -873,35 +734,6 @@
     height: 340px;
   }
 
-  .gallery-page .story-grid {
-    gap: 2.25rem;
-  }
-
-  .gallery-page .story-card-art {
-    height: auto;
-  }
-
-  .gallery-page .story-card-art img {
-    max-height: 520px;
-  }
-
-  .gallery-page .story-actions,
-  .concept-actions,
-  .story-cta,
-  .story-actions {
-    flex-direction: column;
-  }
-
-  .gallery-page .story-actions .btn,
-  .gallery-page .story-grid .btn,
-  .gallery-page .story-card .btn,
-  .gallery-page .gallery-card .btn,
-  .concept-actions .btn,
-  .story-cta .btn,
-  .story-actions .btn {
-    width: 100%;
-  }
-
   .concept-detail-hero {
     padding: 1.5rem 0 2rem;
   }
@@ -921,5 +753,17 @@
   .concept-art-frame img,
   .story-hero-img {
     max-height: 560px;
+  }
+
+  .concept-actions,
+  .story-cta,
+  .story-actions {
+    flex-direction: column;
+  }
+
+  .concept-actions .btn,
+  .story-cta .btn,
+  .story-actions .btn {
+    width: 100%;
   }
 }
