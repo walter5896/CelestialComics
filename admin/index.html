@@ -20,7 +20,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="/css/pages/admin.css?v=admin-cleanup-1" />
+  <link rel="stylesheet" href="/css/pages/admin.css?v=admin-cleanup-2" />
 </head>
 
 <body>
@@ -503,6 +503,7 @@
       <h2>Order Management</h2>
       <p class="helper-text">
         Review customer purchases, separate active work from historical records, and update fulfillment status as orders move through the pipeline.
+        Mark an order as failed only when you want it hidden from the normal admin order lists.
       </p>
 
       <div class="order-management-inner">
@@ -521,7 +522,8 @@
         <div class="orders-list order-section-divider">
           <h3 class="order-section-subtitle">Order History</h3>
           <p class="order-section-description">
-            Choose a past order from the dropdown to inspect it without filling the page with every historical card at once.
+            Choose a fulfilled or canceled order from the dropdown to inspect it without filling the page with every historical card at once.
+            Failed orders are hidden from this section.
           </p>
 
           <div class="history-dropdown-shell">
@@ -529,7 +531,7 @@
               <div class="field-group" style="margin-bottom:0;">
                 <label for="order-history-select">Historical Orders</label>
                 <select id="order-history-select">
-                  <option value="">-- Select a fulfilled, canceled, or failed order --</option>
+                  <option value="">-- Select a fulfilled or canceled order --</option>
                 </select>
                 <p id="order-history-summary" class="history-summary-text">
                   Loading order history...

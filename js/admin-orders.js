@@ -19,6 +19,10 @@ function setStatus(statusEl, message = '', color = '') {
   statusEl.style.color = color;
 }
 
+function isHiddenOrderStatus(status) {
+  return String(status || '').toLowerCase() === 'failed';
+}
+
 function hasShippingDetails(order) {
   return !!(
     order?.shipping_name ||
@@ -128,7 +132,7 @@ function renderOrderCard(order, { history = false } = {}) {
           <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processing</option>
           <option value="fulfilled" ${order.status === 'fulfilled' ? 'selected' : ''}>Fulfilled</option>
           <option value="canceled" ${order.status === 'canceled' ? 'selected' : ''}>Canceled</option>
-          <option value="failed" ${order.status === 'failed' ? 'selected' : ''}>Failed</option>
+          <option value="failed" ${order.status === 'failed' ? 'selected' : ''}>Failed / Hide from Admin UI</option>
         </select>
       </div>
 
@@ -167,13 +171,13 @@ function renderSelectedHistoryOrder(ctx) {
   const selectedOrderId = orderHistorySelect.value;
 
   if (!selectedOrderId) {
-    renderOrderHistoryEmptyState(orderHistoryDetail, 'Select a historical order to view its details.');
+    renderOrderHistoryEmptyState(orderHistoryDetail, 'Select a fulfilled or canceled order to view its details.');
     return;
   }
 
   const selectedOrder = allOrders.find((order) => String(order.id) === String(selectedOrderId));
 
-  if (!selectedOrder) {
+  if (!selectedOrder || isHiddenOrderStatus(selectedOrder.status)) {
     renderOrderHistoryEmptyState(orderHistoryDetail, 'That historical order could not be found.');
     return;
   }
@@ -185,11 +189,14 @@ function updateOrderHistorySelect(historyOrders, ctx) {
   const { orderHistorySelect, orderHistorySummary, orderHistoryDetail } = ctx;
   if (!orderHistorySelect || !orderHistorySummary) return;
 
-  const safeHistoryOrders = Array.isArray(historyOrders) ? historyOrders : [];
+  const safeHistoryOrders = Array.isArray(historyOrders)
+    ? historyOrders.filter((order) => !isHiddenOrderStatus(order.status))
+    : [];
+
   const previousValue = orderHistorySelect.value || '';
 
   orderHistorySelect.innerHTML =
-    '<option value="">-- Select a fulfilled, canceled, or failed order --</option>';
+    '<option value="">-- Select a fulfilled or canceled order --</option>';
 
   if (!safeHistoryOrders.length) {
     orderHistorySelect.disabled = true;
@@ -225,8 +232,13 @@ function renderOrdersPreview(orders, ctx) {
 
   const safeOrders = Array.isArray(orders) ? orders : [];
 
-  const activeOrders = safeOrders.filter((order) => isActiveOrderStatus(order.status));
-  const historyOrders = safeOrders.filter((order) => isHistoryOrderStatus(order.status));
+  const activeOrders = safeOrders.filter((order) => {
+    return isActiveOrderStatus(order.status) && !isHiddenOrderStatus(order.status);
+  });
+
+  const historyOrders = safeOrders.filter((order) => {
+    return isHistoryOrderStatus(order.status) && !isHiddenOrderStatus(order.status);
+  });
 
   if (!activeOrders.length) {
     activeOrdersPreview.innerHTML = '<p class="empty-orders-state">No active orders right now.</p>';
@@ -261,7 +273,7 @@ export async function loadOrdersPreview(ctx) {
 
     if (orderHistorySelect) {
       orderHistorySelect.innerHTML =
-        '<option value="">-- Select a fulfilled, canceled, or failed order --</option>';
+        '<option value="">-- Select a fulfilled or canceled order --</option>';
       orderHistorySelect.disabled = true;
     }
 
@@ -306,7 +318,7 @@ export async function loadOrdersPreview(ctx) {
 
     if (orderHistorySelect) {
       orderHistorySelect.innerHTML =
-        '<option value="">-- Select a fulfilled, canceled, or failed order --</option>';
+        '<option value="">-- Select a fulfilled or canceled order --</option>';
       orderHistorySelect.disabled = true;
     }
 
@@ -356,7 +368,16 @@ async function handleSaveOrder(button, ctx) {
       throw new Error(result.error || 'Failed to update order');
     }
 
-    setStatus(ordersStatusMsg, `Order ${orderId} updated successfully.`, 'green');
+    if (isHiddenOrderStatus(nextStatus)) {
+      setStatus(
+        ordersStatusMsg,
+        `Order ${orderId} was marked as Failed and hidden from the admin order lists.`,
+        'green'
+      );
+    } else {
+      setStatus(ordersStatusMsg, `Order ${orderId} updated successfully.`, 'green');
+    }
+
     await loadOrdersPreview(ctx);
   } catch (error) {
     console.error('Error updating order:', error);
