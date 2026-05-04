@@ -26,7 +26,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-dashboard-5" />
+  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-dashboard-6" />
 </head>
 
 <body>
@@ -169,12 +169,30 @@
         <div class="profile-note profile-order-note">
           <p>
             Physical merch, paperbacks, prints, stickers, bundles, and other shipped
-            items will appear here after checkout. Digital comic access stays listed
-            separately under Owned Comics.
+            items will appear here after checkout. Select a purchase below to view its
+            fulfillment status and order details.
           </p>
         </div>
 
-        <div id="physical-purchases-container" class="physical-purchases-grid"></div>
+        <div id="physical-purchases-container" class="physical-purchases-dropdown-shell">
+          <div class="physical-purchases-controls">
+            <div class="field-group physical-purchase-select-group">
+              <label for="physical-purchase-select">Select Physical Purchase</label>
+              <select id="physical-purchase-select">
+                <option value="">Loading physical purchases...</option>
+              </select>
+              <p id="physical-purchase-summary" class="physical-purchase-summary">
+                Loading physical purchases...
+              </p>
+            </div>
+          </div>
+
+          <div id="physical-purchase-detail" class="physical-purchase-detail-shell">
+            <div class="profile-empty-state">
+              Select a physical purchase to view its details.
+            </div>
+          </div>
+        </div>
 
         <div id="no-physical-purchases" class="profile-empty-state" style="display:none;">
           <h3>No Physical Purchases Yet</h3>
@@ -225,7 +243,7 @@
 
   <script src="/js/env.js"></script>
   <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/profile.js?v=profile-dashboard-5"></script>
+  <script type="module" src="/js/profile.js?v=profile-dashboard-6"></script>
 
   <script type="module">
     import {

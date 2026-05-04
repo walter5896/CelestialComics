@@ -28,6 +28,12 @@ const noOwned = document.getElementById('no-owned-stories');
 
 const physicalPurchasesContainer = document.getElementById('physical-purchases-container');
 const noPhysicalPurchases = document.getElementById('no-physical-purchases');
+const physicalPurchaseSelect = document.getElementById('physical-purchase-select');
+const physicalPurchaseSummary = document.getElementById('physical-purchase-summary');
+const physicalPurchaseDetail = document.getElementById('physical-purchase-detail');
+
+let physicalPurchasesState = [];
+let physicalPurchaseSelectBound = false;
 
 if (
   !voteList ||
@@ -143,12 +149,23 @@ function getFulfillmentStatusNote(status) {
   }
 }
 
-function isPhysicalProductType(type) {
-  return ['merch', 'paperback', 'bundle'].includes(String(type || ''));
-}
-
 function formatGrantedDate(value) {
   return formatDate(value);
+}
+
+function buildPhysicalPurchaseLabel(item) {
+  const product = item?.product || {};
+  const order = item?.order || {};
+
+  const productName = product.name || 'Physical Product';
+  const status = prettyFulfillmentStatus(order.status);
+  const purchaseDate = formatDate(order.paid_at || order.created_at);
+  const quantity = Number(item.quantity) || 1;
+
+  const datePart = purchaseDate ? ` • ${purchaseDate}` : '';
+  const quantityPart = quantity > 1 ? ` • Qty ${quantity}` : '';
+
+  return `${productName} • ${status}${quantityPart}${datePart}`;
 }
 
 async function parseJsonResponseSafely(res) {
@@ -203,11 +220,33 @@ function renderLoggedOutOwnedStories() {
 }
 
 function renderLoggedOutPhysicalPurchases() {
-  if (!physicalPurchasesContainer || !noPhysicalPurchases) return;
+  physicalPurchasesState = [];
 
-  physicalPurchasesContainer.innerHTML = '';
-  setDisplay(physicalPurchasesContainer, 'none');
-  setDisplay(noPhysicalPurchases, 'block');
+  if (physicalPurchaseSelect) {
+    physicalPurchaseSelect.innerHTML = '<option value="">No physical purchases available</option>';
+    physicalPurchaseSelect.disabled = true;
+  }
+
+  if (physicalPurchaseSummary) {
+    physicalPurchaseSummary.textContent = 'No physical purchases available.';
+  }
+
+  if (physicalPurchaseDetail) {
+    physicalPurchaseDetail.innerHTML = `
+      <div class="profile-empty-state">
+        Log in to view your physical purchases.
+      </div>
+    `;
+  }
+
+  if (physicalPurchasesContainer) {
+    physicalPurchasesContainer.innerHTML = physicalPurchasesContainer.innerHTML || '';
+    setDisplay(physicalPurchasesContainer, 'none');
+  }
+
+  if (noPhysicalPurchases) {
+    setDisplay(noPhysicalPurchases, 'block');
+  }
 }
 
 /* =======================
@@ -517,138 +556,230 @@ async function fetchAndRenderOwnedStories() {
    PHYSICAL PURCHASES
 ======================= */
 
+function renderPhysicalPurchaseCard(item) {
+  const product = item?.product || {};
+  const order = item?.order || {};
+
+  const safeProductId = encodeURIComponent(product.id || item.product_id || '');
+  const safeName = escapeHtml(product.name || 'Physical Product');
+  const safeDescription = escapeHtml(product.description || 'No description provided.');
+  const safeImage = escapeHtml(getProductImage(product));
+  const productType = String(product.product_type || item.product_type || 'merch');
+  const productTypeLabel = prettyProductType(productType);
+
+  const quantity = Number(item.quantity) || 1;
+  const unitPrice = formatPrice(item.unit_price_cents);
+  const fulfillmentStatus = prettyFulfillmentStatus(order.status);
+  const fulfillmentNote = getFulfillmentStatusNote(order.status);
+  const purchaseDate = formatDate(order.paid_at || order.created_at);
+
+  const orderTotal =
+    Number.isInteger(Number(order.total_cents))
+      ? formatPrice(Number(order.total_cents))
+      : '';
+
+  const productUrl = `/shop/product.html?id=${safeProductId}`;
+
+  const shippingParts = [
+    order.shipping_city,
+    order.shipping_state,
+    order.shipping_country
+  ]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean);
+
+  const shippingSummary = shippingParts.length
+    ? shippingParts.join(', ')
+    : '';
+
+  return `
+    <article class="physical-purchase-card">
+      <a href="${productUrl}" class="physical-purchase-image-link" aria-label="View ${safeName}">
+        ${
+          safeImage
+            ? `<img src="${safeImage}" alt="${safeName}" class="physical-purchase-image" loading="lazy" />`
+            : `<div class="physical-purchase-image physical-purchase-image-placeholder">No image available</div>`
+        }
+      </a>
+
+      <div class="physical-purchase-body">
+        <div class="physical-purchase-badges">
+          <span class="physical-purchase-badge ${escapeHtml(productType)}">${escapeHtml(productTypeLabel)}</span>
+          <span class="physical-purchase-badge status">${escapeHtml(fulfillmentStatus)}</span>
+        </div>
+
+        <h3>${safeName}</h3>
+        <p class="physical-purchase-description">${safeDescription}</p>
+
+        <dl class="physical-purchase-meta">
+          <div>
+            <dt>Fulfillment Status</dt>
+            <dd>${escapeHtml(fulfillmentStatus)}</dd>
+          </div>
+
+          <div>
+            <dt>Quantity</dt>
+            <dd>${escapeHtml(quantity)}</dd>
+          </div>
+
+          <div>
+            <dt>Item Price</dt>
+            <dd>${escapeHtml(unitPrice)}</dd>
+          </div>
+
+          ${
+            orderTotal
+              ? `
+                <div>
+                  <dt>Order Total</dt>
+                  <dd>${escapeHtml(orderTotal)}</dd>
+                </div>
+              `
+              : ''
+          }
+
+          ${
+            purchaseDate
+              ? `
+                <div>
+                  <dt>Purchased</dt>
+                  <dd>${escapeHtml(purchaseDate)}</dd>
+                </div>
+              `
+              : ''
+          }
+
+          ${
+            shippingSummary
+              ? `
+                <div>
+                  <dt>Shipping Area</dt>
+                  <dd>${escapeHtml(shippingSummary)}</dd>
+                </div>
+              `
+              : ''
+          }
+        </dl>
+
+        <p class="physical-purchase-description">
+          ${escapeHtml(fulfillmentNote)}
+        </p>
+
+        <div class="physical-purchase-actions">
+          <a href="${productUrl}" class="btn btn-secondary">View Product</a>
+          <a href="${productUrl}" class="btn btn-primary">Buy Again</a>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderSelectedPhysicalPurchase() {
+  if (!physicalPurchaseSelect || !physicalPurchaseDetail) return;
+
+  const selectedValue = physicalPurchaseSelect.value;
+
+  if (!selectedValue) {
+    physicalPurchaseDetail.innerHTML = `
+      <div class="profile-empty-state">
+        Select a physical purchase to view its details.
+      </div>
+    `;
+    return;
+  }
+
+  const selectedPurchase = physicalPurchasesState.find((item) => {
+    return String(item.id || item.order_id || '') === String(selectedValue);
+  });
+
+  if (!selectedPurchase) {
+    physicalPurchaseDetail.innerHTML = `
+      <div class="profile-empty-state">
+        This physical purchase could not be found.
+      </div>
+    `;
+    return;
+  }
+
+  physicalPurchaseDetail.innerHTML = renderPhysicalPurchaseCard(selectedPurchase);
+}
+
+function populatePhysicalPurchaseDropdown(purchases) {
+  if (!physicalPurchaseSelect || !physicalPurchaseSummary || !physicalPurchaseDetail) {
+    return;
+  }
+
+  const safePurchases = Array.isArray(purchases) ? purchases : [];
+  const previousValue = physicalPurchaseSelect.value || '';
+
+  physicalPurchaseSelect.innerHTML = '';
+
+  if (!safePurchases.length) {
+    physicalPurchaseSelect.disabled = true;
+    physicalPurchaseSelect.innerHTML = '<option value="">No physical purchases available</option>';
+    physicalPurchaseSummary.textContent = 'No physical purchases available.';
+    physicalPurchaseDetail.innerHTML = `
+      <div class="profile-empty-state">
+        No physical purchases yet.
+      </div>
+    `;
+    return;
+  }
+
+  safePurchases.forEach((item, index) => {
+    const option = document.createElement('option');
+    option.value = String(item.id || item.order_id || index);
+    option.textContent = buildPhysicalPurchaseLabel(item);
+    physicalPurchaseSelect.appendChild(option);
+  });
+
+  physicalPurchaseSelect.disabled = false;
+  physicalPurchaseSummary.textContent =
+    `${safePurchases.length} physical purchase${safePurchases.length === 1 ? '' : 's'} available. Select one to inspect it.`;
+
+  const stillExists = safePurchases.some((item, index) => {
+    return String(item.id || item.order_id || index) === String(previousValue);
+  });
+
+  physicalPurchaseSelect.value = stillExists
+    ? previousValue
+    : String(safePurchases[0].id || safePurchases[0].order_id || 0);
+
+  renderSelectedPhysicalPurchase();
+}
+
 function renderPhysicalPurchases(purchases) {
   if (!physicalPurchasesContainer || !noPhysicalPurchases) return;
 
-  if (!Array.isArray(purchases) || !purchases.length) {
-    physicalPurchasesContainer.innerHTML = '';
+  physicalPurchasesState = Array.isArray(purchases) ? purchases : [];
+
+  if (!physicalPurchasesState.length) {
     setDisplay(physicalPurchasesContainer, 'none');
     setDisplay(noPhysicalPurchases, 'block');
+
+    if (physicalPurchaseSelect) {
+      physicalPurchaseSelect.innerHTML = '<option value="">No physical purchases available</option>';
+      physicalPurchaseSelect.disabled = true;
+    }
+
+    if (physicalPurchaseSummary) {
+      physicalPurchaseSummary.textContent = 'No physical purchases available.';
+    }
+
+    if (physicalPurchaseDetail) {
+      physicalPurchaseDetail.innerHTML = `
+        <div class="profile-empty-state">
+          No physical purchases yet.
+        </div>
+      `;
+    }
+
     return;
   }
 
   setDisplay(physicalPurchasesContainer, 'grid');
   setDisplay(noPhysicalPurchases, 'none');
-
-  physicalPurchasesContainer.innerHTML = purchases
-    .map((item) => {
-      const product = item.product || {};
-      const order = item.order || {};
-
-      const safeProductId = encodeURIComponent(product.id || item.product_id || '');
-      const safeName = escapeHtml(product.name || 'Physical Product');
-      const safeDescription = escapeHtml(product.description || 'No description provided.');
-      const safeImage = escapeHtml(getProductImage(product));
-      const productType = String(product.product_type || item.product_type || 'merch');
-      const productTypeLabel = prettyProductType(productType);
-
-      const quantity = Number(item.quantity) || 1;
-      const unitPrice = formatPrice(item.unit_price_cents);
-      const fulfillmentStatus = prettyFulfillmentStatus(order.status);
-      const fulfillmentNote = getFulfillmentStatusNote(order.status);
-      const purchaseDate = formatDate(order.paid_at || order.created_at);
-
-      const orderTotal =
-        Number.isInteger(Number(order.total_cents))
-          ? formatPrice(Number(order.total_cents))
-          : '';
-
-      const productUrl = `/shop/product.html?id=${safeProductId}`;
-
-      const shippingParts = [
-        order.shipping_city,
-        order.shipping_state,
-        order.shipping_country
-      ]
-        .map((part) => String(part || '').trim())
-        .filter(Boolean);
-
-      const shippingSummary = shippingParts.length
-        ? shippingParts.join(', ')
-        : '';
-
-      return `
-        <article class="physical-purchase-card">
-          <a href="${productUrl}" class="physical-purchase-image-link" aria-label="View ${safeName}">
-            ${
-              safeImage
-                ? `<img src="${safeImage}" alt="${safeName}" class="physical-purchase-image" loading="lazy" />`
-                : `<div class="physical-purchase-image physical-purchase-image-placeholder">No image available</div>`
-            }
-          </a>
-
-          <div class="physical-purchase-body">
-            <div class="physical-purchase-badges">
-              <span class="physical-purchase-badge ${escapeHtml(productType)}">${escapeHtml(productTypeLabel)}</span>
-              <span class="physical-purchase-badge status">${escapeHtml(fulfillmentStatus)}</span>
-            </div>
-
-            <h3>${safeName}</h3>
-            <p class="physical-purchase-description">${safeDescription}</p>
-
-            <dl class="physical-purchase-meta">
-              <div>
-                <dt>Fulfillment Status</dt>
-                <dd>${escapeHtml(fulfillmentStatus)}</dd>
-              </div>
-
-              <div>
-                <dt>Quantity</dt>
-                <dd>${escapeHtml(quantity)}</dd>
-              </div>
-
-              <div>
-                <dt>Item Price</dt>
-                <dd>${escapeHtml(unitPrice)}</dd>
-              </div>
-
-              ${
-                orderTotal
-                  ? `
-                    <div>
-                      <dt>Order Total</dt>
-                      <dd>${escapeHtml(orderTotal)}</dd>
-                    </div>
-                  `
-                  : ''
-              }
-
-              ${
-                purchaseDate
-                  ? `
-                    <div>
-                      <dt>Purchased</dt>
-                      <dd>${escapeHtml(purchaseDate)}</dd>
-                    </div>
-                  `
-                  : ''
-              }
-
-              ${
-                shippingSummary
-                  ? `
-                    <div>
-                      <dt>Shipping Area</dt>
-                      <dd>${escapeHtml(shippingSummary)}</dd>
-                    </div>
-                  `
-                  : ''
-              }
-            </dl>
-
-            <p class="physical-purchase-description">
-              ${escapeHtml(fulfillmentNote)}
-            </p>
-
-            <div class="physical-purchase-actions">
-              <a href="${productUrl}" class="btn btn-secondary">View Product</a>
-              <a href="${productUrl}" class="btn btn-primary">Buy Again</a>
-            </div>
-          </div>
-        </article>
-      `;
-    })
-    .join('');
+  populatePhysicalPurchaseDropdown(physicalPurchasesState);
 }
 
 async function fetchPhysicalPurchases() {
@@ -691,30 +822,64 @@ async function fetchAndRenderPhysicalPurchases() {
   }
 
   try {
-    physicalPurchasesContainer.innerHTML = `
-      <div class="profile-empty-state physical-purchases-loading">
-        Loading physical purchases...
-      </div>
-    `;
-
-    setDisplay(physicalPurchasesContainer, 'block');
+    setDisplay(physicalPurchasesContainer, 'grid');
     setDisplay(noPhysicalPurchases, 'none');
+
+    if (physicalPurchaseSelect) {
+      physicalPurchaseSelect.disabled = true;
+      physicalPurchaseSelect.innerHTML = '<option value="">Loading physical purchases...</option>';
+    }
+
+    if (physicalPurchaseSummary) {
+      physicalPurchaseSummary.textContent = 'Loading physical purchases...';
+    }
+
+    if (physicalPurchaseDetail) {
+      physicalPurchaseDetail.innerHTML = `
+        <div class="profile-empty-state physical-purchases-loading">
+          Loading physical purchases...
+        </div>
+      `;
+    }
 
     const purchases = await fetchPhysicalPurchases();
     renderPhysicalPurchases(purchases);
   } catch (err) {
     console.error('Error loading physical purchases:', err);
 
-    physicalPurchasesContainer.innerHTML = `
-      <div class="profile-empty-state physical-purchases-error">
-        <h3>Could Not Load Physical Purchases</h3>
-        <p>${escapeHtml(err.message || 'Physical purchases could not be loaded right now.')}</p>
-      </div>
-    `;
+    physicalPurchasesState = [];
 
-    setDisplay(physicalPurchasesContainer, 'block');
+    setDisplay(physicalPurchasesContainer, 'grid');
     setDisplay(noPhysicalPurchases, 'none');
+
+    if (physicalPurchaseSelect) {
+      physicalPurchaseSelect.disabled = true;
+      physicalPurchaseSelect.innerHTML = '<option value="">Physical purchases unavailable</option>';
+    }
+
+    if (physicalPurchaseSummary) {
+      physicalPurchaseSummary.textContent = 'Physical purchases could not be loaded right now.';
+    }
+
+    if (physicalPurchaseDetail) {
+      physicalPurchaseDetail.innerHTML = `
+        <div class="profile-empty-state physical-purchases-error">
+          <h3>Could Not Load Physical Purchases</h3>
+          <p>${escapeHtml(err.message || 'Physical purchases could not be loaded right now.')}</p>
+        </div>
+      `;
+    }
   }
+}
+
+function bindPhysicalPurchaseDropdown() {
+  if (!physicalPurchaseSelect || physicalPurchaseSelectBound) return;
+
+  physicalPurchaseSelectBound = true;
+
+  physicalPurchaseSelect.addEventListener('change', () => {
+    renderSelectedPhysicalPurchase();
+  });
 }
 
 /* =======================
@@ -808,6 +973,7 @@ async function initProfile() {
     renderVoteBalancesFromState();
   });
 
+  bindPhysicalPurchaseDropdown();
   attachProfileImageClickFallbacks();
 
   await refreshProfilePageData();
