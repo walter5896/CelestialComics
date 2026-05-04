@@ -107,22 +107,39 @@ function prettyProductType(type) {
   }
 }
 
-function prettyOrderStatus(status) {
-  switch (status) {
+function prettyFulfillmentStatus(status) {
+  switch (String(status || '').toLowerCase()) {
     case 'paid':
-      return 'Paid';
+      return 'Order Received';
     case 'processing':
-      return 'Processing';
+      return 'Being Prepared';
     case 'fulfilled':
       return 'Fulfilled';
-    case 'pending':
-      return 'Pending';
     case 'canceled':
       return 'Canceled';
+    case 'pending':
+      return 'Awaiting Confirmation';
     case 'failed':
-      return 'Failed';
+      return 'Unavailable';
     default:
-      return status ? String(status) : 'Order';
+      return 'Order Received';
+  }
+}
+
+function getFulfillmentStatusNote(status) {
+  switch (String(status || '').toLowerCase()) {
+    case 'paid':
+      return 'Your order has been received. The seller will follow up by email with any fulfillment updates.';
+    case 'processing':
+      return 'Your order is being prepared. Watch your email for direct updates from the seller.';
+    case 'fulfilled':
+      return 'This order has been marked as fulfilled.';
+    case 'canceled':
+      return 'This order has been canceled.';
+    case 'pending':
+      return 'Payment confirmation is still being processed.';
+    default:
+      return 'The seller will follow up by email with fulfillment updates.';
   }
 }
 
@@ -527,8 +544,10 @@ function renderPhysicalPurchases(purchases) {
 
       const quantity = Number(item.quantity) || 1;
       const unitPrice = formatPrice(item.unit_price_cents);
-      const orderStatus = prettyOrderStatus(order.status);
+      const fulfillmentStatus = prettyFulfillmentStatus(order.status);
+      const fulfillmentNote = getFulfillmentStatusNote(order.status);
       const purchaseDate = formatDate(order.paid_at || order.created_at);
+
       const orderTotal =
         Number.isInteger(Number(order.total_cents))
           ? formatPrice(Number(order.total_cents))
@@ -561,13 +580,18 @@ function renderPhysicalPurchases(purchases) {
           <div class="physical-purchase-body">
             <div class="physical-purchase-badges">
               <span class="physical-purchase-badge ${escapeHtml(productType)}">${escapeHtml(productTypeLabel)}</span>
-              <span class="physical-purchase-badge status">${escapeHtml(orderStatus)}</span>
+              <span class="physical-purchase-badge status">${escapeHtml(fulfillmentStatus)}</span>
             </div>
 
             <h3>${safeName}</h3>
             <p class="physical-purchase-description">${safeDescription}</p>
 
             <dl class="physical-purchase-meta">
+              <div>
+                <dt>Fulfillment Status</dt>
+                <dd>${escapeHtml(fulfillmentStatus)}</dd>
+              </div>
+
               <div>
                 <dt>Quantity</dt>
                 <dd>${escapeHtml(quantity)}</dd>
@@ -611,6 +635,10 @@ function renderPhysicalPurchases(purchases) {
                   : ''
               }
             </dl>
+
+            <p class="physical-purchase-description">
+              ${escapeHtml(fulfillmentNote)}
+            </p>
 
             <div class="physical-purchase-actions">
               <a href="${productUrl}" class="btn btn-secondary">View Product</a>

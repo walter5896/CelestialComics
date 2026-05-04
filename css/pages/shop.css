@@ -918,3 +918,12 @@
     max-width: none;
   }
 }
+.checkout-result-note-stack {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.checkout-success-card .checkout-result-actions {
+  margin-top: 1.75rem;
+}
