@@ -11,11 +11,21 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-const ALLOWED_STATUSES = ['pending', 'paid', 'processing', 'fulfilled', 'canceled'];
+const ALLOWED_STATUSES = [
+  'pending',
+  'paid',
+  'processing',
+  'fulfilled',
+  'canceled',
+  'failed'
+];
 
 function jsonResponse(statusCode, payload) {
   return {
     statusCode,
+    headers: {
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(payload)
   };
 }
@@ -59,14 +69,20 @@ function normalizeStatus(value) {
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return jsonResponse(405, { error: 'Method not allowed' });
+    return jsonResponse(405, {
+      success: false,
+      error: 'Method not allowed'
+    });
   }
 
   const authHeader = event.headers.authorization || event.headers.Authorization;
   const token = authHeader?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
-    return jsonResponse(401, { error: 'Missing auth token' });
+    return jsonResponse(401, {
+      success: false,
+      error: 'Missing auth token'
+    });
   }
 
   try {
@@ -76,11 +92,15 @@ exports.handler = async (event) => {
     try {
       body = JSON.parse(event.body || '{}');
     } catch {
-      return jsonResponse(400, { error: 'Invalid JSON body' });
+      return jsonResponse(400, {
+        success: false,
+        error: 'Invalid JSON body'
+      });
     }
 
     const orderId = String(body.order_id || '').trim();
     const nextStatus = normalizeStatus(body.status);
+
     const fulfillmentNotes =
       typeof body.fulfillment_notes === 'string'
         ? body.fulfillment_notes.trim() || null
@@ -107,7 +127,8 @@ exports.handler = async (event) => {
     };
 
     if (nextStatus === 'fulfilled') {
-      updatePayload.fulfilled_at = existingOrder.fulfilled_at || new Date().toISOString();
+      updatePayload.fulfilled_at =
+        existingOrder.fulfilled_at || new Date().toISOString();
     } else if (existingOrder.status === 'fulfilled' && nextStatus !== 'fulfilled') {
       updatePayload.fulfilled_at = null;
     }
@@ -143,6 +164,7 @@ exports.handler = async (event) => {
     console.error('update-order-status error:', error);
 
     return jsonResponse(500, {
+      success: false,
       error: error.message || 'Server error'
     });
   }
