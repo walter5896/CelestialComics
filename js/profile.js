@@ -26,6 +26,9 @@ const totalVoteBalanceEl = document.getElementById('total-vote-balance');
 const ownedContainer = document.getElementById('owned-stories-container');
 const noOwned = document.getElementById('no-owned-stories');
 
+const physicalPurchasesContainer = document.getElementById('physical-purchases-container');
+const noPhysicalPurchases = document.getElementById('no-physical-purchases');
+
 if (
   !voteList ||
   !noVotes ||
@@ -55,8 +58,27 @@ function escapeHtml(value) {
     .replace(/'/g, '&#039;');
 }
 
+function formatPrice(priceCents) {
+  const safeValue = Number(priceCents);
+  if (!Number.isInteger(safeValue)) return 'Price unavailable';
+
+  return `$${(safeValue / 100).toFixed(2)}`;
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toLocaleDateString();
+}
+
 function getStoryImage(story) {
   return story?.cover_image_url || story?.image_url || '';
+}
+
+function getProductImage(product) {
+  return product?.image_url || '';
 }
 
 function formatAccessType(accessType) {
@@ -70,11 +92,67 @@ function formatAccessType(accessType) {
   }
 }
 
+function prettyProductType(type) {
+  switch (type) {
+    case 'digital_comic':
+      return 'Digital Comic';
+    case 'paperback':
+      return 'Paperback';
+    case 'bundle':
+      return 'Bundle';
+    case 'merch':
+      return 'Merch';
+    default:
+      return 'Product';
+  }
+}
+
+function prettyOrderStatus(status) {
+  switch (status) {
+    case 'paid':
+      return 'Paid';
+    case 'processing':
+      return 'Processing';
+    case 'fulfilled':
+      return 'Fulfilled';
+    case 'pending':
+      return 'Pending';
+    case 'canceled':
+      return 'Canceled';
+    case 'failed':
+      return 'Failed';
+    default:
+      return status ? String(status) : 'Order';
+  }
+}
+
+function isPhysicalProductType(type) {
+  return ['merch', 'paperback', 'bundle'].includes(String(type || ''));
+}
+
 function formatGrantedDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString();
+  return formatDate(value);
+}
+
+async function parseJsonResponseSafely(res) {
+  const rawText = await res.text();
+
+  try {
+    return rawText ? JSON.parse(rawText) : {};
+  } catch {
+    throw new Error(rawText || 'Server returned an invalid response.');
+  }
+}
+
+async function getAccessToken() {
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error('Error getting session:', error);
+    return null;
+  }
+
+  return data?.session?.access_token || null;
 }
 
 function renderVoteBalancesFromState() {
@@ -101,9 +179,18 @@ function renderLoggedOutSavedStories() {
 
 function renderLoggedOutOwnedStories() {
   if (!ownedContainer || !noOwned) return;
+
   ownedContainer.innerHTML = '';
   setDisplay(ownedContainer, 'none');
   setDisplay(noOwned, 'block');
+}
+
+function renderLoggedOutPhysicalPurchases() {
+  if (!physicalPurchasesContainer || !noPhysicalPurchases) return;
+
+  physicalPurchasesContainer.innerHTML = '';
+  setDisplay(physicalPurchasesContainer, 'none');
+  setDisplay(noPhysicalPurchases, 'block');
 }
 
 /* =======================
@@ -410,6 +497,199 @@ async function fetchAndRenderOwnedStories() {
 }
 
 /* =======================
+   PHYSICAL PURCHASES
+======================= */
+
+function renderPhysicalPurchases(purchases) {
+  if (!physicalPurchasesContainer || !noPhysicalPurchases) return;
+
+  if (!Array.isArray(purchases) || !purchases.length) {
+    physicalPurchasesContainer.innerHTML = '';
+    setDisplay(physicalPurchasesContainer, 'none');
+    setDisplay(noPhysicalPurchases, 'block');
+    return;
+  }
+
+  setDisplay(physicalPurchasesContainer, 'grid');
+  setDisplay(noPhysicalPurchases, 'none');
+
+  physicalPurchasesContainer.innerHTML = purchases
+    .map((item) => {
+      const product = item.product || {};
+      const order = item.order || {};
+
+      const safeProductId = encodeURIComponent(product.id || item.product_id || '');
+      const safeName = escapeHtml(product.name || 'Physical Product');
+      const safeDescription = escapeHtml(product.description || 'No description provided.');
+      const safeImage = escapeHtml(getProductImage(product));
+      const productType = String(product.product_type || item.product_type || 'merch');
+      const productTypeLabel = prettyProductType(productType);
+
+      const quantity = Number(item.quantity) || 1;
+      const unitPrice = formatPrice(item.unit_price_cents);
+      const orderStatus = prettyOrderStatus(order.status);
+      const purchaseDate = formatDate(order.paid_at || order.created_at);
+      const orderTotal =
+        Number.isInteger(Number(order.total_cents))
+          ? formatPrice(Number(order.total_cents))
+          : '';
+
+      const productUrl = `/shop/product.html?id=${safeProductId}`;
+
+      const shippingParts = [
+        order.shipping_city,
+        order.shipping_state,
+        order.shipping_country
+      ]
+        .map((part) => String(part || '').trim())
+        .filter(Boolean);
+
+      const shippingSummary = shippingParts.length
+        ? shippingParts.join(', ')
+        : '';
+
+      return `
+        <article class="physical-purchase-card">
+          <a href="${productUrl}" class="physical-purchase-image-link" aria-label="View ${safeName}">
+            ${
+              safeImage
+                ? `<img src="${safeImage}" alt="${safeName}" class="physical-purchase-image" loading="lazy" />`
+                : `<div class="physical-purchase-image physical-purchase-image-placeholder">No image available</div>`
+            }
+          </a>
+
+          <div class="physical-purchase-body">
+            <div class="physical-purchase-badges">
+              <span class="physical-purchase-badge ${escapeHtml(productType)}">${escapeHtml(productTypeLabel)}</span>
+              <span class="physical-purchase-badge status">${escapeHtml(orderStatus)}</span>
+            </div>
+
+            <h3>${safeName}</h3>
+            <p class="physical-purchase-description">${safeDescription}</p>
+
+            <dl class="physical-purchase-meta">
+              <div>
+                <dt>Quantity</dt>
+                <dd>${escapeHtml(quantity)}</dd>
+              </div>
+
+              <div>
+                <dt>Item Price</dt>
+                <dd>${escapeHtml(unitPrice)}</dd>
+              </div>
+
+              ${
+                orderTotal
+                  ? `
+                    <div>
+                      <dt>Order Total</dt>
+                      <dd>${escapeHtml(orderTotal)}</dd>
+                    </div>
+                  `
+                  : ''
+              }
+
+              ${
+                purchaseDate
+                  ? `
+                    <div>
+                      <dt>Purchased</dt>
+                      <dd>${escapeHtml(purchaseDate)}</dd>
+                    </div>
+                  `
+                  : ''
+              }
+
+              ${
+                shippingSummary
+                  ? `
+                    <div>
+                      <dt>Shipping Area</dt>
+                      <dd>${escapeHtml(shippingSummary)}</dd>
+                    </div>
+                  `
+                  : ''
+              }
+            </dl>
+
+            <div class="physical-purchase-actions">
+              <a href="${productUrl}" class="btn btn-secondary">View Product</a>
+              <a href="${productUrl}" class="btn btn-primary">Buy Again</a>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function fetchPhysicalPurchases() {
+  const user = await getCurrentUserAsync();
+
+  if (!user) {
+    return [];
+  }
+
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    throw new Error('No active session found.');
+  }
+
+  const res = await fetch('/.netlify/functions/get-my-purchases', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
+  });
+
+  const data = await parseJsonResponseSafely(res);
+
+  if (!res.ok || !data?.success) {
+    throw new Error(data?.error || 'Failed to load physical purchases.');
+  }
+
+  return Array.isArray(data.purchases) ? data.purchases : [];
+}
+
+async function fetchAndRenderPhysicalPurchases() {
+  if (!physicalPurchasesContainer || !noPhysicalPurchases) return;
+
+  const user = await getCurrentUserAsync();
+
+  if (!user) {
+    renderLoggedOutPhysicalPurchases();
+    return;
+  }
+
+  try {
+    physicalPurchasesContainer.innerHTML = `
+      <div class="profile-empty-state physical-purchases-loading">
+        Loading physical purchases...
+      </div>
+    `;
+
+    setDisplay(physicalPurchasesContainer, 'block');
+    setDisplay(noPhysicalPurchases, 'none');
+
+    const purchases = await fetchPhysicalPurchases();
+    renderPhysicalPurchases(purchases);
+  } catch (err) {
+    console.error('Error loading physical purchases:', err);
+
+    physicalPurchasesContainer.innerHTML = `
+      <div class="profile-empty-state physical-purchases-error">
+        <h3>Could Not Load Physical Purchases</h3>
+        <p>${escapeHtml(err.message || 'Physical purchases could not be loaded right now.')}</p>
+      </div>
+    `;
+
+    setDisplay(physicalPurchasesContainer, 'block');
+    setDisplay(noPhysicalPurchases, 'none');
+  }
+}
+
+/* =======================
    IMAGE CLICK FALLBACK
    Makes saved story images behave like the View Concept button
 ======================= */
@@ -474,6 +754,7 @@ async function refreshProfilePageData() {
     renderLoggedOutVotes();
     renderLoggedOutSavedStories();
     renderLoggedOutOwnedStories();
+    renderLoggedOutPhysicalPurchases();
     return;
   }
 
@@ -483,7 +764,8 @@ async function refreshProfilePageData() {
   await Promise.all([
     fetchAndRenderVotes(),
     fetchAndRenderSavedStories(),
-    fetchAndRenderOwnedStories()
+    fetchAndRenderOwnedStories(),
+    fetchAndRenderPhysicalPurchases()
   ]);
 }
 

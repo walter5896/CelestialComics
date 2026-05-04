@@ -6,7 +6,7 @@
 
   <meta
     name="description"
-    content="View your Celestial Comics profile, voting power, current round votes, owned comics, and saved story concepts."
+    content="View your Celestial Comics profile, voting power, current round votes, owned comics, physical purchases, and saved story concepts."
   />
 
   <title>My Profile | Celestial Comics</title>
@@ -26,7 +26,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-dashboard-4" />
+  <link rel="stylesheet" href="/css/pages/profile.css?v=profile-dashboard-5" />
 </head>
 
 <body>
@@ -69,8 +69,8 @@
         <h1 id="profile-page-title">My Profile</h1>
 
         <p>
-          Track your voting power, current round activity, owned comics, and saved
-          story concepts all in one place.
+          Track your voting power, current round activity, owned comics, physical
+          purchases, and saved story concepts all in one place.
         </p>
       </div>
     </section>
@@ -155,6 +155,38 @@
       </div>
     </section>
 
+    <section class="profile-section" aria-labelledby="profile-physical-purchases-title">
+      <div class="profile-section-inner">
+        <div class="profile-section-header">
+          <div>
+            <p class="profile-section-kicker">Order History</p>
+            <h2 id="profile-physical-purchases-title">Physical Purchases</h2>
+          </div>
+
+          <a href="/shop/" class="btn btn-secondary">Shop Again</a>
+        </div>
+
+        <div class="profile-note profile-order-note">
+          <p>
+            Physical merch, paperbacks, prints, stickers, bundles, and other shipped
+            items will appear here after checkout. Digital comic access stays listed
+            separately under Owned Comics.
+          </p>
+        </div>
+
+        <div id="physical-purchases-container" class="physical-purchases-grid"></div>
+
+        <div id="no-physical-purchases" class="profile-empty-state" style="display:none;">
+          <h3>No Physical Purchases Yet</h3>
+          <p>
+            Physical products you purchase from the shop will appear here with order
+            status and quantity details.
+          </p>
+          <a href="/shop/" class="btn btn-secondary">Browse Physical Products</a>
+        </div>
+      </div>
+    </section>
+
     <section class="profile-section" aria-labelledby="profile-saved-title">
       <div class="profile-section-inner">
         <div class="profile-section-header">
@@ -193,7 +225,7 @@
 
   <script src="/js/env.js"></script>
   <script type="module" src="/js/utils.js"></script>
-  <script type="module" src="/js/profile.js?v=profile-dashboard-4"></script>
+  <script type="module" src="/js/profile.js?v=profile-dashboard-5"></script>
 
   <script type="module">
     import {

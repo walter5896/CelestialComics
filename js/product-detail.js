@@ -25,6 +25,7 @@ const comicLink = document.getElementById('product-comic-link');
 let currentProduct = null;
 let currentUser = null;
 let userOwnsRelatedStory = false;
+let userPurchasedThisPhysicalProduct = false;
 let productDetailInitialized = false;
 
 function setStatus(message = '', color = '') {
@@ -87,12 +88,16 @@ function prettyProductType(type) {
   }
 }
 
-function isPhysicalProductType(type) {
-  return ['merch', 'paperback', 'bundle'].includes(String(type || ''));
+function isDigitalOnlyProduct(type) {
+  return String(type || '') === 'digital_comic';
 }
 
 function isDigitalAccessProduct(type) {
   return ['digital_comic', 'bundle'].includes(String(type || ''));
+}
+
+function isPhysicalProductType(type) {
+  return ['merch', 'paperback', 'bundle'].includes(String(type || ''));
 }
 
 async function parseJsonResponseSafely(res) {
@@ -177,6 +182,41 @@ async function loadOwnedStoryAccess() {
   return safeRows;
 }
 
+async function loadPurchasedPhysicalProducts() {
+  const user = await getCurrentUserAsync();
+
+  if (!user?.id) {
+    return [];
+  }
+
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    return [];
+  }
+
+  try {
+    const res = await fetch('/.netlify/functions/get-my-purchases', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const data = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !data?.success) {
+      console.warn('Could not load physical purchase history:', data?.error || data);
+      return [];
+    }
+
+    return Array.isArray(data.purchases) ? data.purchases : [];
+  } catch (err) {
+    console.warn('Physical purchase history unavailable:', err);
+    return [];
+  }
+}
+
 function updateImage(product) {
   const imageUrl = product?.image_url || '';
 
@@ -210,7 +250,25 @@ function updateBadges(product) {
   }
 
   if (ownedEl) {
-    ownedEl.style.display = userOwnsRelatedStory ? 'inline-flex' : 'none';
+    const isOwnedDigitalOnlyOption =
+      userOwnsRelatedStory && isDigitalOnlyProduct(productType);
+
+    const bundleDigitalAccessOwned =
+      userOwnsRelatedStory && productType === 'bundle';
+
+    if (isOwnedDigitalOnlyOption || bundleDigitalAccessOwned) {
+      ownedEl.textContent = bundleDigitalAccessOwned ? 'Digital Access Owned' : 'Owned';
+      ownedEl.style.display = 'inline-flex';
+      return;
+    }
+
+    if (userPurchasedThisPhysicalProduct && isPhysicalProductType(productType)) {
+      ownedEl.textContent = 'Purchased Before';
+      ownedEl.style.display = 'inline-flex';
+      return;
+    }
+
+    ownedEl.style.display = 'none';
   }
 }
 
@@ -252,7 +310,12 @@ function updateNotes(product) {
   if (shippingEl) {
     if (isPhysicalProductType(productType)) {
       shippingEl.style.display = 'block';
-      shippingEl.textContent = 'This is a physical product. Shipping details are collected securely during checkout when required.';
+
+      if (userPurchasedThisPhysicalProduct) {
+        shippingEl.textContent = 'You have purchased this physical product before. You can buy it again if you want another copy or an additional item.';
+      } else {
+        shippingEl.textContent = 'This is a physical product. Shipping details are collected securely during checkout when required.';
+      }
     } else {
       shippingEl.style.display = 'none';
       shippingEl.textContent = '';
@@ -265,7 +328,10 @@ function updateBuyButton(product) {
 
   const productType = String(product?.product_type || '');
 
-  if (userOwnsRelatedStory && isDigitalAccessProduct(productType)) {
+  const isOwnedDigitalOnlyOption =
+    userOwnsRelatedStory && isDigitalOnlyProduct(productType);
+
+  if (isOwnedDigitalOnlyOption) {
     buyBtn.disabled = true;
     buyBtn.textContent = 'Already Owned';
     buyBtn.classList.remove('btn-primary');
@@ -274,40 +340,51 @@ function updateBuyButton(product) {
   }
 
   buyBtn.disabled = false;
-  buyBtn.textContent = 'Buy Now';
+  buyBtn.textContent =
+    userPurchasedThisPhysicalProduct && isPhysicalProductType(productType)
+      ? 'Buy Again'
+      : 'Buy Now';
+
   buyBtn.classList.remove('btn-secondary');
   buyBtn.classList.add('btn-primary');
 }
 
-function renderProduct(product) {
+async function renderProduct(product) {
   currentProduct = product;
 
   const storyId = product?.stories?.id ? String(product.stories.id) : '';
-  const productType = String(product?.product_type || '');
-  const ownedRowsPromise = loadOwnedStoryAccess();
+  const productId = product?.id ? String(product.id) : '';
 
-  return ownedRowsPromise.then((ownedRows) => {
-    userOwnsRelatedStory = !!storyId && ownedRows.some(
-      (row) => String(row.story_id) === storyId
-    );
+  const [ownedRows, physicalPurchases] = await Promise.all([
+    loadOwnedStoryAccess(),
+    loadPurchasedPhysicalProducts()
+  ]);
 
-    updateImage(product);
-    updateBadges(product);
-    updateStoryLink(product);
-    updateNotes(product);
-    updateBuyButton(product);
+  userOwnsRelatedStory = !!storyId && ownedRows.some(
+    (row) => String(row.story_id) === storyId
+  );
 
-    if (titleEl) titleEl.textContent = product.name || 'Untitled Product';
-    if (priceEl) priceEl.textContent = formatPrice(product.price_cents);
-    if (descriptionEl) {
-      descriptionEl.textContent = product.description || 'No description provided.';
-    }
-
-    document.title = `${product.name || 'Product'} | Celestial Comics`;
-
-    setStatus('');
-    showContent();
+  userPurchasedThisPhysicalProduct = physicalPurchases.some((purchase) => {
+    const purchasedProductId = String(purchase.product?.id || purchase.product_id || '');
+    return purchasedProductId && purchasedProductId === productId;
   });
+
+  updateImage(product);
+  updateBadges(product);
+  updateStoryLink(product);
+  updateNotes(product);
+  updateBuyButton(product);
+
+  if (titleEl) titleEl.textContent = product.name || 'Untitled Product';
+  if (priceEl) priceEl.textContent = formatPrice(product.price_cents);
+  if (descriptionEl) {
+    descriptionEl.textContent = product.description || 'No description provided.';
+  }
+
+  document.title = `${product.name || 'Product'} | Celestial Comics`;
+
+  setStatus('');
+  showContent();
 }
 
 async function handleBuyProduct() {
@@ -323,7 +400,11 @@ async function handleBuyProduct() {
       return;
     }
 
-    if (userOwnsRelatedStory && isDigitalAccessProduct(currentProduct.product_type)) {
+    const productType = String(currentProduct.product_type || '');
+    const alreadyOwnedDigitalOnly =
+      userOwnsRelatedStory && isDigitalOnlyProduct(productType);
+
+    if (alreadyOwnedDigitalOnly) {
       setStatus('You already own this digital comic.', '#cbd5e1');
       updateBuyButton(currentProduct);
       return;

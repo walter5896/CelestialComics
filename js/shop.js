@@ -22,6 +22,7 @@ let shopFilterHandlerAttached = false;
 
 let activeProductFilter = 'all';
 let activeStoryFilter = 'all';
+let purchasedPhysicalProductIds = new Set();
 
 function setStatus(message = '', color = '') {
   if (!shopStatusMessage) return;
@@ -67,6 +68,10 @@ function isComicProduct(productType) {
 
 function isDigitalAccessProduct(productType) {
   return ['digital_comic', 'bundle'].includes(String(productType || ''));
+}
+
+function isPhysicalProductType(productType) {
+  return ['merch', 'paperback', 'bundle'].includes(String(productType || ''));
 }
 
 async function parseJsonResponseSafely(res) {
@@ -250,6 +255,44 @@ async function loadOwnedStoryAccessToState() {
   setOwnedStoryAccess(data || []);
 }
 
+async function loadPhysicalPurchasesToState() {
+  purchasedPhysicalProductIds = new Set();
+
+  const user = await getCurrentUserAsync();
+
+  if (!user?.id) {
+    return;
+  }
+
+  const accessToken = await getAccessToken();
+
+  if (!accessToken) {
+    return;
+  }
+
+  const res = await fetch('/.netlify/functions/get-my-purchases', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
+  });
+
+  const data = await parseJsonResponseSafely(res);
+
+  if (!res.ok || !data?.success) {
+    console.warn('Could not load previous physical purchases:', data?.error || data);
+    return;
+  }
+
+  const purchases = Array.isArray(data.purchases) ? data.purchases : [];
+
+  purchasedPhysicalProductIds = new Set(
+    purchases
+      .map((purchase) => String(purchase.product?.id || purchase.product_id || '').trim())
+      .filter(Boolean)
+  );
+}
+
 function renderProducts() {
   if (!productsContainer) return;
 
@@ -290,7 +333,13 @@ function renderProducts() {
       const productTypeLabel = prettyProductType(productType);
       const relatedStory = product.stories || null;
       const relatedStoryId = relatedStory?.id ? String(relatedStory.id) : '';
-      const userOwnsThisStory = !!relatedStoryId && ownedStoryIds.has(relatedStoryId);
+
+      const userOwnsThisStory =
+        !!relatedStoryId && ownedStoryIds.has(relatedStoryId);
+
+      const productWasPurchasedBefore =
+        isPhysicalProductType(productType) &&
+        purchasedPhysicalProductIds.has(String(product.id));
 
       const isOwnedDigitalOption =
         userOwnsThisStory && isDigitalAccessProduct(productType);
@@ -308,8 +357,13 @@ function renderProducts() {
           : '';
 
       const ownedBadge =
-        userOwnsThisStory
+        isOwnedDigitalOption
           ? `<span class="shop-product-badge owned">Owned</span>`
+          : '';
+
+      const purchasedBadge =
+        productWasPurchasedBefore
+          ? `<span class="shop-product-badge purchased">Previously Purchased</span>`
           : '';
 
       const productDetailButton = `
@@ -350,9 +404,18 @@ function renderProducts() {
               class="btn btn-primary shop-buy-btn"
               data-product-id="${safeProductId}"
             >
-              Buy Now
+              ${productWasPurchasedBefore ? 'Buy Again' : 'Buy Now'}
             </button>
           `;
+
+      const repeatPurchaseNote =
+        productWasPurchasedBefore
+          ? `
+            <p class="shop-product-repeat-note">
+              You’ve purchased this before. You can buy another if you want an additional copy.
+            </p>
+          `
+          : '';
 
       return `
         <article class="shop-product-card" data-product-id="${safeProductId}">
@@ -370,6 +433,7 @@ function renderProducts() {
             <div class="shop-product-badge-row">
               <span class="shop-product-badge ${escapeHtml(productType)}">${escapeHtml(productTypeLabel)}</span>
               ${ownedBadge}
+              ${purchasedBadge}
             </div>
 
             ${storyLinkText}
@@ -378,6 +442,7 @@ function renderProducts() {
             <p class="shop-product-description">${safeDescription || 'No description provided.'}</p>
             <p class="shop-product-price">${priceText}</p>
             ${votesText}
+            ${repeatPurchaseNote}
 
             <div class="shop-product-actions">
               ${productDetailButton}
@@ -528,6 +593,7 @@ async function refreshShopState() {
 
     await loadProductsToState();
     await loadOwnedStoryAccessToState();
+    await loadPhysicalPurchasesToState();
 
     updateFilterButtonState();
     renderProducts();
