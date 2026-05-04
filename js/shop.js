@@ -281,6 +281,8 @@ function renderProducts() {
 
   productsContainer.innerHTML = products
     .map((product) => {
+      const safeProductId = escapeHtml(product.id);
+      const encodedProductId = encodeURIComponent(product.id);
       const safeName = escapeHtml(product.name);
       const safeDescription = escapeHtml(product.description || '');
       const priceText = formatPrice(product.price_cents);
@@ -310,6 +312,15 @@ function renderProducts() {
           ? `<span class="shop-product-badge owned">Owned</span>`
           : '';
 
+      const productDetailButton = `
+        <a
+          class="btn btn-secondary shop-view-product-btn"
+          href="/shop/product.html?id=${encodedProductId}"
+        >
+          View Product
+        </a>
+      `;
+
       const comicLinkButton =
         relatedStoryId && isComicProduct(productType)
           ? `
@@ -337,18 +348,22 @@ function renderProducts() {
             <button
               type="button"
               class="btn btn-primary shop-buy-btn"
-              data-product-id="${escapeHtml(product.id)}"
+              data-product-id="${safeProductId}"
             >
               Buy Now
             </button>
           `;
 
       return `
-        <article class="shop-product-card" data-product-id="${escapeHtml(product.id)}">
+        <article class="shop-product-card" data-product-id="${safeProductId}">
           ${
             product.image_url
-              ? `<img class="shop-product-image" src="${escapeHtml(product.image_url)}" alt="${safeName}">`
-              : `<div class="shop-product-image shop-product-image-placeholder">No image available</div>`
+              ? `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
+                  <img class="shop-product-image" src="${escapeHtml(product.image_url)}" alt="${safeName}">
+                </a>`
+              : `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
+                  <div class="shop-product-image shop-product-image-placeholder">No image available</div>
+                </a>`
           }
 
           <div class="shop-product-body">
@@ -365,6 +380,7 @@ function renderProducts() {
             ${votesText}
 
             <div class="shop-product-actions">
+              ${productDetailButton}
               ${buyButton}
               ${comicLinkButton}
             </div>

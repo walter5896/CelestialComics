@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="description"
+    content="View Celestial Comics product details, including merch, paperback editions, bundles, and digital comic access."
+  />
+
+  <title>Product Detail | Celestial Comics</title>
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="shortcut icon" href="/favicon.ico" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/pages/shop.css" />
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="/" class="site-logo" aria-label="Celestial Comics Home">
+        <img src="/assets/Logo.png" alt="Celestial Comics logo" class="site-logo-mark" />
+        <span class="site-logo-text">Celestial Comics</span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+        <span class="hamburger"></span>
+      </button>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <ul class="nav-list">
+          <li><a href="/vote/">Vote</a></li>
+          <li><a href="/history/">Winner</a></li>
+          <li><a href="/gallery/">Gallery</a></li>
+          <li><a href="/shop/" aria-current="page">Shop</a></li>
+          <li><a href="/team/">The Team</a></li>
+          <li class="profile-link" style="display:none;"><a href="/profile/">My Profile</a></li>
+          <li class="admin-link" style="display:none;"><a href="/admin/index.html">Admin</a></li>
+          <li><a href="/login/" class="login-link">Login</a></li>
+          <li><a href="#" class="logout-link" style="display:none;">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <div class="announcement-strip" role="status" aria-live="polite">
+    <span>SHOP PRODUCT DETAILS</span>
+  </div>
+
+  <main class="shop-page product-detail-page">
+    <section class="product-detail-section" aria-labelledby="product-detail-title">
+      <div class="container">
+        <div class="product-detail-back-row">
+          <a href="/shop/" class="btn btn-secondary">Back to Shop</a>
+        </div>
+
+        <p id="product-detail-status" class="shop-status-message" aria-live="polite">
+          Loading product...
+        </p>
+
+        <section id="product-detail-content" class="product-detail-shell" style="display:none;">
+          <div class="product-detail-media">
+            <img
+              id="product-detail-image"
+              src=""
+              alt=""
+              class="product-detail-image"
+            />
+
+            <div
+              id="product-detail-placeholder"
+              class="product-detail-image-placeholder"
+              style="display:none;"
+            >
+              No image available
+            </div>
+          </div>
+
+          <div class="product-detail-info">
+            <div class="product-detail-badges">
+              <span id="product-detail-type" class="shop-product-badge">Product</span>
+              <span id="product-detail-owned" class="shop-product-badge owned" style="display:none;">
+                Owned
+              </span>
+            </div>
+
+            <p id="product-detail-story" class="shop-product-story-link"></p>
+
+            <h1 id="product-detail-title" class="product-detail-title">
+              Product Name
+            </h1>
+
+            <p id="product-detail-price" class="product-detail-price">
+              $0.00
+            </p>
+
+            <p id="product-detail-description" class="product-detail-description">
+              Product description will appear here.
+            </p>
+
+            <div id="product-detail-votes" class="product-detail-note" style="display:none;"></div>
+
+            <div id="product-detail-shipping" class="product-detail-note" style="display:none;"></div>
+
+            <div class="product-detail-actions">
+              <button
+                id="product-buy-btn"
+                type="button"
+                class="btn btn-primary"
+              >
+                Buy Now
+              </button>
+
+              <a
+                id="product-comic-link"
+                href="#"
+                class="btn btn-secondary"
+                style="display:none;"
+              >
+                View Comic
+              </a>
+
+              <a href="/shop/" class="btn btn-secondary">Back to Shop</a>
+            </div>
+          </div>
+        </section>
+
+        <section id="product-detail-error" class="shop-empty-state" style="display:none;">
+          Product could not be loaded.
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-shell">
+      <p>&copy; 2025 Celestial Comics. All rights reserved.</p>
+
+      <nav class="footer-nav" aria-label="Footer navigation">
+        <a href="/vote/">Vote</a>
+        <a href="/history/">Winner</a>
+        <a href="/gallery/">Gallery</a>
+        <a href="/shop/">Shop</a>
+        <a href="/team/">The Team</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="/js/env.js"></script>
+  <script type="module" src="/js/utils.js"></script>
+  <script type="module" src="/js/product-detail.js"></script>
+  <script type="module" src="/js/admin-nav.js"></script>
+
+  <script type="module">
+    import { updateUI, logout } from '/js/auth.js';
+
+    const navToggle = document.querySelector('.nav-toggle');
+    const mainNav = document.querySelector('.main-nav');
+
+    function closeNav() {
+      if (!navToggle || !mainNav) return;
+
+      mainNav.classList.remove('is-open');
+      navToggle.classList.remove('is-open');
+      navToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function bindNavToggle() {
+      if (!navToggle || !mainNav) return;
+
+      navToggle.addEventListener('click', () => {
+        const isOpen = mainNav.classList.toggle('is-open');
+
+        navToggle.classList.toggle('is-open', isOpen);
+        navToggle.setAttribute('aria-expanded', String(isOpen));
+      });
+
+      mainNav.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeNav);
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeNav();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 1180) {
+          closeNav();
+        }
+      });
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Node)) return;
+        if (mainNav.contains(target) || navToggle.contains(target)) return;
+
+        closeNav();
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      updateUI();
+      bindNavToggle();
+
+      document.querySelectorAll('.logout-link').forEach((el) => {
+        el.addEventListener('click', async (event) => {
+          event.preventDefault();
+          await logout();
+          window.location.href = '/';
+        });
+      });
+    });
+  </script>
+</body>
+</html>
