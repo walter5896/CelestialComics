@@ -6,18 +6,30 @@ function getPublicVoteCount(btn) {
   return Number.isFinite(count) && count >= 0 ? count : 0;
 }
 
-function setButtonState(btn, { disabled, text, voted = false }) {
+function getUserVoteCount(btn) {
+  const count = Number(btn?.dataset?.userVoteCount);
+  return Number.isFinite(count) && count >= 0 ? count : 0;
+}
+
+function setButtonState(btn, { disabled, text, voted = false, userVoteCount = null }) {
   if (!btn) return;
 
   btn.disabled = !!disabled;
   btn.textContent = text || 'Voting Unavailable';
   btn.classList.toggle('voted', !!voted);
   btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+
+  if (userVoteCount !== null) {
+    btn.dataset.userVoteCount = String(Number(userVoteCount) || 0);
+  }
 }
 
 /**
- * Disable voting/recant buttons based on voting status
- * containerId: the HTML container where your story cards are
+ * Disable voting/recant buttons based on voting status.
+ *
+ * IMPORTANT:
+ * - .vote-btn text should show the current user's votes for that story.
+ * - .vote-total-count should show the public total votes for that story.
  */
 export async function enforceVotingRules(containerId = 'story-grid') {
   const container = document.getElementById(containerId);
@@ -37,7 +49,10 @@ export async function enforceVotingRules(containerId = 'story-grid') {
     );
 
     const userVoteMap = new Map(
-      safeUserVotes.map((vote) => [String(vote.story_id), Number(vote.vote_count) || 0])
+      safeUserVotes.map((vote) => [
+        String(vote.story_id),
+        Number(vote.vote_count) || 0
+      ])
     );
 
     container.querySelectorAll('.vote-btn, .recant-btn').forEach((btn) => {
@@ -48,13 +63,18 @@ export async function enforceVotingRules(containerId = 'story-grid') {
         setButtonState(btn, {
           disabled: true,
           text: 'Voting Unavailable',
-          voted: false
+          voted: false,
+          userVoteCount: 0
         });
         return;
       }
 
-      const publicVoteCount = getPublicVoteCount(btn);
-      const userVoteCountForStory = userVoteMap.get(storyId) || 0;
+      const publicVoteCount = Number(story.vote_count) || getPublicVoteCount(btn);
+      const userVoteCountForStory = userVoteMap.get(storyId) || getUserVoteCount(btn) || 0;
+
+      btn.dataset.voteCount = String(publicVoteCount);
+      btn.dataset.userVoteCount = String(userVoteCountForStory);
+
       const isVoteButton = btn.classList.contains('vote-btn');
       const isRecantButton = btn.classList.contains('recant-btn');
 
@@ -62,16 +82,19 @@ export async function enforceVotingRules(containerId = 'story-grid') {
         if (isVoteButton) {
           setButtonState(btn, {
             disabled: true,
-            text: `Voting Closed (${publicVoteCount})`,
-            voted: false
+            text: 'Voting Closed',
+            voted: false,
+            userVoteCount: userVoteCountForStory
           });
         } else if (isRecantButton) {
           setButtonState(btn, {
             disabled: true,
             text: 'Cannot Recant - Voting Closed',
-            voted: false
+            voted: false,
+            userVoteCount: userVoteCountForStory
           });
         }
+
         return;
       }
 
@@ -80,15 +103,18 @@ export async function enforceVotingRules(containerId = 'story-grid') {
           setButtonState(btn, {
             disabled: true,
             text: 'Voting Starts Soon',
-            voted: false
+            voted: false,
+            userVoteCount: userVoteCountForStory
           });
         } else if (isRecantButton) {
           setButtonState(btn, {
             disabled: true,
             text: 'Cannot Recant - Voting Not Started',
-            voted: false
+            voted: false,
+            userVoteCount: userVoteCountForStory
           });
         }
+
         return;
       }
 
@@ -97,9 +123,10 @@ export async function enforceVotingRules(containerId = 'story-grid') {
           setButtonState(btn, {
             disabled: false,
             text: userVoteCountForStory > 0
-              ? `Add Vote (${publicVoteCount})`
-              : `Vote (${publicVoteCount})`,
-            voted: userVoteCountForStory > 0
+              ? `Add Vote (${userVoteCountForStory})`
+              : 'Vote (0)',
+            voted: userVoteCountForStory > 0,
+            userVoteCount: userVoteCountForStory
           });
         } else if (isRecantButton) {
           setButtonState(btn, {
@@ -107,16 +134,19 @@ export async function enforceVotingRules(containerId = 'story-grid') {
             text: userVoteCountForStory > 0
               ? `Recant Vote (${userVoteCountForStory})`
               : 'No Votes to Recant',
-            voted: false
+            voted: false,
+            userVoteCount: userVoteCountForStory
           });
         }
+
         return;
       }
 
       setButtonState(btn, {
         disabled: true,
         text: 'Voting Unavailable',
-        voted: false
+        voted: false,
+        userVoteCount: userVoteCountForStory
       });
     });
   } catch (error) {
