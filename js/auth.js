@@ -13,6 +13,10 @@ const authReadyPromise = new Promise((resolve) => {
 });
 
 let authInitialized = false;
+let authSyncInProgress = null;
+let lastSessionRefreshAt = 0;
+
+const SESSION_REFRESH_THROTTLE_MS = 1500;
 
 function dispatchUserChanged() {
   window.dispatchEvent(new Event('user-changed'));
@@ -20,6 +24,10 @@ function dispatchUserChanged() {
 
 function dispatchAuthReady() {
   window.dispatchEvent(new Event('auth-ready'));
+}
+
+function dispatchAuthResumed() {
+  window.dispatchEvent(new Event('auth-resumed'));
 }
 
 function updateUI() {
@@ -102,6 +110,49 @@ async function applyAuthState(user) {
   return user;
 }
 
+async function syncAuthFromSupabase({ force = false } = {}) {
+  await authReadyPromise.catch(() => null);
+
+  const now = Date.now();
+
+  if (!force && now - lastSessionRefreshAt < SESSION_REFRESH_THROTTLE_MS) {
+    return getState().currentUser;
+  }
+
+  if (authSyncInProgress) {
+    return authSyncInProgress;
+  }
+
+  lastSessionRefreshAt = now;
+
+  authSyncInProgress = (async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        throw error;
+      }
+
+      const user = data?.session?.user ?? null;
+      await applyAuthState(user);
+
+      return user;
+    } catch (error) {
+      console.error('Error syncing auth session:', error);
+
+      /*
+        Do not aggressively clear auth on a temporary resume/network issue.
+        If Supabase says there is no session, applyAuthState(null) above clears it.
+      */
+      return getState().currentUser;
+    } finally {
+      authSyncInProgress = null;
+    }
+  })();
+
+  return authSyncInProgress;
+}
+
 async function initializeAuth() {
   if (authInitialized) return;
   authInitialized = true;
@@ -124,18 +175,52 @@ async function initializeAuth() {
     dispatchAuthReady();
   }
 
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     const user = session?.user ?? null;
 
     try {
       await applyAuthState(user);
+
+      if (
+        event === 'TOKEN_REFRESHED' ||
+        event === 'SIGNED_IN' ||
+        event === 'USER_UPDATED'
+      ) {
+        dispatchAuthResumed();
+      }
     } catch (error) {
       console.error('Error handling auth state change:', error);
+
       if (!user) {
         clearAuthState();
         updateUI();
       }
     }
+  });
+
+  bindAuthResumeListeners();
+}
+
+function bindAuthResumeListeners() {
+  async function refreshWhenActive() {
+    if (document.hidden) return;
+
+    await syncAuthFromSupabase({ force: true });
+    dispatchAuthResumed();
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      refreshWhenActive();
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    refreshWhenActive();
+  });
+
+  window.addEventListener('pageshow', () => {
+    refreshWhenActive();
   });
 }
 
@@ -145,9 +230,36 @@ export async function waitForAuthReady() {
   await authReadyPromise;
 }
 
-export async function getCurrentUserAsync() {
+export async function getCurrentUserAsync({ refresh = true } = {}) {
   await authReadyPromise;
+
+  if (refresh) {
+    const user = await syncAuthFromSupabase();
+    return user || null;
+  }
+
   return getState().currentUser;
+}
+
+export async function getFreshSession() {
+  await authReadyPromise;
+
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error('Error getting fresh session:', error);
+    return null;
+  }
+
+  const user = data?.session?.user ?? null;
+  await applyAuthState(user);
+
+  return data?.session ?? null;
+}
+
+export async function getFreshAccessToken() {
+  const session = await getFreshSession();
+  return session?.access_token || null;
 }
 
 export function getCurrentUser() {
@@ -165,7 +277,8 @@ export function isAuthenticated() {
 export async function refreshProfile() {
   await authReadyPromise;
 
-  const user = getState().currentUser;
+  const user = await getCurrentUserAsync();
+
   if (!user) {
     clearAuthState();
     updateUI();
@@ -181,6 +294,11 @@ export async function refreshProfile() {
     console.error('Error refreshing profile:', error);
     throw error;
   }
+}
+
+export async function refreshAuthState() {
+  await authReadyPromise;
+  return syncAuthFromSupabase({ force: true });
 }
 
 export async function login(email, password) {
@@ -209,6 +327,7 @@ export async function login(email, password) {
     }
 
     await applyAuthState(data?.user ?? null);
+    dispatchAuthResumed();
 
     return {
       success: true,
@@ -237,6 +356,7 @@ export async function logout() {
 
     clearAuthState();
     updateUI();
+    dispatchAuthResumed();
 
     return {
       success: true
