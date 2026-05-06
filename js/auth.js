@@ -16,7 +16,8 @@ let authInitialized = false;
 let authSyncInProgress = null;
 let lastSessionRefreshAt = 0;
 
-const SESSION_REFRESH_THROTTLE_MS = 1500;
+const SESSION_REFRESH_THROTTLE_MS = 5000;
+const SESSION_REFRESH_TIMEOUT_MS = 3500;
 
 function dispatchUserChanged() {
   window.dispatchEvent(new Event('user-changed'));
@@ -28,6 +29,15 @@ function dispatchAuthReady() {
 
 function dispatchAuthResumed() {
   window.dispatchEvent(new Event('auth-resumed'));
+}
+
+function withTimeout(promise, timeoutMs, fallbackValue = null) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      window.setTimeout(() => resolve(fallbackValue), timeoutMs);
+    })
+  ]);
 }
 
 function updateUI() {
@@ -111,8 +121,6 @@ async function applyAuthState(user) {
 }
 
 async function syncAuthFromSupabase({ force = false } = {}) {
-  await authReadyPromise.catch(() => null);
-
   const now = Date.now();
 
   if (!force && now - lastSessionRefreshAt < SESSION_REFRESH_THROTTLE_MS) {
@@ -127,7 +135,18 @@ async function syncAuthFromSupabase({ force = false } = {}) {
 
   authSyncInProgress = (async () => {
     try {
-      const { data, error } = await supabase.auth.getSession();
+      const sessionResult = await withTimeout(
+        supabase.auth.getSession(),
+        SESSION_REFRESH_TIMEOUT_MS,
+        null
+      );
+
+      if (!sessionResult) {
+        console.warn('[auth] Session refresh timed out. Keeping cached user.');
+        return getState().currentUser;
+      }
+
+      const { data, error } = sessionResult;
 
       if (error) {
         throw error;
@@ -139,11 +158,6 @@ async function syncAuthFromSupabase({ force = false } = {}) {
       return user;
     } catch (error) {
       console.error('Error syncing auth session:', error);
-
-      /*
-        Do not aggressively clear auth on a temporary resume/network issue.
-        If Supabase says there is no session, applyAuthState(null) above clears it.
-      */
       return getState().currentUser;
     } finally {
       authSyncInProgress = null;
@@ -158,14 +172,26 @@ async function initializeAuth() {
   authInitialized = true;
 
   try {
-    const { data, error } = await supabase.auth.getSession();
+    const sessionResult = await withTimeout(
+      supabase.auth.getSession(),
+      SESSION_REFRESH_TIMEOUT_MS,
+      null
+    );
 
-    if (error) {
-      throw error;
+    if (!sessionResult) {
+      console.warn('[auth] Initial session check timed out.');
+      clearAuthState();
+      updateUI();
+    } else {
+      const { data, error } = sessionResult;
+
+      if (error) {
+        throw error;
+      }
+
+      const user = data?.session?.user ?? null;
+      await applyAuthState(user);
     }
-
-    const user = data?.session?.user ?? null;
-    await applyAuthState(user);
   } catch (error) {
     console.error('Error getting initial auth session:', error);
     clearAuthState();
@@ -230,12 +256,12 @@ export async function waitForAuthReady() {
   await authReadyPromise;
 }
 
-export async function getCurrentUserAsync({ refresh = true } = {}) {
+export async function getCurrentUserAsync({ refresh = false } = {}) {
   await authReadyPromise;
 
   if (refresh) {
-    const user = await syncAuthFromSupabase();
-    return user || null;
+    const refreshedUser = await syncAuthFromSupabase();
+    return refreshedUser || getState().currentUser || null;
   }
 
   return getState().currentUser;
@@ -244,7 +270,18 @@ export async function getCurrentUserAsync({ refresh = true } = {}) {
 export async function getFreshSession() {
   await authReadyPromise;
 
-  const { data, error } = await supabase.auth.getSession();
+  const sessionResult = await withTimeout(
+    supabase.auth.getSession(),
+    SESSION_REFRESH_TIMEOUT_MS,
+    null
+  );
+
+  if (!sessionResult) {
+    console.warn('[auth] Fresh session request timed out.');
+    return null;
+  }
+
+  const { data, error } = sessionResult;
 
   if (error) {
     console.error('Error getting fresh session:', error);
@@ -277,7 +314,7 @@ export function isAuthenticated() {
 export async function refreshProfile() {
   await authReadyPromise;
 
-  const user = await getCurrentUserAsync();
+  const user = getState().currentUser;
 
   if (!user) {
     clearAuthState();
