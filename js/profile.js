@@ -240,6 +240,12 @@ function setRecantButtonsDisabled(disabled) {
   });
 }
 
+function getVoteItemTitle(voteItem) {
+  const label = voteItem?.querySelector('span');
+  const currentText = label?.textContent || '';
+  return currentText.split(' — ')[0] || 'Story';
+}
+
 /* =======================
    STATE SYNC
 ======================= */
@@ -964,6 +970,38 @@ async function refreshAfterRecant() {
   await fetchAndRenderVotes();
 }
 
+function updateVisibleVoteRowAfterRecant(btn, result) {
+  const voteItem = btn.closest('li');
+  const remainingVotes = Number(result?.vote_count) || 0;
+
+  if (remainingVotes <= 0) {
+    if (voteItem) voteItem.remove();
+
+    if (!voteList.querySelector('.recant-btn')) {
+      voteList.innerHTML = '';
+      setDisplay(noVotes, 'block');
+    }
+
+    return;
+  }
+
+  if (!voteItem) {
+    btn.disabled = false;
+    btn.textContent = 'Recant 1 Vote';
+    return;
+  }
+
+  const title = getVoteItemTitle(voteItem);
+  const label = voteItem.querySelector('span');
+
+  if (label) {
+    label.textContent = `${title} — You cast ${remainingVotes} vote${remainingVotes === 1 ? '' : 's'} this round`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Recant 1 Vote';
+}
+
 async function handleRecantClick(event) {
   const btn = event.target.closest('.recant-btn');
   if (!btn || !voteList.contains(btn)) return;
@@ -983,14 +1021,30 @@ async function handleRecantClick(event) {
 
   recantInProgress = true;
   setRecantButtonsDisabled(true);
+  btn.disabled = true;
   btn.textContent = 'Recanting...';
 
   try {
     const result = await recantVote(storyId, 1);
 
     if (result.success) {
-      await refreshAfterRecant();
+      setSharedVoteBalances({
+        voteBalance: result.round_balance ?? 0,
+        bonusVoteBalance: result.bonus_balance ?? 0
+      });
+
+      renderVoteBalancesFromState();
+      updateVisibleVoteRowAfterRecant(btn, result);
+
+      recantInProgress = false;
+      setRecantButtonsDisabled(false);
+
       alert('Vote recanted!');
+
+      refreshAfterRecant().catch((error) => {
+        console.error('Background profile refresh after recant failed:', error);
+      });
+
       return;
     }
 
@@ -999,7 +1053,9 @@ async function handleRecantClick(event) {
 
     if (result.reason === 'voting_closed') {
       alert('Voting is closed. You can no longer recant votes this round.');
-      await fetchAndRenderVotes();
+      fetchAndRenderVotes().catch((error) => {
+        console.error('Could not refresh votes after voting closed:', error);
+      });
       return;
     }
 
