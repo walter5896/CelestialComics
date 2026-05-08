@@ -4,12 +4,15 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAnonKey =
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
+if (!supabaseUrl || !supabaseServiceRoleKey || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+const adminSupabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 function jsonResponse(statusCode, payload) {
   return {
@@ -24,15 +27,28 @@ function jsonResponse(statusCode, payload) {
 function getBearerToken(event) {
   const authHeader = event.headers.authorization || event.headers.Authorization || '';
   const token = authHeader.replace(/^Bearer\s+/i, '').trim();
-
   return token || null;
+}
+
+function createUserSupabaseClient(token) {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  });
 }
 
 async function getUserFromToken(token) {
   const {
     data: { user },
     error
-  } = await supabase.auth.getUser(token);
+  } = await adminSupabase.auth.getUser(token);
 
   if (error || !user) {
     throw new Error('Invalid or expired user token.');
@@ -65,6 +81,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return jsonResponse(405, {
       success: false,
+      reason: 'method_not_allowed',
       error: 'Method not allowed.'
     });
   }
@@ -89,6 +106,7 @@ exports.handler = async (event) => {
     } catch {
       return jsonResponse(400, {
         success: false,
+        reason: 'invalid_json',
         error: 'Invalid JSON body.'
       });
     }
@@ -96,7 +114,9 @@ exports.handler = async (event) => {
     const storyId = normalizeStoryId(body.story_id);
     const amount = normalizeAmount(body.amount || 1);
 
-    const { data, error } = await supabase.rpc('submit_vote_secure', {
+    const userSupabase = createUserSupabaseClient(token);
+
+    const { data, error } = await userSupabase.rpc('submit_vote_secure', {
       p_story_id: storyId,
       p_amount: amount
     });
@@ -106,7 +126,7 @@ exports.handler = async (event) => {
 
       return jsonResponse(400, {
         success: false,
-        reason: 'rpc_error',
+        reason: error.code || 'rpc_error',
         error: error.message || 'Could not submit vote.'
       });
     }
@@ -129,6 +149,7 @@ exports.handler = async (event) => {
 
     return jsonResponse(500, {
       success: false,
+      reason: 'server_error',
       error: error.message || 'Server error.'
     });
   }
