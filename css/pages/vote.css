@@ -218,7 +218,7 @@
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: clamp(1rem, 3vw, 2rem);
+  gap: clamp(1.25rem, 4vw, 3rem);
   align-items: start;
 }
 
@@ -232,7 +232,7 @@
 
 .vote-matchup-title {
   min-height: 1.35em;
-  margin: 0 0 0.55rem;
+  margin: 0 0 0.7rem;
   font-family: var(--font-base);
   font-size: clamp(1rem, 1.7vw, 1.25rem);
   line-height: 1.15;
@@ -240,42 +240,52 @@
   color: var(--color-text);
 }
 
+/* Image-only presentation: no visible frame around artwork */
 .vote-matchup-art-link {
   width: 100%;
   max-width: 390px;
-  height: clamp(260px, 34vw, 420px);
+  height: auto;
   margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 48%),
-    rgba(3, 23, 47, 0.42);
-  border: 1px solid rgba(93, 154, 211, 0.22);
-  border-radius: 0.35rem;
+  display: block;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
   transition:
     transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
+    filter 180ms ease;
 }
 
 .vote-matchup-art-link:hover,
 .vote-matchup-art-link:focus-visible {
   transform: translateY(-2px);
-  border-color: rgba(242, 178, 74, 0.55);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+  border: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.28));
+}
+
+.vote-matchup-art-link:focus-visible {
+  outline: 2px solid rgba(242, 178, 74, 0.75);
+  outline-offset: 5px;
 }
 
 .vote-matchup-art-link img {
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 420px;
+  display: block;
   object-fit: contain;
   object-position: center;
-  padding: 0.15rem;
+  padding: 0;
+  border-radius: 0.25rem;
 }
 
 .vote-matchup-art-empty {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
   color: var(--color-text-soft);
   font-size: 0.85rem;
   font-weight: 900;
@@ -291,7 +301,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.65rem;
-  margin-top: 0.75rem;
+  margin-top: 0.8rem;
 }
 
 .vote-matchup-actions .btn {
@@ -385,7 +395,11 @@
   }
 
   .vote-matchup-art-link {
-    height: clamp(320px, 70vw, 460px);
+    max-width: min(430px, 100%);
+  }
+
+  .vote-matchup-art-link img {
+    max-height: 460px;
   }
 }
 
@@ -444,6 +458,10 @@
   }
 
   .vote-matchup-art-link {
-    height: clamp(280px, 82vw, 390px);
+    max-width: 100%;
+  }
+
+  .vote-matchup-art-link img {
+    max-height: 390px;
   }
 }
