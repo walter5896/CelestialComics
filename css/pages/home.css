@@ -6,14 +6,17 @@
 ========================= */
 
 :root {
-  --fs-home-hero-title: clamp(2.8rem, 5vw, 5.2rem);
+  --fs-home-hero-title: clamp(2.8rem, 5vw, 5rem);
   --fs-home-banner-title: clamp(2.2rem, 4vw, 4rem);
-  --fs-home-banner-subtitle: clamp(1.4rem, 2vw, 2.3rem);
+  --fs-home-banner-subtitle: clamp(1.02rem, 1.45vw, 1.3rem);
   --fs-home-section-title: clamp(2.25rem, 4.5vw, 4rem);
   --fs-home-card-title: clamp(1.65rem, 3vw, 2.5rem);
   --fs-home-body-lg: clamp(1.05rem, 1.6vw, 1.25rem);
   --fs-home-body: 1rem;
   --fs-home-small: 0.82rem;
+
+  --home-section-gap: clamp(2.75rem, 5vw, 4.5rem);
+  --home-card-padding: clamp(1.2rem, 2.2vw, 1.75rem);
 }
 
 /* =========================
@@ -63,7 +66,7 @@
 ========================= */
 
 .hero-section {
-  padding: 2.4rem 0 1.25rem;
+  padding: clamp(2rem, 4vw, 3rem) 0 clamp(1rem, 2vw, 1.5rem);
 }
 
 .hero-shell {
@@ -132,7 +135,7 @@
 
 .hero-panel {
   min-height: 560px;
-  padding: clamp(1.75rem, 3vw, 2.6rem);
+  padding: clamp(1.75rem, 3vw, 2.8rem);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -142,35 +145,25 @@
   border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+/* Kept harmless in case older markup still appears somewhere, but homepage no longer uses it. */
 .hero-eyebrow {
-  width: fit-content;
-  margin: 0 0 0.75rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: var(--radius-pill);
-  background: rgba(126, 97, 191, 0.42);
-  border: 1px solid rgba(229, 220, 255, 0.22);
-  color: #f9d36b;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  display: none;
 }
 
 .hero-panel .hero-title {
+  max-width: 9ch;
   margin: 0 0 1rem;
   font-family: var(--font-heading);
   font-size: var(--fs-home-hero-title);
-  line-height: 0.85;
+  line-height: 0.9;
   color: #f6d16f;
-  text-transform: uppercase;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 0.12em;
-  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  text-transform: none;
+  text-decoration: none;
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
 }
 
 .hero-description {
-  max-width: 38ch;
+  max-width: 40ch;
   margin: 0;
   color: rgba(255, 255, 255, 0.94);
   font-size: 1.08rem;
@@ -184,8 +177,15 @@
   margin-top: 1.5rem;
 }
 
+.hero-actions .btn {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* =========================
-   Brand Banner
+   Brand Banner / How It Works Bridge
 ========================= */
 
 .brand-banner {
@@ -194,8 +194,9 @@
 
 .brand-banner-box {
   background:
+    radial-gradient(circle at top center, rgba(242, 178, 74, 0.12), transparent 34%),
     linear-gradient(180deg, rgba(15, 80, 131, 0.98), rgba(11, 69, 122, 0.98));
-  padding: 1.65rem 1rem 1.25rem;
+  padding: clamp(1.35rem, 2.5vw, 2rem) clamp(1rem, 3vw, 2rem);
   text-align: center;
   box-shadow: var(--shadow-card);
   border: 1px solid var(--color-border);
@@ -206,16 +207,19 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: var(--fs-home-banner-title);
-  line-height: 0.9;
+  line-height: 0.95;
   color: #f6f0e6;
   text-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
 .brand-banner-subtitle {
-  margin: 0.35rem 0 0;
-  font-family: var(--font-heading);
+  max-width: 860px;
+  margin: 0.65rem auto 0;
+  font-family: var(--font-body, var(--font-sans));
   font-size: var(--fs-home-banner-subtitle);
-  color: rgba(246, 240, 230, 0.86);
+  font-weight: 600;
+  line-height: 1.55;
+  color: rgba(246, 240, 230, 0.9);
 }
 
 /* =========================
@@ -223,13 +227,13 @@
 ========================= */
 
 .concept-spotlight {
-  padding-top: 2rem;
+  padding-top: var(--home-section-gap);
 }
 
 .concept-shell {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
-  gap: 1.5rem;
+  gap: clamp(1.25rem, 2vw, 1.75rem);
   align-items: stretch;
 }
 
@@ -273,6 +277,15 @@
 .concept-shell .cta-panel {
   min-height: 100%;
   justify-content: center;
+  padding: var(--home-card-padding);
+}
+
+.concept-shell .cta-panel h2 {
+  margin-bottom: 0.85rem;
+}
+
+.concept-shell .cta-panel p {
+  max-width: 58ch;
 }
 
 /* =========================
@@ -280,7 +293,15 @@
 ========================= */
 
 .homepage-section-spacious {
-  padding: 4rem 0;
+  padding: var(--home-section-gap) 0;
+}
+
+.page-section {
+  padding-top: var(--home-section-gap);
+}
+
+.page-section:last-of-type {
+  padding-bottom: var(--home-section-gap);
 }
 
 .homepage-feature-card {
@@ -288,6 +309,20 @@
     linear-gradient(180deg, rgba(18, 75, 137, 0.88), rgba(9, 37, 77, 0.96));
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
+}
+
+.section-card-shell {
+  text-align: center;
+}
+
+.section-heading {
+  margin-bottom: 0.85rem;
+}
+
+.section-subheading {
+  max-width: 760px;
+  margin-inline: auto;
+  margin-bottom: clamp(1.5rem, 3vw, 2rem);
 }
 
 .continue-grid .story-card {
@@ -300,24 +335,71 @@
   min-height: 320px;
 }
 
-.story-grid-custom .story-card-media {
-  min-height: 330px;
+.story-grid-custom {
+  align-items: stretch;
+}
+
+.story-grid-custom .story-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.story-grid-custom .story-card h3 {
+  margin-bottom: 0.1rem;
+}
+
+.story-grid-custom .story-card p {
+  margin-block: 0.15rem;
+  line-height: 1.55;
+}
+
+.story-grid-custom .story-card-actions {
+  margin-top: auto;
+  padding-top: 0.85rem;
+}
+
+.story-grid-custom .story-card-actions .btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* =========================
    Homepage CTA Cards
 ========================= */
 
+.mid-cta-grid {
+  align-items: stretch;
+}
+
 .mid-cta-grid .mid-cta-card {
   min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.1rem;
+  padding: var(--home-card-padding);
 }
 
 .mid-cta-card h2 {
   color: var(--color-text);
+  margin-bottom: 0.35rem;
 }
 
 .mid-cta-card p {
   max-width: 62ch;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.mid-cta-card .btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* =========================
@@ -343,10 +425,6 @@
   border-radius: 10px;
 }
 
-.story-grid-custom .story-card {
-  overflow: hidden;
-}
-
 .continue-grid .story-card-media {
   height: 360px;
   min-height: 360px;
@@ -356,7 +434,6 @@
   object-fit: cover;
   object-position: center;
 }
-
 
 /* =========================
    Split Continue Reading Cards
@@ -421,6 +498,12 @@
 
   .hero-panel {
     padding: 2rem;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .hero-panel .hero-title {
+    max-width: 12ch;
   }
 
   .concept-image-frame {
@@ -429,6 +512,11 @@
 }
 
 @media (max-width: 720px) {
+  :root {
+    --home-section-gap: 2.6rem;
+    --home-card-padding: 1rem;
+  }
+
   .announcement-strip {
     min-height: 30px;
     padding: 0.32rem 0.85rem;
@@ -437,7 +525,7 @@
   }
 
   .hero-section {
-    padding-top: 1.5rem;
+    padding-top: 1.35rem;
   }
 
   .hero-image-frame {
@@ -455,19 +543,33 @@
   }
 
   .hero-panel .hero-title {
-    font-size: clamp(2.35rem, 13vw, 3.5rem);
+    max-width: 11ch;
+    font-size: clamp(2.35rem, 13vw, 3.4rem);
+    line-height: 0.95;
+  }
+
+  .hero-description {
+    font-size: 1rem;
   }
 
   .hero-actions {
     flex-direction: column;
+    gap: 0.7rem;
+    margin-top: 1.25rem;
   }
 
   .hero-actions .btn {
     width: 100%;
+    min-height: 44px;
   }
 
   .brand-banner-box {
-    padding: 1.25rem 0.8rem 1rem;
+    padding: 1.25rem 0.9rem 1.1rem;
+  }
+
+  .brand-banner-subtitle {
+    max-width: 42ch;
+    font-size: 0.98rem;
   }
 
   .concept-card {
@@ -476,6 +578,10 @@
 
   .concept-image-frame {
     min-height: 280px;
+  }
+
+  .concept-shell .cta-panel {
+    padding: 1rem;
   }
 
   .continue-reading-split-grid {
@@ -490,5 +596,10 @@
   .story-grid-custom .story-card-media {
     height: 260px;
     min-height: 260px;
+  }
+
+  .story-grid-custom .story-card-actions .btn,
+  .mid-cta-card .btn {
+    width: 100%;
   }
 }

@@ -11,8 +11,8 @@
   <title>Celestial Comics | Stories Yet Untold</title>
 
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32.png" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16.png" href="/favicon-16x16.png" />
   <link rel="manifest" href="/site.webmanifest" />
   <link rel="shortcut icon" href="/favicon.ico" />
 
@@ -80,18 +80,16 @@
           </div>
 
           <div class="hero-panel">
-            <p class="hero-eyebrow">Current Winner</p>
-
             <h1 id="homepage-hero-title" class="hero-title">
               Current Winner
             </h1>
 
             <p id="homepage-hero-description" class="hero-description">
-              Discover the winning story currently moving through the Celestial Comics pipeline.
+              Follow the latest story chosen by the Celestial Comics community.
             </p>
 
             <div class="hero-actions">
-              <a id="homepage-hero-cta" href="/history/" class="btn btn-primary">Keep Reading</a>
+              <a id="homepage-hero-cta" href="/history/" class="btn btn-primary">View Current Winner</a>
               <a href="/gallery/" class="btn btn-secondary">View Gallery</a>
             </div>
           </div>
@@ -99,11 +97,13 @@
       </div>
     </section>
 
-    <section class="brand-banner" aria-label="Celestial Comics tagline">
+    <section class="brand-banner" aria-label="How Celestial Comics works">
       <div class="container">
         <div class="brand-banner-box">
-          <h2 class="brand-banner-title">Celestial Comics</h2>
-          <p class="brand-banner-subtitle">Stories Yet Untold</p>
+          <h2 class="brand-banner-title">Stories Yet Untold</h2>
+          <p class="brand-banner-subtitle">
+            Discover concepts, vote on future comics, follow winners into production, and read released stories.
+          </p>
         </div>
       </div>
     </section>
@@ -126,14 +126,14 @@
           <aside class="cta-panel">
             <h2 id="gallery-spotlight-heading">From the Gallery</h2>
             <p>
-              Voting tournament competitors are pulled from the gallery. Did a story you loved not win?
-              It may still return in a future decision tournament.
+              The Gallery is the concept archive. These stories can be selected for future voting rounds,
+              and stories that do not win may still return later.
             </p>
             <p>
               Browse concept art, explore the worlds behind each pitch, and keep up with what may be chosen next.
             </p>
             <div>
-              <a href="/gallery/" class="btn btn-primary">Go to Gallery</a>
+              <a href="/gallery/" class="btn btn-primary">Browse Concepts</a>
             </div>
           </aside>
         </div>
@@ -161,7 +161,7 @@
             See what story we’re currently working on, revisit past winners, and follow progress toward release.
           </p>
           <div>
-            <a href="/history/" class="btn btn-primary">Go to Winner Page</a>
+            <a href="/history/" class="btn btn-primary">View Winner Updates</a>
           </div>
         </article>
 
@@ -197,7 +197,7 @@
   <script type="module" src="/js/admin-nav.js"></script>
 
   <script type="module">
-    import { updateUI, logout } from '/js/auth.js';
+    import { updateUI, logout, getCurrentUserAsync } from '/js/auth.js';
     import { fetchStoriesWithVotes } from '/js/vote.js';
 
     const navToggle = document.querySelector('.nav-toggle');
@@ -330,6 +330,26 @@
       }
     }
 
+    function updateHomepageStatusStrip(user, stories = []) {
+      const statusText = document.getElementById('homepage-status-text');
+      if (!statusText) return;
+
+      const safeStories = Array.isArray(stories) ? stories : [];
+      const votingIsOpen = safeStories.some((story) => story?.voting_status === 'open');
+
+      if (!user) {
+        statusText.innerHTML = 'NO ACCOUNT? <a href="/login/signup.html">SIGN UP HERE!</a>';
+        return;
+      }
+
+      if (votingIsOpen) {
+        statusText.innerHTML = 'VOTING OPEN • <a href="/vote/">CAST YOUR VOTE</a>';
+        return;
+      }
+
+      statusText.innerHTML = 'NEXT VOTE COMING SOON • <a href="/gallery/">BROWSE THE GALLERY</a>';
+    }
+
     async function renderHomepageContent() {
       const heroTitle = document.getElementById('homepage-hero-title');
       const heroDescription = document.getElementById('homepage-hero-description');
@@ -365,11 +385,11 @@
         if (heroDescription) {
           heroDescription.textContent =
             content.hero_description ||
-            'Discover the winning story currently moving through the Celestial Comics pipeline.';
+            'Follow the latest story chosen by the Celestial Comics community.';
         }
 
         if (heroCta) {
-          heroCta.textContent = content.hero_cta_text || 'Keep Reading';
+          heroCta.textContent = content.hero_cta_text || 'View Current Winner';
           heroCta.href = content.hero_cta_link || '/history/';
         }
 
@@ -485,13 +505,24 @@
 
       await renderHomepageContent();
 
+      let user = null;
+      let stories = [];
+
       try {
-        const stories = await fetchStoriesWithVotes();
+        user = await getCurrentUserAsync();
+      } catch (err) {
+        console.error('Homepage user check error:', err);
+      }
+
+      try {
+        stories = await fetchStoriesWithVotes();
         renderStoriesGrid(stories);
       } catch (err) {
         console.error('Homepage stories load error:', err);
         renderStoriesGrid([]);
       }
+
+      updateHomepageStatusStrip(user, stories);
     });
   </script>
 </body>
