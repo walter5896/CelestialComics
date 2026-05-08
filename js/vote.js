@@ -18,11 +18,6 @@ const delegatedUnsaveContainers = new Set();
 
 let votePageResumeRefreshBound = false;
 let voteRefreshInProgress = false;
-let lastResumeRefreshAt = 0;
-
-const RPC_TIMEOUT_MS = 8000;
-const FETCH_TIMEOUT_MS = 8000;
-const RESUME_REFRESH_COOLDOWN_MS = 2500;
 
 /* =======================
    GENERIC HELPERS
@@ -51,8 +46,13 @@ function isPositiveInteger(value) {
 
 function truncateText(value, maxLength = 180) {
   const text = String(value ?? '').trim();
+
   if (!text) return '';
-  if (text.length <= maxLength) return text;
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
   return `${text.slice(0, maxLength).trim()}...`;
 }
 
@@ -69,39 +69,6 @@ function isPreviewEnabled(story) {
     !!story?.is_preview_enabled ||
     !!story?.story_preview_enabled ||
     Number(story?.preview_page_count || story?.story_preview_page_count || 0) > 0
-  );
-}
-
-function withTimeout(promise, timeoutMs, timeoutMessage = 'Request timed out.') {
-  let timeoutId;
-
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = window.setTimeout(() => {
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    window.clearTimeout(timeoutId);
-  });
-}
-
-async function callSupabaseWithTimeout(promiseFactory, timeoutMs, timeoutMessage) {
-  try {
-    return await withTimeout(promiseFactory(), timeoutMs, timeoutMessage);
-  } catch (error) {
-    return {
-      data: null,
-      error
-    };
-  }
-}
-
-async function callVotingRpcWithTimeout(functionName, payload) {
-  return callSupabaseWithTimeout(
-    () => supabase.rpc(functionName, payload),
-    RPC_TIMEOUT_MS,
-    'The voting request timed out. Please try again.'
   );
 }
 
@@ -125,8 +92,10 @@ function getStoryDetailUrl(story) {
   switch (story?.story_status) {
     case 'released':
       return `/comics/story.html?id=${safeStoryId}`;
+
     case 'winner_in_production':
       return '/history/';
+
     case 'active_vote':
     case 'concept_bank':
     default:
@@ -197,8 +166,9 @@ function updateVoteTotalIndicator(btn, totalVotes) {
 }
 
 /**
- * Button count = current user's votes.
- * Vote pill = public total votes.
+ * IMPORTANT:
+ * The button count is the CURRENT USER'S votes for that story.
+ * The pill beside the button is the PUBLIC TOTAL votes for that story.
  */
 function updateVoteButtonLabel(btn, status = 'open', totalVotes = 0, userVoteCount = 0) {
   if (!btn) return;
@@ -218,45 +188,6 @@ function updateVoteButtonLabel(btn, status = 'open', totalVotes = 0, userVoteCou
   }
 
   btn.textContent = 'Voting Closed';
-}
-
-function restoreVoteButton(btn, originalText, originalPublicCount, originalUserVoteCount) {
-  if (!btn) return;
-
-  btn.disabled = false;
-  btn.textContent = originalText || 'Vote (0)';
-  setButtonVoteCount(btn, originalPublicCount);
-  setUserVoteCountForButton(btn, originalUserVoteCount);
-  updateVoteTotalIndicator(btn, originalPublicCount);
-}
-
-function restoreRecantButton(btn, originalText) {
-  if (!btn) return;
-
-  btn.disabled = false;
-  btn.textContent = originalText || 'Recant 1 Vote';
-}
-
-function resetStuckVotingButtons(containerId = 'story-grid') {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  container.querySelectorAll('.vote-btn').forEach((btn) => {
-    if (btn.textContent.trim().toLowerCase() === 'submitting...') {
-      const publicCount = getButtonVoteCount(btn);
-      const userCount = getUserVoteCountForButton(btn);
-
-      btn.disabled = false;
-      updateVoteButtonLabel(btn, 'open', publicCount, userCount);
-    }
-  });
-
-  container.querySelectorAll('.recant-btn').forEach((btn) => {
-    if (btn.textContent.trim().toLowerCase() === 'recanting...') {
-      btn.disabled = false;
-      btn.textContent = 'Recant 1 Vote';
-    }
-  });
 }
 
 /* =======================
@@ -295,25 +226,21 @@ function deriveVotingStatus(period) {
 }
 
 async function fetchCurrentVotingPeriod() {
-  const { data, error } = await callSupabaseWithTimeout(
-    () => supabase
-      .from('voting_periods')
-      .select(`
-        id,
-        start_time,
-        end_time,
-        status,
-        closed_at,
-        winner_id,
-        finalized_at,
-        winning_vote_count
-      `)
-      .is('finalized_at', null)
-      .order('id', { ascending: false })
-      .limit(1),
-    FETCH_TIMEOUT_MS,
-    'Voting period request timed out.'
-  );
+  const { data, error } = await supabase
+    .from('voting_periods')
+    .select(`
+      id,
+      start_time,
+      end_time,
+      status,
+      closed_at,
+      winner_id,
+      finalized_at,
+      winning_vote_count
+    `)
+    .is('finalized_at', null)
+    .order('id', { ascending: false })
+    .limit(1);
 
   if (error) {
     console.error('Error fetching current voting period:', error);
@@ -333,24 +260,20 @@ async function fetchCurrentVotingPeriod() {
 }
 
 async function fetchOpenVotingPeriod() {
-  const { data, error } = await callSupabaseWithTimeout(
-    () => supabase
-      .from('voting_periods')
-      .select(`
-        id,
-        start_time,
-        end_time,
-        status,
-        closed_at,
-        finalized_at
-      `)
-      .is('finalized_at', null)
-      .is('closed_at', null)
-      .order('id', { ascending: false })
-      .limit(5),
-    FETCH_TIMEOUT_MS,
-    'Open voting period request timed out.'
-  );
+  const { data, error } = await supabase
+    .from('voting_periods')
+    .select(`
+      id,
+      start_time,
+      end_time,
+      status,
+      closed_at,
+      finalized_at
+    `)
+    .is('finalized_at', null)
+    .is('closed_at', null)
+    .order('id', { ascending: false })
+    .limit(5);
 
   if (error) {
     console.error('Error fetching open voting period:', error);
@@ -373,7 +296,7 @@ async function fetchOpenVotingPeriod() {
 ======================= */
 
 async function fetchUserProfileBalances() {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
 
   if (!user) {
     const emptyBalances = { round: 0, bonus: 0, total: 0 };
@@ -386,15 +309,11 @@ async function fetchUserProfileBalances() {
     return emptyBalances;
   }
 
-  const { data, error } = await callSupabaseWithTimeout(
-    () => supabase
-      .from('profiles')
-      .select('vote_balance, bonus_vote_balance')
-      .eq('id', user.id)
-      .maybeSingle(),
-    FETCH_TIMEOUT_MS,
-    'Profile balance request timed out.'
-  );
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('vote_balance, bonus_vote_balance')
+    .eq('id', user.id)
+    .maybeSingle();
 
   if (error) {
     console.error('Error fetching user balances:', error);
@@ -430,28 +349,24 @@ async function fetchUserProfileBalances() {
 
 export async function fetchConceptBankStories() {
   try {
-    const { data, error } = await callSupabaseWithTimeout(
-      () => supabase
-        .from('stories')
-        .select(`
-          id,
-          title,
-          image_url,
-          cover_image_url,
-          author,
-          description,
-          active,
-          story_status,
-          is_preview_enabled,
-          preview_page_count,
-          created_at
-        `)
-        .eq('active', true)
-        .eq('story_status', 'concept_bank')
-        .order('created_at', { ascending: false }),
-      FETCH_TIMEOUT_MS,
-      'Concept bank story request timed out.'
-    );
+    const { data, error } = await supabase
+      .from('stories')
+      .select(`
+        id,
+        title,
+        image_url,
+        cover_image_url,
+        author,
+        description,
+        active,
+        story_status,
+        is_preview_enabled,
+        preview_page_count,
+        created_at
+      `)
+      .eq('active', true)
+      .eq('story_status', 'concept_bank')
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -472,28 +387,24 @@ export async function fetchStoriesWithVotes() {
     const currentVotingStatus = deriveVotingStatus(currentPeriod);
     const currentVotingPeriodId = currentPeriod?.id || null;
 
-    const { data: stories, error: storiesError } = await callSupabaseWithTimeout(
-      () => supabase
-        .from('stories')
-        .select(`
-          id,
-          title,
-          image_url,
-          cover_image_url,
-          author,
-          description,
-          active,
-          story_status,
-          is_preview_enabled,
-          preview_page_count,
-          created_at
-        `)
-        .eq('active', true)
-        .eq('story_status', 'active_vote')
-        .order('created_at', { ascending: false }),
-      FETCH_TIMEOUT_MS,
-      'Active vote story request timed out.'
-    );
+    const { data: stories, error: storiesError } = await supabase
+      .from('stories')
+      .select(`
+        id,
+        title,
+        image_url,
+        cover_image_url,
+        author,
+        description,
+        active,
+        story_status,
+        is_preview_enabled,
+        preview_page_count,
+        created_at
+      `)
+      .eq('active', true)
+      .eq('story_status', 'active_vote')
+      .order('created_at', { ascending: false });
 
     if (storiesError) throw storiesError;
 
@@ -505,14 +416,10 @@ export async function fetchStoriesWithVotes() {
       }));
     }
 
-    const { data: votesData, error: votesError } = await callSupabaseWithTimeout(
-      () => supabase
-        .from('votes')
-        .select('story_id, vote_count')
-        .eq('voting_period_id', currentVotingPeriodId),
-      FETCH_TIMEOUT_MS,
-      'Vote count request timed out.'
-    );
+    const { data: votesData, error: votesError } = await supabase
+      .from('votes')
+      .select('story_id, vote_count')
+      .eq('voting_period_id', currentVotingPeriodId);
 
     if (votesError) throw votesError;
 
@@ -536,7 +443,7 @@ export async function fetchStoriesWithVotes() {
 }
 
 export async function fetchUserVotes() {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
   if (!user) return [];
 
   const currentPeriod = await fetchCurrentVotingPeriod();
@@ -545,15 +452,11 @@ export async function fetchUserVotes() {
   if (!currentVotingPeriodId) return [];
 
   try {
-    const { data, error } = await callSupabaseWithTimeout(
-      () => supabase
-        .from('votes')
-        .select('story_id, vote_count, voting_period_id')
-        .eq('user_id', user.id)
-        .eq('voting_period_id', currentVotingPeriodId),
-      FETCH_TIMEOUT_MS,
-      'User vote request timed out.'
-    );
+    const { data, error } = await supabase
+      .from('votes')
+      .select('story_id, vote_count, voting_period_id')
+      .eq('user_id', user.id)
+      .eq('voting_period_id', currentVotingPeriodId);
 
     if (error) {
       console.error('Error fetching user votes:', error);
@@ -581,18 +484,14 @@ export async function fetchUserVoteBalances() {
 }
 
 export async function fetchSavedStories() {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
   if (!user) return { success: false, data: [] };
 
-  const { data, error } = await callSupabaseWithTimeout(
-    () => supabase
-      .from('saved_stories')
-      .select('story_id, stories(*)')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false }),
-    FETCH_TIMEOUT_MS,
-    'Saved stories request timed out.'
-  );
+  const { data, error } = await supabase
+    .from('saved_stories')
+    .select('story_id, stories(*)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching saved stories:', error);
@@ -612,7 +511,7 @@ export async function fetchSavedStories() {
 ======================= */
 
 export async function submitVote(storyId, amount = 1) {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
 
   if (!user) {
     return {
@@ -632,7 +531,7 @@ export async function submitVote(storyId, amount = 1) {
     };
   }
 
-  const { data, error } = await callVotingRpcWithTimeout('submit_vote_secure', {
+  const { data, error } = await supabase.rpc('submit_vote_secure', {
     p_story_id: storyId,
     p_amount: voteAmount
   });
@@ -666,7 +565,7 @@ export async function submitVote(storyId, amount = 1) {
 }
 
 export async function recantVote(storyId, amount = 1) {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
 
   if (!user) {
     return {
@@ -686,7 +585,7 @@ export async function recantVote(storyId, amount = 1) {
     };
   }
 
-  const { data, error } = await callVotingRpcWithTimeout('recant_vote_secure', {
+  const { data, error } = await supabase.rpc('recant_vote_secure', {
     p_story_id: storyId,
     p_amount: recantAmount
   });
@@ -720,7 +619,7 @@ export async function recantVote(storyId, amount = 1) {
 }
 
 export async function saveStory(storyId) {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
 
   if (!user) {
     return {
@@ -730,16 +629,12 @@ export async function saveStory(storyId) {
     };
   }
 
-  const { error } = await callSupabaseWithTimeout(
-    () => supabase
-      .from('saved_stories')
-      .insert({
-        user_id: user.id,
-        story_id: storyId
-      }),
-    FETCH_TIMEOUT_MS,
-    'Save story request timed out.'
-  );
+  const { error } = await supabase
+    .from('saved_stories')
+    .insert({
+      user_id: user.id,
+      story_id: storyId
+    });
 
   if (error) {
     if (error.code === '23505') {
@@ -755,7 +650,7 @@ export async function saveStory(storyId) {
     return {
       success: false,
       reason: 'save_failed',
-      message: error.message || 'Could not save story.'
+      message: 'Could not save story.'
     };
   }
 
@@ -763,7 +658,7 @@ export async function saveStory(storyId) {
 }
 
 export async function unsaveStory(storyId) {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
 
   if (!user) {
     return {
@@ -773,15 +668,11 @@ export async function unsaveStory(storyId) {
     };
   }
 
-  const { error } = await callSupabaseWithTimeout(
-    () => supabase
-      .from('saved_stories')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('story_id', storyId),
-    FETCH_TIMEOUT_MS,
-    'Unsave story request timed out.'
-  );
+  const { error } = await supabase
+    .from('saved_stories')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('story_id', storyId);
 
   if (error) {
     console.error('Error unsaving story:', error);
@@ -789,7 +680,7 @@ export async function unsaveStory(storyId) {
     return {
       success: false,
       reason: 'unsave_failed',
-      message: error.message || 'Could not unsave story.'
+      message: 'Could not unsave story.'
     };
   }
 
@@ -1199,7 +1090,11 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
         return;
       }
 
-      restoreVoteButton(btn, originalText, originalPublicCount, originalUserVoteCount);
+      btn.textContent = originalText;
+      setButtonVoteCount(btn, originalPublicCount);
+      setUserVoteCountForButton(btn, originalUserVoteCount);
+      updateVoteTotalIndicator(btn, originalPublicCount);
+      btn.disabled = false;
 
       if (result.reason === 'not_logged_in') {
         alert(result.message || 'You must be logged in to vote.');
@@ -1213,7 +1108,11 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
       }
     } catch (err) {
       console.error('Vote click error:', err);
-      restoreVoteButton(btn, originalText, originalPublicCount, originalUserVoteCount);
+      btn.disabled = false;
+      btn.textContent = originalText;
+      setButtonVoteCount(btn, originalPublicCount);
+      setUserVoteCountForButton(btn, originalUserVoteCount);
+      updateVoteTotalIndicator(btn, originalPublicCount);
       alert('Could not submit vote.');
     }
   });
@@ -1317,7 +1216,8 @@ export function attachRecantListeners(containerId, options = {}) {
         return;
       }
 
-      restoreRecantButton(btn, originalText);
+      btn.disabled = false;
+      btn.textContent = originalText;
 
       if (res.reason === 'voting_closed') {
         alert(res.message || 'Voting is closed. You can no longer recant votes for this round.');
@@ -1326,7 +1226,8 @@ export function attachRecantListeners(containerId, options = {}) {
       }
     } catch (err) {
       console.error('Recant click error:', err);
-      restoreRecantButton(btn, originalText);
+      btn.disabled = false;
+      btn.textContent = originalText;
       alert('Could not recant vote.');
     }
   });
@@ -1389,25 +1290,10 @@ function bindVotePageResumeRefresh(containerId = 'story-grid') {
   async function refreshIfVisible() {
     if (document.hidden) return;
 
-    const now = Date.now();
-    if (now - lastResumeRefreshAt < RESUME_REFRESH_COOLDOWN_MS) return;
-
-    lastResumeRefreshAt = now;
-
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    resetStuckVotingButtons(containerId);
-
-    const hasActiveSubmittingButton = [...container.querySelectorAll('.vote-btn, .recant-btn')]
-      .some((btn) => {
-        const text = btn.textContent.trim().toLowerCase();
-        return text === 'submitting...' || text === 'recanting...';
-      });
-
-    if (hasActiveSubmittingButton) return;
-
-    const user = await getCurrentUserAsync({ refresh: false });
+    const user = await getCurrentUserAsync();
     if (!user) return;
 
     await refreshVoteCards(containerId);
@@ -1415,20 +1301,16 @@ function bindVotePageResumeRefresh(containerId = 'story-grid') {
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      window.setTimeout(refreshIfVisible, 250);
+      refreshIfVisible();
     }
   });
 
   window.addEventListener('focus', () => {
-    window.setTimeout(refreshIfVisible, 250);
+    refreshIfVisible();
   });
 
   window.addEventListener('pageshow', () => {
-    window.setTimeout(refreshIfVisible, 250);
-  });
-
-  window.addEventListener('auth-resumed', () => {
-    window.setTimeout(refreshIfVisible, 250);
+    refreshIfVisible();
   });
 }
 
@@ -1437,7 +1319,7 @@ function bindVotePageResumeRefresh(containerId = 'story-grid') {
 ======================= */
 
 export async function initVoting(containerId = 'story-grid') {
-  const user = await getCurrentUserAsync({ refresh: false });
+  const user = await getCurrentUserAsync();
   if (!user) return false;
 
   const stories = await fetchStoriesWithVotes();
@@ -1448,7 +1330,6 @@ export async function initVoting(containerId = 'story-grid') {
   const userVotes = await fetchUserVotes();
 
   updateVoteButtons(userVotes, safeStories);
-
   attachVoteListeners(containerId, {
     reloadOnSuccess: false
   });
