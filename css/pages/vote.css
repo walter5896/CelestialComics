@@ -1,7 +1,7 @@
 /* /css/pages/vote.css */
 
 /* =========================
-   Compact Vote Page
+   Vote Page Status Banner
 ========================= */
 
 .vote-status-banner {
@@ -40,13 +40,17 @@
   color: var(--color-accent-soft);
 }
 
+/* =========================
+   Vote Page Shell / Hero
+========================= */
+
 .vote-page {
   width: 100%;
-  padding-bottom: 3rem;
+  padding-bottom: clamp(2.5rem, 5vw, 4rem);
 }
 
 .vote-hero {
-  padding: 3rem 0 2rem;
+  padding: clamp(2rem, 4vw, 2.75rem) 0 clamp(1.25rem, 2.5vw, 1.75rem);
   text-align: center;
   background:
     radial-gradient(circle at top center, rgba(242, 178, 74, 0.12), transparent 34%),
@@ -59,7 +63,7 @@
 }
 
 .vote-hero h1 {
-  margin: 0 0 0.8rem;
+  margin: 0 0 0.65rem;
   font-family: var(--font-heading);
   font-size: clamp(2.75rem, 5.5vw, 4.85rem);
   line-height: 0.95;
@@ -92,7 +96,7 @@
 }
 
 .vote-section {
-  padding: 1rem 0 3rem;
+  padding: 0.5rem 0 clamp(2.5rem, 5vw, 4rem);
 }
 
 .vote-container {
@@ -156,6 +160,13 @@
   margin-top: 1rem;
 }
 
+.vote-state-actions .btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* =========================
    Matchup Panel
 ========================= */
@@ -163,7 +174,7 @@
 .vote-matchup-panel {
   width: min(1040px, 100%);
   margin: 0 auto;
-  padding: clamp(1rem, 1.8vw, 1.35rem);
+  padding: clamp(1rem, 2vw, 1.5rem);
   background:
     radial-gradient(circle at top center, rgba(18, 75, 137, 0.35), transparent 48%),
     linear-gradient(180deg, rgba(7, 31, 64, 0.98), rgba(3, 23, 47, 0.98));
@@ -176,7 +187,7 @@
 
 .vote-matchup-heading {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: clamp(1rem, 2vw, 1.35rem);
 }
 
 .vote-matchup-heading h2 {
@@ -185,13 +196,14 @@
   font-size: clamp(1.85rem, 3.3vw, 2.8rem);
   line-height: 1;
   color: var(--color-text);
+  letter-spacing: 0.01em;
 }
 
 .vote-matchup-heading p {
   margin: 0.25rem auto 0;
   max-width: 560px;
   color: var(--color-text-soft);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   line-height: 1.35;
 }
 
@@ -213,9 +225,13 @@
 .vote-matchup-card {
   min-width: 0;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .vote-matchup-title {
+  min-height: 1.35em;
   margin: 0 0 0.55rem;
   font-family: var(--font-base);
   font-size: clamp(1rem, 1.7vw, 1.25rem);
@@ -233,7 +249,9 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: rgba(3, 23, 47, 0.42);
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.05), transparent 48%),
+    rgba(3, 23, 47, 0.42);
   border: 1px solid rgba(93, 154, 211, 0.22);
   border-radius: 0.35rem;
   transition:
@@ -252,8 +270,9 @@
 .vote-matchup-art-link img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
+  padding: 0.15rem;
 }
 
 .vote-matchup-art-empty {
@@ -265,6 +284,8 @@
 }
 
 .vote-matchup-actions {
+  width: 100%;
+  max-width: 420px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -275,13 +296,17 @@
 
 .vote-matchup-actions .btn {
   margin: 0;
-  min-height: 38px;
+  min-height: 42px;
   padding: 0.55rem 0.95rem;
   font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .vote-total-count {
-  min-height: 38px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -293,6 +318,8 @@
   font-size: 0.82rem;
   font-weight: 900;
   line-height: 1;
+  white-space: nowrap;
+  cursor: default;
 }
 
 .vote-total-count[hidden] {
@@ -343,6 +370,14 @@
 ========================= */
 
 @media (max-width: 900px) {
+  .vote-section {
+    padding-top: 0;
+  }
+
+  .vote-matchup-panel {
+    width: min(620px, 100%);
+  }
+
   .vote-story-grid,
   .story-grid {
     grid-template-columns: 1fr;
@@ -350,7 +385,7 @@
   }
 
   .vote-matchup-art-link {
-    height: 330px;
+    height: clamp(320px, 70vw, 460px);
   }
 }
 
@@ -365,6 +400,17 @@
   .vote-total-count {
     width: 100%;
   }
+
+  .vote-matchup-actions {
+    max-width: 100%;
+    gap: 0.55rem;
+  }
+
+  .vote-matchup-actions .btn,
+  .vote-total-count {
+    min-height: 44px;
+    padding: 0.7rem 0.9rem;
+  }
 }
 
 @media (max-width: 640px) {
@@ -377,11 +423,15 @@
   }
 
   .vote-hero {
-    padding: 2.5rem 0 1.65rem;
+    padding: 2rem 0 1.25rem;
   }
 
   .vote-hero h1 {
-    font-size: clamp(2.45rem, 12vw, 4rem);
+    font-size: clamp(2.25rem, 10vw, 3.4rem);
+  }
+
+  .vote-open-word {
+    font-size: clamp(1.65rem, 8vw, 2.55rem);
   }
 
   .vote-section {
@@ -390,9 +440,10 @@
 
   .vote-matchup-panel {
     padding: 0.75rem;
+    border-radius: var(--radius-sm);
   }
 
   .vote-matchup-art-link {
-    height: 280px;
+    height: clamp(280px, 82vw, 390px);
   }
 }
