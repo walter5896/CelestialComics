@@ -18,6 +18,7 @@ const delegatedUnsaveContainers = new Set();
 
 let votePageResumeRefreshBound = false;
 let voteRefreshInProgress = false;
+let voteActionInProgress = false;
 
 /* =======================
    GENERIC HELPERS
@@ -70,6 +71,69 @@ function isPreviewEnabled(story) {
     !!story?.story_preview_enabled ||
     Number(story?.preview_page_count || story?.story_preview_page_count || 0) > 0
   );
+}
+
+async function parseJsonResponseSafely(res) {
+  const rawText = await res.text();
+
+  try {
+    return rawText ? JSON.parse(rawText) : {};
+  } catch {
+    throw new Error(rawText || 'Server returned an invalid response.');
+  }
+}
+
+async function getAccessToken() {
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error('Error getting Supabase session:', error);
+    return null;
+  }
+
+  return data?.session?.access_token || null;
+}
+
+async function callVoteFunction(functionPath, payload) {
+  const token = await getAccessToken();
+
+  if (!token) {
+    return {
+      success: false,
+      reason: 'not_logged_in',
+      message: 'You must be logged in.'
+    };
+  }
+
+  const res = await fetch(functionPath, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await parseJsonResponseSafely(res);
+
+  if (!res.ok || !data.success) {
+    return {
+      success: false,
+      reason: data.reason || data.result?.reason || 'request_failed',
+      message:
+        data.error ||
+        data.result?.message ||
+        data.message ||
+        'The voting action could not be completed.',
+      result: data.result || null
+    };
+  }
+
+  return data.result || {
+    success: false,
+    reason: 'unknown',
+    message: 'Unexpected voting response.'
+  };
 }
 
 function getStoryStatusLabel(story) {
@@ -531,33 +595,23 @@ export async function submitVote(storyId, amount = 1) {
     };
   }
 
-  const { data, error } = await supabase.rpc('submit_vote_secure', {
-    p_story_id: storyId,
-    p_amount: voteAmount
+  const result = await callVoteFunction('/.netlify/functions/submit-vote', {
+    story_id: storyId,
+    amount: voteAmount
   });
 
-  if (error) {
-    console.error('submit_vote_secure error:', error);
-
-    return {
-      success: false,
-      reason: 'rpc_error',
-      message: error.message || 'Could not submit vote.'
-    };
-  }
-
-  if (data?.success) {
+  if (result?.success) {
     setVoteBalances({
-      voteBalance: data.round_balance ?? 0,
-      bonusVoteBalance: data.bonus_balance ?? 0
+      voteBalance: result.round_balance ?? 0,
+      bonusVoteBalance: result.bonus_balance ?? 0
     });
 
-    if (data.voting_period_id) {
+    if (result.voting_period_id) {
       await fetchCurrentVotingPeriod();
     }
   }
 
-  return data || {
+  return result || {
     success: false,
     reason: 'unknown',
     message: 'Unexpected vote response.'
@@ -585,33 +639,23 @@ export async function recantVote(storyId, amount = 1) {
     };
   }
 
-  const { data, error } = await supabase.rpc('recant_vote_secure', {
-    p_story_id: storyId,
-    p_amount: recantAmount
+  const result = await callVoteFunction('/.netlify/functions/recant-vote', {
+    story_id: storyId,
+    amount: recantAmount
   });
 
-  if (error) {
-    console.error('recant_vote_secure error:', error);
-
-    return {
-      success: false,
-      reason: 'rpc_error',
-      message: error.message || 'Could not recant vote.'
-    };
-  }
-
-  if (data?.success) {
+  if (result?.success) {
     setVoteBalances({
-      voteBalance: data.round_balance ?? 0,
-      bonusVoteBalance: data.bonus_balance ?? 0
+      voteBalance: result.round_balance ?? 0,
+      bonusVoteBalance: result.bonus_balance ?? 0
     });
 
-    if (data.voting_period_id) {
+    if (result.voting_period_id) {
       await fetchCurrentVotingPeriod();
     }
   }
 
-  return data || {
+  return result || {
     success: false,
     reason: 'unknown',
     message: 'Unexpected recant response.'
@@ -1008,7 +1052,7 @@ export function updateVoteButtons(userVotes, stories) {
 }
 
 async function refreshVoteCards(containerId = 'story-grid') {
-  if (voteRefreshInProgress) return [];
+  if (voteRefreshInProgress || voteActionInProgress) return [];
 
   voteRefreshInProgress = true;
 
@@ -1050,13 +1094,14 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
   container.addEventListener('click', async (event) => {
     const btn = event.target.closest('.vote-btn');
     if (!btn || !container.contains(btn)) return;
-    if (btn.disabled) return;
+    if (btn.disabled || voteActionInProgress) return;
 
     const originalText = btn.textContent;
     const originalPublicCount = getButtonVoteCount(btn);
     const originalUserVoteCount = getUserVoteCountForButton(btn);
     const storyId = btn.dataset.storyId;
 
+    voteActionInProgress = true;
     btn.disabled = true;
     btn.textContent = 'Submitting...';
 
@@ -1114,6 +1159,8 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
       setUserVoteCountForButton(btn, originalUserVoteCount);
       updateVoteTotalIndicator(btn, originalPublicCount);
       alert('Could not submit vote.');
+    } finally {
+      voteActionInProgress = false;
     }
   });
 }
@@ -1189,11 +1236,12 @@ export function attachRecantListeners(containerId, options = {}) {
   container.addEventListener('click', async (event) => {
     const btn = event.target.closest('.recant-btn');
     if (!btn || !container.contains(btn)) return;
-    if (btn.disabled) return;
+    if (btn.disabled || voteActionInProgress) return;
 
     const originalText = btn.textContent;
     const storyId = btn.dataset.storyId;
 
+    voteActionInProgress = true;
     btn.disabled = true;
     btn.textContent = 'Recanting...';
 
@@ -1229,6 +1277,8 @@ export function attachRecantListeners(containerId, options = {}) {
       btn.disabled = false;
       btn.textContent = originalText;
       alert('Could not recant vote.');
+    } finally {
+      voteActionInProgress = false;
     }
   });
 }
@@ -1289,6 +1339,7 @@ function bindVotePageResumeRefresh(containerId = 'story-grid') {
 
   async function refreshIfVisible() {
     if (document.hidden) return;
+    if (voteActionInProgress) return;
 
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -1301,16 +1352,16 @@ function bindVotePageResumeRefresh(containerId = 'story-grid') {
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-      refreshIfVisible();
+      window.setTimeout(refreshIfVisible, 250);
     }
   });
 
   window.addEventListener('focus', () => {
-    refreshIfVisible();
+    window.setTimeout(refreshIfVisible, 250);
   });
 
   window.addEventListener('pageshow', () => {
-    refreshIfVisible();
+    window.setTimeout(refreshIfVisible, 250);
   });
 }
 
@@ -1330,6 +1381,7 @@ export async function initVoting(containerId = 'story-grid') {
   const userVotes = await fetchUserVotes();
 
   updateVoteButtons(userVotes, safeStories);
+
   attachVoteListeners(containerId, {
     reloadOnSuccess: false
   });
