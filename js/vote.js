@@ -623,10 +623,6 @@ export async function submitVote(storyId, amount = 1) {
       voteBalance: result.round_balance ?? 0,
       bonusVoteBalance: result.bonus_balance ?? 0
     });
-
-    if (result.voting_period_id) {
-      await fetchCurrentVotingPeriod();
-    }
   }
 
   return result || {
@@ -657,10 +653,6 @@ export async function recantVote(storyId, amount = 1) {
       voteBalance: result.round_balance ?? 0,
       bonusVoteBalance: result.bonus_balance ?? 0
     });
-
-    if (result.voting_period_id) {
-      await fetchCurrentVotingPeriod();
-    }
   }
 
   return result || {
@@ -1060,7 +1052,7 @@ export function updateVoteButtons(userVotes, stories) {
 }
 
 async function refreshVoteCards(containerId = 'story-grid') {
-  if (voteRefreshInProgress || voteActionInProgress) return [];
+  if (voteRefreshInProgress) return [];
 
   voteRefreshInProgress = true;
 
@@ -1132,6 +1124,7 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
         btn.disabled = false;
 
         if (typeof onSuccess === 'function') {
+          voteActionInProgress = false;
           await onSuccess(result);
           return;
         }
@@ -1152,6 +1145,7 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
         alert(result.message || 'You must be logged in to vote.');
       } else if (result.reason === 'voting_closed') {
         alert(result.message || 'Voting is closed right now.');
+        voteActionInProgress = false;
         await refreshVoteCards(containerId);
       } else if (result.reason === 'insufficient_balance') {
         alert(result.message || 'You do not have enough votes.');
@@ -1253,6 +1247,7 @@ export function attachRecantListeners(containerId, options = {}) {
 
       if (res.success) {
         if (typeof onSuccess === 'function') {
+          voteActionInProgress = false;
           await onSuccess(res);
           return;
         }
