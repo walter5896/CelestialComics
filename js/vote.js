@@ -20,6 +20,8 @@ let votePageResumeRefreshBound = false;
 let voteRefreshInProgress = false;
 let voteActionInProgress = false;
 
+const ACTION_TIMEOUT_MS = 10000;
+
 /* =======================
    GENERIC HELPERS
 ======================= */
@@ -73,6 +75,20 @@ function isPreviewEnabled(story) {
   );
 }
 
+function withActionTimeout(promise, timeoutMessage = 'Voting action timed out. Please try again.') {
+  let timeoutId;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, ACTION_TIMEOUT_MS);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
+
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -83,57 +99,125 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
+function getStoredAccessToken() {
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
 
-  if (error) {
-    console.error('Error getting Supabase session:', error);
-    return null;
+      if (!key || !key.startsWith('sb-') || !key.endsWith('-auth-token')) {
+        continue;
+      }
+
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw);
+
+      const token =
+        parsed?.access_token ||
+        parsed?.currentSession?.access_token ||
+        parsed?.session?.access_token;
+
+      const expiresAt =
+        parsed?.expires_at ||
+        parsed?.currentSession?.expires_at ||
+        parsed?.session?.expires_at;
+
+      if (!token) continue;
+
+      if (expiresAt && Number(expiresAt) * 1000 < Date.now()) {
+        continue;
+      }
+
+      return token;
+    }
+  } catch (error) {
+    console.error('Error reading stored Supabase token:', error);
   }
 
-  return data?.session?.access_token || null;
+  return null;
+}
+
+async function getAccessToken() {
+  const storedToken = getStoredAccessToken();
+
+  if (storedToken) {
+    return storedToken;
+  }
+
+  try {
+    const sessionResult = await withActionTimeout(
+      supabase.auth.getSession(),
+      'Could not confirm your login session. Please refresh and try again.'
+    );
+
+    const { data, error } = sessionResult;
+
+    if (error) {
+      console.error('Error getting Supabase session:', error);
+      return null;
+    }
+
+    return data?.session?.access_token || null;
+  } catch (error) {
+    console.error('Error getting access token:', error);
+    return null;
+  }
 }
 
 async function callVoteFunction(functionPath, payload) {
-  const token = await getAccessToken();
+  try {
+    const token = await getAccessToken();
 
-  if (!token) {
+    if (!token) {
+      return {
+        success: false,
+        reason: 'not_logged_in',
+        message: 'You must be logged in.'
+      };
+    }
+
+    const res = await withActionTimeout(
+      fetch(functionPath, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      }),
+      'The voting request timed out. Please try again.'
+    );
+
+    const data = await parseJsonResponseSafely(res);
+
+    if (!res.ok || !data.success) {
+      return {
+        success: false,
+        reason: data.reason || data.result?.reason || 'request_failed',
+        message:
+          data.error ||
+          data.result?.message ||
+          data.message ||
+          'The voting action could not be completed.',
+        result: data.result || null
+      };
+    }
+
+    return data.result || {
+      success: false,
+      reason: 'unknown',
+      message: 'Unexpected voting response.'
+    };
+  } catch (error) {
+    console.error('Vote function request failed:', error);
+
     return {
       success: false,
-      reason: 'not_logged_in',
-      message: 'You must be logged in.'
+      reason: 'request_failed',
+      message: error.message || 'The voting action could not be completed.'
     };
   }
-
-  const res = await fetch(functionPath, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const data = await parseJsonResponseSafely(res);
-
-  if (!res.ok || !data.success) {
-    return {
-      success: false,
-      reason: data.reason || data.result?.reason || 'request_failed',
-      message:
-        data.error ||
-        data.result?.message ||
-        data.message ||
-        'The voting action could not be completed.',
-      result: data.result || null
-    };
-  }
-
-  return data.result || {
-    success: false,
-    reason: 'unknown',
-    message: 'Unexpected voting response.'
-  };
 }
 
 function getStoryStatusLabel(story) {
@@ -575,16 +659,6 @@ export async function fetchSavedStories() {
 ======================= */
 
 export async function submitVote(storyId, amount = 1) {
-  const user = await getCurrentUserAsync();
-
-  if (!user) {
-    return {
-      success: false,
-      reason: 'not_logged_in',
-      message: 'You must be logged in to vote.'
-    };
-  }
-
   const voteAmount = Number(amount);
 
   if (!isPositiveInteger(voteAmount)) {
@@ -619,16 +693,6 @@ export async function submitVote(storyId, amount = 1) {
 }
 
 export async function recantVote(storyId, amount = 1) {
-  const user = await getCurrentUserAsync();
-
-  if (!user) {
-    return {
-      success: false,
-      reason: 'not_logged_in',
-      message: 'You must be logged in.'
-    };
-  }
-
   const recantAmount = Number(amount);
 
   if (!isPositiveInteger(recantAmount)) {
@@ -1065,6 +1129,7 @@ async function refreshVoteCards(containerId = 'story-grid') {
     const userVotes = await fetchUserVotes();
 
     updateVoteButtons(userVotes, safeStories);
+
     attachVoteListeners(containerId, {
       reloadOnSuccess: false
     });
