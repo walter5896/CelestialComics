@@ -13,6 +13,10 @@ import {
   renderStoriesForProfile,
   attachUnsaveListeners
 } from './vote.js';
+import {
+  getAccessToken,
+  parseJsonResponseSafely
+} from './admin-shared.js';
 
 const voteList = document.getElementById('vote-list');
 const noVotes = document.getElementById('no-votes');
@@ -34,6 +38,8 @@ const physicalPurchaseDetail = document.getElementById('physical-purchase-detail
 
 let physicalPurchasesState = [];
 let physicalPurchaseSelectBound = false;
+let profileRefreshInProgress = false;
+let recantInProgress = false;
 
 if (
   !voteList ||
@@ -73,6 +79,7 @@ function formatPrice(priceCents) {
 
 function formatDate(value) {
   if (!value) return '';
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
 
@@ -168,27 +175,6 @@ function buildPhysicalPurchaseLabel(item) {
   return `${productName} • ${status}${quantityPart}${datePart}`;
 }
 
-async function parseJsonResponseSafely(res) {
-  const rawText = await res.text();
-
-  try {
-    return rawText ? JSON.parse(rawText) : {};
-  } catch {
-    throw new Error(rawText || 'Server returned an invalid response.');
-  }
-}
-
-async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
-
-  if (error) {
-    console.error('Error getting session:', error);
-    return null;
-  }
-
-  return data?.session?.access_token || null;
-}
-
 function renderVoteBalancesFromState() {
   const { voteBalance = 0, bonusVoteBalance = 0 } = getState();
   const safeRoundVotes = Number(voteBalance) || 0;
@@ -240,13 +226,18 @@ function renderLoggedOutPhysicalPurchases() {
   }
 
   if (physicalPurchasesContainer) {
-    physicalPurchasesContainer.innerHTML = physicalPurchasesContainer.innerHTML || '';
     setDisplay(physicalPurchasesContainer, 'none');
   }
 
   if (noPhysicalPurchases) {
     setDisplay(noPhysicalPurchases, 'block');
   }
+}
+
+function setRecantButtonsDisabled(disabled) {
+  voteList.querySelectorAll('.recant-btn').forEach((btn) => {
+    btn.disabled = !!disabled;
+  });
 }
 
 /* =======================
@@ -388,10 +379,10 @@ async function fetchAndRenderVotes() {
     const count = Number(voteRow.vote_count) || 0;
 
     li.innerHTML = `
-      <span>${escapeHtml(title)} — You cast ${count} vote(s) this round</span>
+      <span>${escapeHtml(title)} — You cast ${count} vote${count === 1 ? '' : 's'} this round</span>
       ${
         roundIsOpen
-          ? `<button class="recant-btn" data-story-id="${escapeHtml(voteRow.story_id)}">Recant 1 Vote</button>`
+          ? `<button type="button" class="recant-btn" data-story-id="${escapeHtml(voteRow.story_id)}">Recant 1 Vote</button>`
           : `<button type="button" disabled>Round Closed</button>`
       }
     `;
@@ -455,9 +446,7 @@ function renderOwnedStories(ownedStories) {
       const story = item.stories || {};
       const safeTitle = escapeHtml(story.title || 'Untitled Comic');
       const safeAuthor = escapeHtml(story.author || 'Author not listed');
-      const safeDescription = escapeHtml(
-        story.description || 'No description available.'
-      );
+      const safeDescription = escapeHtml(story.description || 'No description available.');
       const safeImage = escapeHtml(getStoryImage(story));
       const accessLabel = formatAccessType(item.access_type);
       const grantedDate = formatGrantedDate(item.granted_at);
@@ -884,7 +873,6 @@ function bindPhysicalPurchaseDropdown() {
 
 /* =======================
    IMAGE CLICK FALLBACK
-   Makes saved story images behave like the View Concept button
 ======================= */
 
 function attachProfileImageClickFallbacks() {
@@ -934,32 +922,97 @@ function attachProfileImageClickFallbacks() {
 ======================= */
 
 async function refreshProfilePageData() {
-  const user = await getCurrentUserAsync();
+  if (profileRefreshInProgress) return;
 
-  if (!user) {
-    setSharedVoteBalances({
-      voteBalance: 0,
-      bonusVoteBalance: 0
-    });
-    setOwnedStoryAccess([]);
+  profileRefreshInProgress = true;
 
+  try {
+    const user = await getCurrentUserAsync();
+
+    if (!user) {
+      setSharedVoteBalances({
+        voteBalance: 0,
+        bonusVoteBalance: 0
+      });
+      setOwnedStoryAccess([]);
+
+      renderVoteBalancesFromState();
+      renderLoggedOutVotes();
+      renderLoggedOutSavedStories();
+      renderLoggedOutOwnedStories();
+      renderLoggedOutPhysicalPurchases();
+      return;
+    }
+
+    await syncVoteBalancesToState();
     renderVoteBalancesFromState();
-    renderLoggedOutVotes();
-    renderLoggedOutSavedStories();
-    renderLoggedOutOwnedStories();
-    renderLoggedOutPhysicalPurchases();
+
+    await Promise.all([
+      fetchAndRenderVotes(),
+      fetchAndRenderSavedStories(),
+      fetchAndRenderOwnedStories(),
+      fetchAndRenderPhysicalPurchases()
+    ]);
+  } finally {
+    profileRefreshInProgress = false;
+  }
+}
+
+async function refreshAfterRecant() {
+  await syncVoteBalancesToState();
+  renderVoteBalancesFromState();
+  await fetchAndRenderVotes();
+}
+
+async function handleRecantClick(event) {
+  const btn = event.target.closest('.recant-btn');
+  if (!btn || !voteList.contains(btn)) return;
+
+  event.preventDefault();
+
+  if (recantInProgress || btn.disabled) return;
+
+  const storyId = btn.dataset.storyId;
+
+  if (!storyId) {
+    alert('Could not recant vote.');
     return;
   }
 
-  await syncVoteBalancesToState();
-  renderVoteBalancesFromState();
+  const originalText = btn.textContent;
 
-  await Promise.all([
-    fetchAndRenderVotes(),
-    fetchAndRenderSavedStories(),
-    fetchAndRenderOwnedStories(),
-    fetchAndRenderPhysicalPurchases()
-  ]);
+  recantInProgress = true;
+  setRecantButtonsDisabled(true);
+  btn.textContent = 'Recanting...';
+
+  try {
+    const result = await recantVote(storyId, 1);
+
+    if (result.success) {
+      await refreshAfterRecant();
+      alert('Vote recanted!');
+      return;
+    }
+
+    btn.disabled = false;
+    btn.textContent = originalText;
+
+    if (result.reason === 'voting_closed') {
+      alert('Voting is closed. You can no longer recant votes this round.');
+      await fetchAndRenderVotes();
+      return;
+    }
+
+    alert(result.message || 'Could not recant vote.');
+  } catch (error) {
+    console.error('Profile recant error:', error);
+    btn.disabled = false;
+    btn.textContent = originalText;
+    alert('Could not recant vote.');
+  } finally {
+    recantInProgress = false;
+    setRecantButtonsDisabled(false);
+  }
 }
 
 /* =======================
@@ -976,33 +1029,15 @@ async function initProfile() {
   bindPhysicalPurchaseDropdown();
   attachProfileImageClickFallbacks();
 
+  voteList.addEventListener('click', handleRecantClick);
+
   await refreshProfilePageData();
 
   window.addEventListener('user-changed', () => {
-    refreshProfilePageData();
+    if (!recantInProgress) {
+      refreshProfilePageData();
+    }
   });
 }
-
-/* =======================
-   GLOBAL CLICK HANDLER
-======================= */
-
-document.addEventListener('click', async (e) => {
-  if (!e.target.matches('.recant-btn')) return;
-
-  const storyId = e.target.dataset.storyId;
-  const result = await recantVote(storyId);
-
-  if (result.success) {
-    alert('Vote recanted!');
-    await syncVoteBalancesToState();
-    await fetchAndRenderVotes();
-  } else if (result.reason === 'voting_closed') {
-    alert('Voting is closed. You can no longer recant votes this round.');
-    await fetchAndRenderVotes();
-  } else {
-    alert('Could not recant vote.');
-  }
-});
 
 document.addEventListener('DOMContentLoaded', initProfile);

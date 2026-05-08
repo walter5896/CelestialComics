@@ -6,6 +6,10 @@ import {
   setVotingPeriod,
   clearVotingPeriod
 } from './state.js';
+import {
+  getAccessToken,
+  parseJsonResponseSafely
+} from './admin-shared.js';
 
 /* =======================
    MODULE STATE
@@ -16,11 +20,10 @@ const delegatedRecantContainers = new Set();
 const delegatedSaveContainers = new Set();
 const delegatedUnsaveContainers = new Set();
 
-let votePageResumeRefreshBound = false;
 let voteRefreshInProgress = false;
 let voteActionInProgress = false;
 
-const ACTION_TIMEOUT_MS = 10000;
+const ACTION_TIMEOUT_MS = 12000;
 
 /* =======================
    GENERIC HELPERS
@@ -89,85 +92,12 @@ function withActionTimeout(promise, timeoutMessage = 'Voting action timed out. P
   });
 }
 
-async function parseJsonResponseSafely(res) {
-  const rawText = await res.text();
-
-  try {
-    return rawText ? JSON.parse(rawText) : {};
-  } catch {
-    throw new Error(rawText || 'Server returned an invalid response.');
-  }
-}
-
-function getStoredAccessToken() {
-  try {
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-
-      if (!key || !key.startsWith('sb-') || !key.endsWith('-auth-token')) {
-        continue;
-      }
-
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-
-      const parsed = JSON.parse(raw);
-
-      const token =
-        parsed?.access_token ||
-        parsed?.currentSession?.access_token ||
-        parsed?.session?.access_token;
-
-      const expiresAt =
-        parsed?.expires_at ||
-        parsed?.currentSession?.expires_at ||
-        parsed?.session?.expires_at;
-
-      if (!token) continue;
-
-      if (expiresAt && Number(expiresAt) * 1000 < Date.now()) {
-        continue;
-      }
-
-      return token;
-    }
-  } catch (error) {
-    console.error('Error reading stored Supabase token:', error);
-  }
-
-  return null;
-}
-
-async function getAccessToken() {
-  const storedToken = getStoredAccessToken();
-
-  if (storedToken) {
-    return storedToken;
-  }
-
-  try {
-    const sessionResult = await withActionTimeout(
-      supabase.auth.getSession(),
-      'Could not confirm your login session. Please refresh and try again.'
-    );
-
-    const { data, error } = sessionResult;
-
-    if (error) {
-      console.error('Error getting Supabase session:', error);
-      return null;
-    }
-
-    return data?.session?.access_token || null;
-  } catch (error) {
-    console.error('Error getting access token:', error);
-    return null;
-  }
-}
-
 async function callVoteFunction(functionPath, payload) {
   try {
-    const token = await getAccessToken();
+    const token = await withActionTimeout(
+      getAccessToken(),
+      'Could not confirm your login session. Please refresh and try again.'
+    );
 
     if (!token) {
       return {
@@ -177,7 +107,7 @@ async function callVoteFunction(functionPath, payload) {
       };
     }
 
-    const res = await withActionTimeout(
+    const response = await withActionTimeout(
       fetch(functionPath, {
         method: 'POST',
         headers: {
@@ -189,9 +119,9 @@ async function callVoteFunction(functionPath, payload) {
       'The voting request timed out. Please try again.'
     );
 
-    const data = await parseJsonResponseSafely(res);
+    const data = await parseJsonResponseSafely(response);
 
-    if (!res.ok || !data.success) {
+    if (!response.ok || !data.success) {
       return {
         success: false,
         reason: data.reason || data.result?.reason || 'request_failed',
@@ -240,10 +170,8 @@ function getStoryDetailUrl(story) {
   switch (story?.story_status) {
     case 'released':
       return `/comics/story.html?id=${safeStoryId}`;
-
     case 'winner_in_production':
       return '/history/';
-
     case 'active_vote':
     case 'concept_bank':
     default:
@@ -314,9 +242,8 @@ function updateVoteTotalIndicator(btn, totalVotes) {
 }
 
 /**
- * IMPORTANT:
- * The button count is the CURRENT USER'S votes for that story.
- * The pill beside the button is the PUBLIC TOTAL votes for that story.
+ * Button count = current user's votes.
+ * Vote pill = public total votes.
  */
 function updateVoteButtonLabel(btn, status = 'open', totalVotes = 0, userVoteCount = 0) {
   if (!btn) return;
@@ -336,6 +263,23 @@ function updateVoteButtonLabel(btn, status = 'open', totalVotes = 0, userVoteCou
   }
 
   btn.textContent = 'Voting Closed';
+}
+
+function restoreVoteButton(btn, originalText, originalPublicCount, originalUserVoteCount) {
+  if (!btn) return;
+
+  btn.disabled = false;
+  btn.textContent = originalText || 'Vote (0)';
+  setButtonVoteCount(btn, originalPublicCount);
+  setUserVoteCountForButton(btn, originalUserVoteCount);
+  updateVoteTotalIndicator(btn, originalPublicCount);
+}
+
+function restoreRecantButton(btn, originalText) {
+  if (!btn) return;
+
+  btn.disabled = false;
+  btn.textContent = originalText || 'Recant 1 Vote';
 }
 
 /* =======================
@@ -1147,7 +1091,7 @@ async function refreshVoteCards(containerId = 'story-grid') {
 export function attachVoteListeners(containerId = 'story-grid', options = {}) {
   const {
     onSuccess = null,
-    reloadOnSuccess = true
+    reloadOnSuccess = false
   } = options;
 
   const container = document.getElementById(containerId);
@@ -1175,7 +1119,8 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
 
       if (result.success) {
         const updatedPublicCount = originalPublicCount + 1;
-        const updatedUserVoteCount = Number(result.vote_count) || originalUserVoteCount + 1;
+        const updatedUserVoteCount =
+          Number(result.vote_count) || originalUserVoteCount + 1;
 
         setButtonVoteCount(btn, updatedPublicCount);
         setUserVoteCountForButton(btn, updatedUserVoteCount);
@@ -1196,15 +1141,12 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
           return;
         }
 
+        voteActionInProgress = false;
         await refreshVoteCards(containerId);
         return;
       }
 
-      btn.textContent = originalText;
-      setButtonVoteCount(btn, originalPublicCount);
-      setUserVoteCountForButton(btn, originalUserVoteCount);
-      updateVoteTotalIndicator(btn, originalPublicCount);
-      btn.disabled = false;
+      restoreVoteButton(btn, originalText, originalPublicCount, originalUserVoteCount);
 
       if (result.reason === 'not_logged_in') {
         alert(result.message || 'You must be logged in to vote.');
@@ -1218,11 +1160,7 @@ export function attachVoteListeners(containerId = 'story-grid', options = {}) {
       }
     } catch (err) {
       console.error('Vote click error:', err);
-      btn.disabled = false;
-      btn.textContent = originalText;
-      setButtonVoteCount(btn, originalPublicCount);
-      setUserVoteCountForButton(btn, originalUserVoteCount);
-      updateVoteTotalIndicator(btn, originalPublicCount);
+      restoreVoteButton(btn, originalText, originalPublicCount, originalUserVoteCount);
       alert('Could not submit vote.');
     } finally {
       voteActionInProgress = false;
@@ -1289,7 +1227,7 @@ export function attachSaveListeners(containerId = 'story-grid', savedStoryIds = 
 export function attachRecantListeners(containerId, options = {}) {
   const {
     onSuccess = null,
-    reloadOnSuccess = true
+    reloadOnSuccess = false
   } = options;
 
   const container = document.getElementById(containerId);
@@ -1324,13 +1262,11 @@ export function attachRecantListeners(containerId, options = {}) {
           return;
         }
 
-        btn.disabled = false;
-        btn.textContent = originalText;
+        restoreRecantButton(btn, originalText);
         return;
       }
 
-      btn.disabled = false;
-      btn.textContent = originalText;
+      restoreRecantButton(btn, originalText);
 
       if (res.reason === 'voting_closed') {
         alert(res.message || 'Voting is closed. You can no longer recant votes for this round.');
@@ -1339,8 +1275,7 @@ export function attachRecantListeners(containerId, options = {}) {
       }
     } catch (err) {
       console.error('Recant click error:', err);
-      btn.disabled = false;
-      btn.textContent = originalText;
+      restoreRecantButton(btn, originalText);
       alert('Could not recant vote.');
     } finally {
       voteActionInProgress = false;
@@ -1351,7 +1286,7 @@ export function attachRecantListeners(containerId, options = {}) {
 export function attachUnsaveListeners(containerId, options = {}) {
   const {
     onSuccess = null,
-    reloadOnSuccess = true
+    reloadOnSuccess = false
   } = options;
 
   const container = document.getElementById(containerId);
@@ -1395,42 +1330,6 @@ export function attachUnsaveListeners(containerId, options = {}) {
 }
 
 /* =======================
-   TAB / WINDOW RESUME FIX
-======================= */
-
-function bindVotePageResumeRefresh(containerId = 'story-grid') {
-  if (votePageResumeRefreshBound) return;
-  votePageResumeRefreshBound = true;
-
-  async function refreshIfVisible() {
-    if (document.hidden) return;
-    if (voteActionInProgress) return;
-
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    const user = await getCurrentUserAsync();
-    if (!user) return;
-
-    await refreshVoteCards(containerId);
-  }
-
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      window.setTimeout(refreshIfVisible, 250);
-    }
-  });
-
-  window.addEventListener('focus', () => {
-    window.setTimeout(refreshIfVisible, 250);
-  });
-
-  window.addEventListener('pageshow', () => {
-    window.setTimeout(refreshIfVisible, 250);
-  });
-}
-
-/* =======================
    INIT
 ======================= */
 
@@ -1450,8 +1349,6 @@ export async function initVoting(containerId = 'story-grid') {
   attachVoteListeners(containerId, {
     reloadOnSuccess: false
   });
-
-  bindVotePageResumeRefresh(containerId);
 
   return safeStories;
 }
