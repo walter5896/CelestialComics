@@ -26,7 +26,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/gallery.css" />
+  <link rel="stylesheet" href="/css/pages/gallery.css?v=story-detail-polish-1" />
 </head>
 
 <body>
@@ -138,17 +138,24 @@
   <script type="module" src="/js/utils.js"></script>
 
   <script type="module">
-    import { updateUI, logout } from '/js/auth.js';
+    import {
+      updateUI,
+      logout,
+      getCurrentUserAsync,
+      waitForAuthReady
+    } from '/js/auth.js';
+
     import { loadStory } from '/js/story.js';
+
     import {
       fetchConceptBankStories,
       fetchStoriesWithVotes,
-      renderStoriesForHome,
+      renderStoriesForGallery,
       fetchSavedStories,
+      fetchUserVotes,
       submitVote,
       saveStory
     } from '/js/vote.js';
-    import { restrictSingleStoryVoting } from '/js/singleStoryRestrict.js';
 
     const navToggle = document.querySelector('.nav-toggle');
     const mainNav = document.querySelector('.main-nav');
@@ -201,7 +208,14 @@
       document.querySelectorAll('.logout-link').forEach((el) => {
         el.addEventListener('click', async (event) => {
           event.preventDefault();
-          await logout();
+
+          const result = await logout();
+
+          if (!result?.success) {
+            alert(result?.error || 'Logout failed.');
+            return;
+          }
+
           window.location.href = '/';
         });
       });
@@ -248,95 +262,184 @@
       readPreviewLink.style.display = 'inline-flex';
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      updateUI();
-      bindNavToggle();
-      bindLogoutLinks();
+    function setStoryStatusLabel(statusLabel, matchingActiveStory) {
+      if (!statusLabel) return;
 
-      let activeVoteStories = [];
-
-      try {
-        activeVoteStories = await fetchStoriesWithVotes();
-        renderStoryVotingStrip(activeVoteStories);
-      } catch (err) {
-        console.error('Story voting strip load error:', err);
-        activeVoteStories = [];
-        renderStoryVotingStrip([]);
-      }
-
-      const story = await loadStory();
-      if (!story) return;
-
-      updateReadPreviewLink(story);
-
-      const storyId = story.id;
-      const voteBtn = document.querySelector('.vote-btn');
-      const saveBtn = document.querySelector('.save-btn');
-      const statusLabel = document.querySelector('.story-status-label');
-
-      if (statusLabel) {
+      if (!matchingActiveStory) {
         statusLabel.textContent = 'Concept Bank';
+        return;
       }
 
-      const matchingActiveStory = activeVoteStories.find(
-        (item) => String(item.id) === String(storyId)
-      );
-
-      if (matchingActiveStory) {
-        story.voting_status = matchingActiveStory.voting_status;
-        story.vote_count = matchingActiveStory.vote_count || 0;
-
-        if (statusLabel) {
-          statusLabel.textContent = 'Currently in Voting';
-        }
-      } else {
-        story.voting_status = 'closed';
-        story.vote_count = 0;
+      if (matchingActiveStory.voting_status === 'open') {
+        statusLabel.textContent = 'Currently in Voting';
+        return;
       }
 
-      if (voteBtn) {
-        voteBtn.dataset.storyId = storyId;
-        voteBtn.dataset.voteCount = story.vote_count || 0;
+      if (matchingActiveStory.voting_status === 'upcoming') {
+        statusLabel.textContent = 'Upcoming Vote';
+        return;
+      }
 
-        if (matchingActiveStory) {
-          voteBtn.style.display = 'inline-flex';
-          await restrictSingleStoryVoting(story, voteBtn);
-        } else {
-          voteBtn.style.display = 'none';
+      statusLabel.textContent = 'Voting Closed';
+    }
+
+    function setVoteButtonLabel(button, userVoteCount = 0) {
+      if (!button) return;
+
+      const safeCount = Number(userVoteCount) || 0;
+
+      button.textContent = safeCount > 0
+        ? `Add Vote (${safeCount})`
+        : 'Vote (0)';
+    }
+
+    async function getUserVoteCountForStory(storyId) {
+      try {
+        const userVotes = await fetchUserVotes();
+        const matchingVote = (Array.isArray(userVotes) ? userVotes : []).find(
+          (vote) => String(vote.story_id) === String(storyId)
+        );
+
+        return Number(matchingVote?.vote_count) || 0;
+      } catch (error) {
+        console.error('Could not load user vote count for story:', error);
+        return 0;
+      }
+    }
+
+    async function configureVoteButton({
+      voteBtn,
+      storyId,
+      matchingActiveStory,
+      currentUser
+    }) {
+      if (!voteBtn) return;
+
+      voteBtn.dataset.storyId = storyId;
+      voteBtn.dataset.publicVoteCount = String(Number(matchingActiveStory?.vote_count) || 0);
+      voteBtn.dataset.userVoteCount = '0';
+      voteBtn.dataset.requiresLogin = 'false';
+
+      if (!matchingActiveStory) {
+        voteBtn.style.display = 'none';
+        return;
+      }
+
+      voteBtn.style.display = 'inline-flex';
+
+      if (matchingActiveStory.voting_status === 'upcoming') {
+        voteBtn.disabled = true;
+        voteBtn.textContent = 'Voting Starts Soon';
+        return;
+      }
+
+      if (matchingActiveStory.voting_status !== 'open') {
+        voteBtn.disabled = true;
+        voteBtn.textContent = 'Voting Closed';
+        return;
+      }
+
+      if (!currentUser) {
+        voteBtn.disabled = false;
+        voteBtn.dataset.requiresLogin = 'true';
+        voteBtn.textContent = 'Log In to Vote';
+        return;
+      }
+
+      const userVoteCount = await getUserVoteCountForStory(storyId);
+
+      voteBtn.disabled = false;
+      voteBtn.dataset.userVoteCount = String(userVoteCount);
+      setVoteButtonLabel(voteBtn, userVoteCount);
+    }
+
+    function bindVoteButton(storyId, voteBtn) {
+      if (!voteBtn) return;
+
+      voteBtn.addEventListener('click', async () => {
+        if (voteBtn.style.display === 'none' || voteBtn.disabled) return;
+
+        if (voteBtn.dataset.requiresLogin === 'true') {
+          window.location.href = '/login/';
+          return;
         }
 
-        voteBtn.addEventListener('click', async () => {
-          if (voteBtn.disabled || voteBtn.style.display === 'none') return;
+        const originalText = voteBtn.textContent;
+        const originalUserVoteCount = Number(voteBtn.dataset.userVoteCount) || 0;
+        const originalPublicVoteCount = Number(voteBtn.dataset.publicVoteCount) || 0;
 
-          const originalText = voteBtn.textContent;
-          voteBtn.disabled = true;
-          voteBtn.textContent = 'Submitting...';
+        voteBtn.disabled = true;
+        voteBtn.textContent = 'Submitting...';
 
-          try {
-            const result = await submitVote(storyId, 1);
+        try {
+          const result = await submitVote(storyId, 1);
 
-            if (result.success) {
-              story.vote_count = (story.vote_count || 0) + 1;
-              voteBtn.dataset.voteCount = story.vote_count;
-              voteBtn.disabled = false;
-              voteBtn.textContent = `Add Vote (${story.vote_count})`;
-            } else if (result.reason === 'insufficient_balance') {
-              voteBtn.textContent = `No Votes Left (${story.vote_count || 0})`;
-            } else {
-              voteBtn.disabled = false;
-              voteBtn.textContent = originalText;
-            }
-          } catch (err) {
-            console.error('Single story vote error:', err);
+          if (result.success) {
+            const returnedUserVoteCount = Number(result.vote_count);
+            const updatedUserVoteCount =
+              Number.isFinite(returnedUserVoteCount) && returnedUserVoteCount > 0
+                ? returnedUserVoteCount
+                : originalUserVoteCount + 1;
+
+            const updatedPublicVoteCount = originalPublicVoteCount + 1;
+
+            voteBtn.dataset.userVoteCount = String(updatedUserVoteCount);
+            voteBtn.dataset.publicVoteCount = String(updatedPublicVoteCount);
+
+            voteBtn.disabled = false;
+            setVoteButtonLabel(voteBtn, updatedUserVoteCount);
+            return;
+          }
+
+          if (result.reason === 'not_logged_in') {
+            window.location.href = '/login/';
+            return;
+          }
+
+          if (result.reason === 'voting_closed') {
+            voteBtn.disabled = true;
+            voteBtn.textContent = 'Voting Closed';
+            alert(result.message || 'Voting is closed right now.');
+            return;
+          }
+
+          if (result.reason === 'insufficient_balance') {
             voteBtn.disabled = false;
             voteBtn.textContent = originalText;
+            alert(result.message || 'You do not have enough votes.');
+            return;
           }
-        });
+
+          voteBtn.disabled = false;
+          voteBtn.textContent = originalText;
+          alert(result.message || 'Could not submit vote.');
+        } catch (error) {
+          console.error('Single story vote error:', error);
+          voteBtn.disabled = false;
+          voteBtn.textContent = originalText;
+          alert('Could not submit vote.');
+        }
+      });
+    }
+
+    async function configureSaveButton({
+      saveBtn,
+      storyId,
+      currentUser
+    }) {
+      if (!saveBtn) return;
+
+      saveBtn.dataset.storyId = storyId;
+      saveBtn.dataset.requiresLogin = 'false';
+
+      if (!currentUser) {
+        saveBtn.disabled = false;
+        saveBtn.dataset.requiresLogin = 'true';
+        saveBtn.textContent = 'Log In to Save';
+        return;
       }
 
-      if (saveBtn) {
-        saveBtn.dataset.storyId = storyId;
-
+      try {
         const savedResult = await fetchSavedStories();
         const savedStories = savedResult.success ? savedResult.data : [];
         const alreadySaved = savedStories.some(
@@ -346,42 +449,147 @@
         if (alreadySaved) {
           saveBtn.disabled = true;
           saveBtn.textContent = 'Already Saved';
+          return;
         }
 
-        saveBtn.addEventListener('click', async () => {
-          if (saveBtn.disabled) return;
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Concept';
+      } catch (error) {
+        console.error('Could not check saved concepts:', error);
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Concept';
+      }
+    }
 
-          const originalText = saveBtn.textContent;
-          saveBtn.disabled = true;
-          saveBtn.textContent = 'Saving...';
+    function bindSaveButton(storyId, saveBtn) {
+      if (!saveBtn) return;
 
-          try {
-            const result = await saveStory(storyId);
+      saveBtn.addEventListener('click', async () => {
+        if (saveBtn.disabled) return;
 
-            if (result.success) {
-              saveBtn.textContent = 'Saved';
-            } else if (result.reason === 'already_saved') {
-              saveBtn.textContent = 'Already Saved';
-            } else {
-              saveBtn.disabled = false;
-              saveBtn.textContent = originalText;
-              alert('Failed to save concept.');
-            }
-          } catch (err) {
-            console.error('Save story error:', err);
-            saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
-            alert('Failed to save concept.');
+        if (saveBtn.dataset.requiresLogin === 'true') {
+          window.location.href = '/login/';
+          return;
+        }
+
+        const originalText = saveBtn.textContent;
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        try {
+          const result = await saveStory(storyId);
+
+          if (result.success || result.reason === 'already_saved') {
+            saveBtn.textContent = result.reason === 'already_saved'
+              ? 'Already Saved'
+              : 'Saved';
+
+            saveBtn.disabled = true;
+            return;
           }
-        });
+
+          if (result.reason === 'not_logged_in') {
+            window.location.href = '/login/';
+            return;
+          }
+
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          alert(result.message || 'Failed to save concept.');
+        } catch (error) {
+          console.error('Save story error:', error);
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+          alert('Failed to save concept.');
+        }
+      });
+    }
+
+    async function renderRelatedConcepts(currentStoryId) {
+      const relatedGrid = document.getElementById('related-stories-grid');
+      if (!relatedGrid) return;
+
+      try {
+        const conceptStories = await fetchConceptBankStories();
+        const relatedStories = (Array.isArray(conceptStories) ? conceptStories : []).filter(
+          (item) => String(item.id) !== String(currentStoryId)
+        );
+
+        renderStoriesForGallery(relatedStories, 'related-stories-grid');
+      } catch (error) {
+        console.error('Related concepts load error:', error);
+
+        relatedGrid.innerHTML = `
+          <p class="error">
+            Related concepts could not be loaded right now.
+          </p>
+        `;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await waitForAuthReady();
+
+      updateUI();
+      bindNavToggle();
+      bindLogoutLinks();
+
+      let currentUser = null;
+      let activeVoteStories = [];
+
+      try {
+        currentUser = await getCurrentUserAsync();
+      } catch (error) {
+        console.error('Story detail user check error:', error);
       }
 
-      const conceptStories = await fetchConceptBankStories();
-      const relatedStories = conceptStories.filter(
-        (item) => String(item.id) !== String(storyId)
+      try {
+        activeVoteStories = await fetchStoriesWithVotes();
+        renderStoryVotingStrip(activeVoteStories);
+      } catch (error) {
+        console.error('Story voting strip load error:', error);
+        activeVoteStories = [];
+        renderStoryVotingStrip([]);
+      }
+
+      const story = await loadStory();
+
+      if (!story) {
+        return;
+      }
+
+      updateReadPreviewLink(story);
+
+      const storyId = story.id;
+      const voteBtn = document.querySelector('.vote-btn');
+      const saveBtn = document.querySelector('.save-btn');
+      const statusLabel = document.querySelector('.story-status-label');
+
+      const matchingActiveStory = activeVoteStories.find(
+        (item) => String(item.id) === String(storyId)
       );
 
-      renderStoriesForHome(relatedStories, 'related-stories-grid');
+      setStoryStatusLabel(statusLabel, matchingActiveStory);
+
+      await configureVoteButton({
+        voteBtn,
+        storyId,
+        matchingActiveStory,
+        currentUser
+      });
+
+      bindVoteButton(storyId, voteBtn);
+
+      await configureSaveButton({
+        saveBtn,
+        storyId,
+        currentUser
+      });
+
+      bindSaveButton(storyId, saveBtn);
+
+      await renderRelatedConcepts(storyId);
     });
   </script>
 
