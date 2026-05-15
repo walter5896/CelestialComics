@@ -6,3 +6,113 @@
 @import "./small.css";
 @import "./medium.css";
 @import "./large.css";
+
+/* =========================
+   Global Performance Polish
+   Keeps the public site smoother on mobile/desktop
+========================= */
+
+/* Safer default image behavior */
+img,
+picture,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+/* Helps browsers avoid extra layout/paint work on big card-heavy pages */
+.story-card,
+.gallery-card,
+.shop-product-card,
+.product-card,
+.home-card,
+.profile-card,
+.order-card,
+.vote-matchup-card,
+.story-chip,
+.reader-card,
+.concept-detail-panel,
+.shop-product-card,
+.story-card-art,
+.story-card-body {
+  content-visibility: auto;
+  contain-intrinsic-size: 520px;
+}
+
+/* Prevent expensive accidental horizontal overflow */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Reduce expensive mobile paint effects without killing the design */
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    background-attachment: scroll !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .story-card,
+  .gallery-card,
+  .shop-product-card,
+  .product-card,
+  .home-card,
+  .profile-card,
+  .vote-matchup-panel,
+  .concept-detail-panel,
+  .reader-card,
+  .shop-toolbar,
+  .gallery-toolbar,
+  .section-card {
+    box-shadow: none !important;
+  }
+
+  .story-card:hover,
+  .gallery-card:hover,
+  .shop-product-card:hover,
+  .product-card:hover,
+  .home-card:hover,
+  .profile-card:hover {
+    transform: none !important;
+  }
+
+  body::before,
+  body::after,
+  .stars,
+  .star,
+  .starfield,
+  .background-stars,
+  .celestial-stars,
+  .cosmic-bg,
+  .orb,
+  .glow,
+  .nebula {
+    animation: none !important;
+  }
+}
+
+/* Respect system-level reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
