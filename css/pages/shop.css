@@ -7,15 +7,19 @@
 :root {
   --fs-public-page-title: clamp(3rem, 6vw, 5rem);
   --fs-public-section-title: clamp(2.25rem, 4.5vw, 4rem);
-  --fs-public-card-title: clamp(1.45rem, 2.3vw, 2.15rem);
+  --fs-public-card-title: clamp(1.65rem, 2.4vw, 2.35rem);
   --fs-public-body-lg: clamp(1.02rem, 1.55vw, 1.2rem);
   --fs-public-body: 1rem;
   --fs-public-small: 0.82rem;
+
+  --shop-card-max-width: 360px;
+  --shop-card-min-width: 300px;
+  --shop-card-gap: clamp(1.25rem, 2vw, 1.75rem);
+  --shop-card-padding: clamp(1rem, 1.6vw, 1.25rem);
 }
 
 /* =========================
    Announcement Strip
-   Shared homepage-style voting CTA banner
 ========================= */
 
 .announcement-strip {
@@ -95,11 +99,7 @@
   line-height: 1.55;
 }
 
-.shop-catalog-section {
-  padding: 1.5rem 0 4rem;
-}
-
-/* Backward compatibility if any older markup still uses .shop-section */
+.shop-catalog-section,
 .shop-section {
   padding: 1.5rem 0 4rem;
 }
@@ -301,6 +301,10 @@
 .shop-toolbar .btn {
   flex: 0 0 auto;
   margin: 0;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* =========================
@@ -331,23 +335,27 @@
 
 /* =========================
    Product Grid
+   Max 3 cards per row. Leftover cards center naturally.
 ========================= */
 
 .shop-products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 1.35rem;
+  grid-template-columns: repeat(auto-fit, minmax(var(--shop-card-min-width), var(--shop-card-max-width)));
+  justify-content: center;
+  gap: var(--shop-card-gap);
   align-items: stretch;
 }
 
 .shop-product-card {
+  width: 100%;
+  max-width: var(--shop-card-max-width);
   min-width: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(18, 75, 137, 0.72), rgba(7, 31, 64, 0.94));
+    linear-gradient(180deg, rgba(18, 75, 137, 0.76), rgba(7, 31, 64, 0.96));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
@@ -368,12 +376,14 @@
   display: block;
   color: inherit;
   text-decoration: none;
+  overflow: hidden;
 }
 
 .shop-product-image,
 .shop-product-image-placeholder {
   width: 100%;
-  height: 300px;
+  height: 320px;
+  display: block;
   object-fit: cover;
   object-position: center;
   background:
@@ -399,8 +409,8 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 0.7rem;
-  padding: 1rem;
+  gap: 0.75rem;
+  padding: var(--shop-card-padding);
 }
 
 .shop-product-badge-row {
@@ -456,7 +466,14 @@
   color: var(--color-accent-soft);
 }
 
-.shop-product-story-link {
+.shop-product-badge.purchased {
+  background: rgba(126, 97, 191, 0.26);
+  border-color: rgba(196, 181, 253, 0.38);
+  color: #e9ddff;
+}
+
+.shop-product-story-link,
+.shop-product-repeat-note {
   margin: 0;
   color: var(--color-text-soft);
   font-size: 0.88rem;
@@ -465,6 +482,10 @@
 
 .shop-product-story-link strong {
   color: var(--color-text);
+}
+
+.shop-product-repeat-note {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .shop-product-title {
@@ -478,15 +499,15 @@
 .shop-product-description {
   margin: 0;
   color: var(--color-text-soft);
-  font-size: 0.95rem;
+  font-size: 0.96rem;
   line-height: 1.5;
   flex: 1;
 }
 
 .shop-product-price {
-  margin: 0;
+  margin: 0.1rem 0 0;
   color: var(--color-accent-soft);
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 1000;
   letter-spacing: 0.03em;
 }
@@ -504,21 +525,34 @@
 }
 
 .shop-product-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.65rem;
+  margin-top: auto;
+  padding-top: 0.25rem;
 }
 
+.shop-product-actions .btn,
 .shop-buy-btn,
 .shop-view-comic-btn,
 .shop-view-product-btn {
-  flex: 1 1 140px;
+  width: 100%;
+  min-height: 46px;
+  max-height: 52px;
   margin: 0;
+  padding: 0.72rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  font-size: 0.86rem;
+  line-height: 1.15;
+  text-align: center;
 }
 
 .shop-buy-btn:disabled {
   opacity: 0.75;
+  cursor: not-allowed;
 }
 
 /* =========================
@@ -753,6 +787,12 @@
   margin: 0;
 }
 
+.checkout-result-note-stack {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
 .checkout-result-actions {
   display: flex;
   flex-wrap: wrap;
@@ -761,9 +801,20 @@
   margin-top: 1.5rem;
 }
 
+.checkout-success-card .checkout-result-actions {
+  margin-top: 1.75rem;
+}
+
 /* =========================
    Responsive
 ========================= */
+
+@media (max-width: 1240px) {
+  :root {
+    --shop-card-max-width: 340px;
+    --shop-card-min-width: 290px;
+  }
+}
 
 @media (max-width: 1100px) {
   .shop-catalog-shell {
@@ -793,6 +844,11 @@
   .shop-clear-filters {
     max-width: 220px;
   }
+
+  .shop-products-grid {
+    grid-template-columns: repeat(auto-fit, minmax(290px, 340px));
+    justify-content: center;
+  }
 }
 
 @media (max-width: 960px) {
@@ -811,16 +867,22 @@
 
 @media (max-width: 900px) {
   .shop-products-grid {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
+    justify-content: center;
   }
 
   .shop-product-image,
   .shop-product-image-placeholder {
-    height: 290px;
+    height: 300px;
   }
 }
 
 @media (max-width: 720px) {
+  :root {
+    --shop-card-max-width: 100%;
+    --shop-card-min-width: 100%;
+  }
+
   .announcement-strip {
     min-height: 30px;
     padding: 0.32rem 0.85rem;
@@ -846,11 +908,7 @@
     font-size: clamp(2rem, 11vw, 3.25rem);
   }
 
-  .shop-toolbar .btn,
-  .shop-buy-btn,
-  .shop-view-comic-btn,
-  .shop-view-product-btn,
-  .checkout-result-actions .btn {
+  .shop-toolbar .btn {
     width: 100%;
   }
 
@@ -858,6 +916,24 @@
   .checkout-result-actions,
   .product-detail-actions {
     flex-direction: column;
+  }
+
+  .shop-product-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .shop-product-actions .btn,
+  .shop-buy-btn,
+  .shop-view-comic-btn,
+  .shop-view-product-btn,
+  .checkout-result-actions .btn,
+  .product-detail-actions .btn {
+    width: 100%;
+    min-height: 46px;
+    max-height: none;
+    padding: 0.75rem 1rem;
   }
 
   .checkout-result-page {
@@ -883,10 +959,6 @@
   .product-detail-title {
     font-size: clamp(2.5rem, 13vw, 4rem);
   }
-
-  .product-detail-actions .btn {
-    width: 100%;
-  }
 }
 
 @media (max-width: 640px) {
@@ -896,7 +968,12 @@
   }
 
   .shop-products-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+
+  .shop-product-card {
+    max-width: none;
   }
 
   .shop-product-image,
@@ -917,13 +994,16 @@
   .shop-clear-filters {
     max-width: none;
   }
-}
-.checkout-result-note-stack {
-  display: grid;
-  gap: 0.85rem;
-  margin-top: 1.25rem;
-}
 
-.checkout-success-card .checkout-result-actions {
-  margin-top: 1.75rem;
+  .shop-product-body {
+    padding: 1rem;
+  }
+
+  .shop-product-actions .btn,
+  .shop-buy-btn,
+  .shop-view-comic-btn,
+  .shop-view-product-btn {
+    min-height: 46px;
+    padding: 0.75rem 1rem;
+  }
 }
