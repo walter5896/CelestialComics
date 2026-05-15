@@ -20,52 +20,110 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="/css/pages/admin.css?v=admin-cleanup-2" />
+  <link rel="stylesheet" href="/css/pages/admin.css?v=admin-cleanup-3" />
 </head>
 
 <body>
-  <nav>
-    <h1>Admin Panel</h1>
+  <nav class="admin-top-nav" aria-label="Admin navigation">
+    <div class="admin-nav-brand">
+      <h1>Admin Panel</h1>
+      <p>Celestial Comics Control Center</p>
+    </div>
 
-    <ul>
-      <li><a href="/index.html">Home</a></li>
-      <li><a href="/admin/index.html">Admin</a></li>
+    <ul class="admin-nav-list">
+      <li><a href="/">Site Home</a></li>
+      <li><a href="/vote/">Vote</a></li>
+      <li><a href="/history/">Winner</a></li>
+      <li><a href="/gallery/">Gallery</a></li>
+      <li><a href="/shop/">Shop</a></li>
+      <li><a href="/team/">The Team</a></li>
+      <li><a href="/profile/">Profile</a></li>
+      <li><a href="/admin/index.html" aria-current="page">Admin</a></li>
       <li><a href="#" id="logout-link">Logout</a></li>
     </ul>
   </nav>
 
-  <div class="container">
+  <main class="container admin-workspace">
+    <header class="admin-dashboard-header">
+      <p class="admin-kicker">Control Center</p>
+      <div class="admin-dashboard-heading-row">
+        <div>
+          <h2>Admin Dashboard</h2>
+          <p>
+            Manage users, voting, stories, products, homepage content, orders, and winner settings from one organized workspace.
+          </p>
+        </div>
+
+        <a href="/" class="admin-public-site-link">View Public Site</a>
+      </div>
+    </header>
+
+    <nav class="admin-quick-links" aria-label="Admin section shortcuts">
+      <a href="#users-management-section">Users</a>
+      <a href="#voting-section">Voting</a>
+      <a href="#story-management-section">Stories</a>
+      <a href="#product-management-section">Products</a>
+      <a href="#homepage-management-section">Homepage</a>
+      <a href="#order-management-section">Orders</a>
+    </nav>
+
     <p id="status-message">Loading...</p>
 
-    <table id="users-table" style="display:none;">
-      <thead>
-        <tr>
-          <th>Email</th>
-          <th>Role</th>
-          <th>Round Votes</th>
-          <th>Bonus Votes</th>
-          <th>Role Action</th>
-          <th>Vote Action</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <section class="section-card users-section" id="users-management-section" aria-labelledby="users-management-title">
+      <div class="section-card-header">
+        <div>
+          <p class="section-eyebrow">Accounts</p>
+          <h2 id="users-management-title">User Management</h2>
+          <p class="helper-text">
+            Review user roles, round votes, and bonus votes. Use this section for quick account and vote adjustments.
+          </p>
+        </div>
+      </div>
 
-    <div class="section-card" id="voting-section" style="display:none;">
-      <h2>Voting Controls</h2>
+      <div class="admin-table-shell">
+        <table id="users-table" style="display:none;">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Round Votes</th>
+              <th>Bonus Votes</th>
+              <th>Role Action</th>
+              <th>Vote Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
 
-      <form id="voting-period-form">
-        <div class="field-group">
-          <label for="voting-start">Start Time</label>
-          <input type="datetime-local" id="voting-start" required />
+    <section class="section-card" id="voting-section" style="display:none;" aria-labelledby="voting-section-title">
+      <div class="section-card-header">
+        <div>
+          <p class="section-eyebrow">Tournament</p>
+          <h2 id="voting-section-title">Voting Controls</h2>
+          <p class="helper-text">
+            Set the active voting window, review the current round, determine winners, and choose what appears on the public Winner page.
+          </p>
+        </div>
+      </div>
+
+      <form id="voting-period-form" class="admin-form-panel">
+        <div class="two-column-grid">
+          <div class="field-group">
+            <label for="voting-start">Start Time</label>
+            <input type="datetime-local" id="voting-start" required />
+          </div>
+
+          <div class="field-group">
+            <label for="voting-end">End Time</label>
+            <input type="datetime-local" id="voting-end" required />
+          </div>
         </div>
 
-        <div class="field-group">
-          <label for="voting-end">End Time</label>
-          <input type="datetime-local" id="voting-end" required />
+        <div class="action-row">
+          <button type="submit">Update Voting Period</button>
         </div>
-
-        <button type="submit">Update Voting Period</button>
       </form>
 
       <p id="voting-status-message" class="section-message"></p>
@@ -113,12 +171,21 @@
         </div>
       </div>
 
-      <div class="action-row">
-        <button id="close-voting-btn" type="button" class="danger-btn">Close Voting Now</button>
-        <button id="determine-winner-btn" type="button">Determine Winner</button>
+      <div class="admin-danger-zone">
+        <div>
+          <h3>Round Finalization</h3>
+          <p class="helper-text">
+            Close voting only when the round is ready to end. Determine Winner will preview or finalize the selected result depending on the current state.
+          </p>
+        </div>
+
+        <div class="action-row">
+          <button id="close-voting-btn" type="button" class="danger-btn">Close Voting Now</button>
+          <button id="determine-winner-btn" type="button">Determine Winner</button>
+        </div>
       </div>
 
-      <div class="section-card" id="tie-resolution-panel" style="display:none; margin-top:1rem; margin-bottom:0;">
+      <div class="section-card nested-section-card" id="tie-resolution-panel" style="display:none;">
         <h3>Tie Resolution</h3>
         <p id="tie-resolution-message" class="section-message"></p>
 
@@ -140,14 +207,16 @@
         <p id="winner-preview-message" class="section-message"></p>
 
         <div id="next-round-fields" style="display:none; margin-top: 1rem;">
-          <div class="field-group">
-            <label for="legacy-next-round-start">Next Round Start Time</label>
-            <input type="datetime-local" id="legacy-next-round-start" />
-          </div>
+          <div class="two-column-grid">
+            <div class="field-group">
+              <label for="legacy-next-round-start">Next Round Start Time</label>
+              <input type="datetime-local" id="legacy-next-round-start" />
+            </div>
 
-          <div class="field-group">
-            <label for="legacy-next-round-end">Next Round End Time</label>
-            <input type="datetime-local" id="legacy-next-round-end" />
+            <div class="field-group">
+              <label for="legacy-next-round-end">Next Round End Time</label>
+              <input type="datetime-local" id="legacy-next-round-end" />
+            </div>
           </div>
         </div>
 
@@ -158,10 +227,18 @@
           </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="section-card" id="story-management-section" style="display:none;">
-      <h2>Story Management</h2>
+    <section class="section-card" id="story-management-section" style="display:none;" aria-labelledby="story-management-title">
+      <div class="section-card-header">
+        <div>
+          <p class="section-eyebrow">Content Library</p>
+          <h2 id="story-management-title">Story Management</h2>
+          <p class="helper-text">
+            Create concepts, move winners through production, release completed stories, and upload readable preview pages.
+          </p>
+        </div>
+      </div>
 
       <div class="field-group">
         <label for="story-select">Edit Existing Story</label>
@@ -171,15 +248,17 @@
         <p class="helper-text">Choose a story to edit, or leave blank to create a new one.</p>
       </div>
 
-      <form id="story-form">
-        <div class="field-group">
-          <label for="story-title">Title</label>
-          <input type="text" id="story-title" required />
-        </div>
+      <form id="story-form" class="admin-form-panel">
+        <div class="two-column-grid">
+          <div class="field-group">
+            <label for="story-title">Title</label>
+            <input type="text" id="story-title" required />
+          </div>
 
-        <div class="field-group">
-          <label for="story-author">Author</label>
-          <input type="text" id="story-author" placeholder="Optional author/team name" />
+          <div class="field-group">
+            <label for="story-author">Author</label>
+            <input type="text" id="story-author" placeholder="Optional author/team name" />
+          </div>
         </div>
 
         <div class="three-column-grid">
@@ -212,18 +291,6 @@
             <input type="text" id="production-stage-label" placeholder="Optional custom label" />
             <p class="helper-text">Optional display text. Leave blank to use the selected progress stage.</p>
           </div>
-        </div>
-
-        <div class="field-group">
-          <label for="story-cover-file">Cover Image Upload</label>
-          <input type="file" id="story-cover-file" accept="image/*" />
-          <div class="action-row">
-            <button type="button" id="upload-cover-btn" class="secondary-btn">Upload Cover Image</button>
-            <button type="button" id="delete-cover-btn" class="danger-btn" style="display:none;">Delete Cover Image</button>
-          </div>
-          <p class="helper-text">Create or select a story first, then upload its cover image.</p>
-          <p id="cover-upload-message" class="section-message"></p>
-          <img id="cover-preview" class="cover-preview" alt="Cover preview" />
         </div>
 
         <div class="field-group">
@@ -272,7 +339,22 @@
           <p class="helper-text">Optional. Best used once a story moves close to release.</p>
         </div>
 
-        <div class="action-row">
+        <div class="media-upload-panel">
+          <h3>Cover Image</h3>
+          <div class="field-group">
+            <label for="story-cover-file">Cover Image Upload</label>
+            <input type="file" id="story-cover-file" accept="image/*" />
+            <div class="action-row">
+              <button type="button" id="upload-cover-btn" class="secondary-btn">Upload Cover Image</button>
+              <button type="button" id="delete-cover-btn" class="danger-btn" style="display:none;">Delete Cover Image</button>
+            </div>
+            <p class="helper-text">Create or select a story first, then upload its cover image.</p>
+            <p id="cover-upload-message" class="section-message"></p>
+            <img id="cover-preview" class="cover-preview" alt="Cover preview" />
+          </div>
+        </div>
+
+        <div class="action-row form-action-row">
           <button type="submit" id="save-story-btn">Create Story</button>
           <button type="button" id="reset-story-btn" class="secondary-btn">Reset Form</button>
           <button type="button" id="delete-story-btn" class="danger-btn" style="display:none;">Delete Story</button>
@@ -281,8 +363,11 @@
 
       <p id="story-status-message" class="section-message"></p>
 
-      <div class="stories-list">
-        <h3>Current Stories</h3>
+      <div class="admin-preview-section stories-list">
+        <div class="admin-preview-heading">
+          <h3>Current Stories</h3>
+          <p class="helper-text">Use these cards as a quick overview of what is visible, in production, released, or still in the concept bank.</p>
+        </div>
         <div id="stories-preview" class="story-chip-list"></div>
       </div>
 
@@ -290,15 +375,17 @@
         <h3>Story Pages</h3>
         <p class="helper-text">Select or create a story first, then upload readable pages for it.</p>
 
-        <form id="story-page-form">
-          <div class="field-group">
-            <label for="story-page-file">Page Image Upload</label>
-            <input type="file" id="story-page-file" accept="image/*" />
-          </div>
+        <form id="story-page-form" class="admin-form-panel">
+          <div class="two-column-grid">
+            <div class="field-group">
+              <label for="story-page-file">Page Image Upload</label>
+              <input type="file" id="story-page-file" accept="image/*" />
+            </div>
 
-          <div class="field-group">
-            <label for="story-page-caption">Page Caption</label>
-            <textarea id="story-page-caption" placeholder="Optional caption for this page..."></textarea>
+            <div class="field-group">
+              <label for="story-page-caption">Page Caption</label>
+              <textarea id="story-page-caption" placeholder="Optional caption for this page..."></textarea>
+            </div>
           </div>
 
           <div class="action-row">
@@ -313,13 +400,18 @@
           <div id="story-pages-preview" class="story-pages-grid"></div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="section-card" id="product-management-section" style="display:none;">
-      <h2>Product Management</h2>
-      <p class="helper-text">
-        Create merch, digital comics, paperbacks, and bundles. Comic-format products must be linked to a released story.
-      </p>
+    <section class="section-card" id="product-management-section" style="display:none;" aria-labelledby="product-management-title">
+      <div class="section-card-header">
+        <div>
+          <p class="section-eyebrow">Shop Inventory</p>
+          <h2 id="product-management-title">Product Management</h2>
+          <p class="helper-text">
+            Create merch, digital comics, paperbacks, and bundles. Comic-format products must be linked to a released story.
+          </p>
+        </div>
+      </div>
 
       <div class="product-management-inner">
         <div class="field-group">
@@ -330,18 +422,13 @@
           <p class="helper-text">Choose a product to edit, or leave blank to create a new one.</p>
         </div>
 
-        <form id="product-form">
-          <div class="field-group">
-            <label for="product-name">Product Name</label>
-            <input type="text" id="product-name" required />
-          </div>
-
-          <div class="field-group">
-            <label for="product-description">Description</label>
-            <textarea id="product-description" placeholder="Product description..." required></textarea>
-          </div>
-
+        <form id="product-form" class="admin-form-panel">
           <div class="two-column-grid">
+            <div class="field-group">
+              <label for="product-name">Product Name</label>
+              <input type="text" id="product-name" required />
+            </div>
+
             <div class="field-group">
               <label for="product-type">Product Type</label>
               <select id="product-type" required>
@@ -352,7 +439,14 @@
               </select>
               <p class="helper-text">Merch stays standalone. Comic products must be tied to a released story.</p>
             </div>
+          </div>
 
+          <div class="field-group">
+            <label for="product-description">Description</label>
+            <textarea id="product-description" placeholder="Product description..." required></textarea>
+          </div>
+
+          <div class="three-column-grid">
             <div class="field-group">
               <label for="product-story-id">Linked Story</label>
               <select id="product-story-id">
@@ -360,9 +454,7 @@
               </select>
               <p class="helper-text">Required for digital comic, paperback, and bundle products.</p>
             </div>
-          </div>
 
-          <div class="two-column-grid">
             <div class="field-group">
               <label for="product-price-cents">Price (in cents)</label>
               <input type="number" id="product-price-cents" min="1" step="1" placeholder="2500" required />
@@ -376,26 +468,30 @@
             </div>
           </div>
 
-          <div class="field-group">
-            <label for="product-image-file">Product Image Upload</label>
-            <input type="file" id="product-image-file" accept="image/*" />
-            <div class="action-row">
-              <button type="button" id="upload-product-image-btn" class="secondary-btn">Upload Product Image</button>
-              <button type="button" id="delete-product-image-btn" class="danger-btn" style="display:none;">Delete Product Image</button>
-            </div>
-            <p class="helper-text">
-              Create or select a product first, then upload an image. This is the recommended option.
-            </p>
-            <p id="product-image-upload-message" class="section-message"></p>
-          </div>
+          <div class="media-upload-panel">
+            <h3>Product Image</h3>
 
-          <div class="field-group">
-            <label for="product-image-url">Image URL (Optional Fallback)</label>
-            <input type="text" id="product-image-url" placeholder="https://... or /assets/images/..." />
-            <p class="helper-text">
-              Use this only if you want to link an external image manually instead of uploading one.
-            </p>
-            <img id="product-image-preview" class="product-image-preview" alt="Product image preview" />
+            <div class="field-group">
+              <label for="product-image-file">Product Image Upload</label>
+              <input type="file" id="product-image-file" accept="image/*" />
+              <div class="action-row">
+                <button type="button" id="upload-product-image-btn" class="secondary-btn">Upload Product Image</button>
+                <button type="button" id="delete-product-image-btn" class="danger-btn" style="display:none;">Delete Product Image</button>
+              </div>
+              <p class="helper-text">
+                Create or select a product first, then upload an image. This is the recommended option.
+              </p>
+              <p id="product-image-upload-message" class="section-message"></p>
+            </div>
+
+            <div class="field-group">
+              <label for="product-image-url">Image URL (Optional Fallback)</label>
+              <input type="text" id="product-image-url" placeholder="https://... or /assets/images/..." />
+              <p class="helper-text">
+                Use this only if you want to link an external image manually instead of uploading one.
+              </p>
+              <img id="product-image-preview" class="product-image-preview" alt="Product image preview" />
+            </div>
           </div>
 
           <div class="field-group inline-checkbox">
@@ -403,7 +499,7 @@
             <label for="product-active" style="margin-bottom:0;">Active / available for sale</label>
           </div>
 
-          <div class="action-row">
+          <div class="action-row form-action-row">
             <button type="submit" id="save-product-btn">Create Product</button>
             <button type="button" id="reset-product-btn" class="secondary-btn">Reset Product Form</button>
             <button type="button" id="deactivate-product-btn" class="danger-btn" style="display:none;">Deactivate Product</button>
@@ -412,22 +508,31 @@
 
         <p id="product-status-message" class="section-message"></p>
 
-        <div class="products-list">
-          <h3>Current Products</h3>
+        <div class="admin-preview-section products-list">
+          <div class="admin-preview-heading">
+            <h3>Current Products</h3>
+            <p class="helper-text">Review active and inactive inventory. Deactivated products stay here for editing unless removed from storage/database later.</p>
+          </div>
+
           <div id="products-preview" class="product-grid">
             <p>Loading products...</p>
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="section-card" id="homepage-management-section" style="display:none;">
-      <h2>Homepage Content</h2>
-      <p class="helper-text">
-        Manage the homepage hero text and the two featured homepage images without touching code.
-      </p>
+    <section class="section-card" id="homepage-management-section" style="display:none;" aria-labelledby="homepage-management-title">
+      <div class="section-card-header">
+        <div>
+          <p class="section-eyebrow">Public Homepage</p>
+          <h2 id="homepage-management-title">Homepage Content</h2>
+          <p class="helper-text">
+            Manage the homepage hero text and the two featured homepage images without touching code.
+          </p>
+        </div>
+      </div>
 
-      <form id="homepage-content-form">
+      <form id="homepage-content-form" class="admin-form-panel">
         <div class="field-group">
           <label for="homepage-hero-heading">Hero Heading</label>
           <input type="text" id="homepage-hero-heading" placeholder="Current Winner" />
@@ -450,7 +555,7 @@
           </div>
         </div>
 
-        <div class="action-row">
+        <div class="action-row form-action-row">
           <button type="submit" id="save-homepage-btn">Save Homepage Content</button>
           <button type="button" id="reset-homepage-btn" class="secondary-btn">Reset Homepage Form</button>
         </div>
@@ -458,53 +563,60 @@
 
       <p id="homepage-status-message" class="section-message"></p>
 
-      <div class="story-pages-section">
-        <h3>Hero Image</h3>
-        <p class="helper-text">This is the main featured homepage image.</p>
+      <div class="two-column-grid media-management-grid">
+        <div class="story-pages-section">
+          <h3>Hero Image</h3>
+          <p class="helper-text">This is the main featured homepage image.</p>
 
-        <div class="field-group">
-          <label for="homepage-hero-image-file">Upload Hero Image</label>
-          <input type="file" id="homepage-hero-image-file" accept="image/*" />
-          <div class="action-row">
-            <button type="button" id="upload-homepage-hero-image-btn" class="secondary-btn">
-              Upload Hero Image
-            </button>
-            <button type="button" id="delete-homepage-hero-image-btn" class="danger-btn" style="display:none;">
-              Delete Hero Image
-            </button>
+          <div class="field-group">
+            <label for="homepage-hero-image-file">Upload Hero Image</label>
+            <input type="file" id="homepage-hero-image-file" accept="image/*" />
+            <div class="action-row">
+              <button type="button" id="upload-homepage-hero-image-btn" class="secondary-btn">
+                Upload Hero Image
+              </button>
+              <button type="button" id="delete-homepage-hero-image-btn" class="danger-btn" style="display:none;">
+                Delete Hero Image
+              </button>
+            </div>
+            <p id="homepage-hero-image-message" class="section-message"></p>
+            <img id="homepage-hero-image-preview" class="product-image-preview" alt="Homepage hero preview" />
           </div>
-          <p id="homepage-hero-image-message" class="section-message"></p>
-          <img id="homepage-hero-image-preview" class="product-image-preview" alt="Homepage hero preview" />
+        </div>
+
+        <div class="story-pages-section">
+          <h3>Secondary Homepage Image</h3>
+          <p class="helper-text">This is the second featured homepage image or supporting concept image.</p>
+
+          <div class="field-group">
+            <label for="homepage-secondary-image-file">Upload Secondary Image</label>
+            <input type="file" id="homepage-secondary-image-file" accept="image/*" />
+            <div class="action-row">
+              <button type="button" id="upload-homepage-secondary-image-btn" class="secondary-btn">
+                Upload Secondary Image
+              </button>
+              <button type="button" id="delete-homepage-secondary-image-btn" class="danger-btn" style="display:none;">
+                Delete Secondary Image
+              </button>
+            </div>
+            <p id="homepage-secondary-image-message" class="section-message"></p>
+            <img id="homepage-secondary-image-preview" class="product-image-preview" alt="Homepage secondary preview" />
+          </div>
         </div>
       </div>
+    </section>
 
-      <div class="story-pages-section">
-        <h3>Secondary Homepage Image</h3>
-        <p class="helper-text">This is the second featured homepage image or supporting concept image.</p>
-
-        <div class="field-group">
-          <label for="homepage-secondary-image-file">Upload Secondary Image</label>
-          <input type="file" id="homepage-secondary-image-file" accept="image/*" />
-          <div class="action-row">
-            <button type="button" id="upload-homepage-secondary-image-btn" class="secondary-btn">
-              Upload Secondary Image
-            </button>
-            <button type="button" id="delete-homepage-secondary-image-btn" class="danger-btn" style="display:none;">
-              Delete Secondary Image
-            </button>
-          </div>
-          <p id="homepage-secondary-image-message" class="section-message"></p>
-          <img id="homepage-secondary-image-preview" class="product-image-preview" alt="Homepage secondary preview" />
+    <section class="section-card" id="order-management-section" style="display:none;" aria-labelledby="order-management-title">
+      <div class="section-card-header">
+        <div>
+          <p class="section-eyebrow">Fulfillment</p>
+          <h2 id="order-management-title">Order Management</h2>
+          <p class="helper-text">
+            Review customer purchases, separate active work from historical records, and update fulfillment status as orders move through the pipeline.
+            Mark an order as failed only when you want it hidden from the normal admin order lists.
+          </p>
         </div>
       </div>
-    </div>
-
-    <div class="section-card" id="order-management-section" style="display:none;">
-      <h2>Order Management</h2>
-      <p class="helper-text">
-        Review customer purchases, separate active work from historical records, and update fulfillment status as orders move through the pipeline.
-        Mark an order as failed only when you want it hidden from the normal admin order lists.
-      </p>
 
       <div class="order-management-inner">
         <p id="orders-status-message" class="section-message"></p>
@@ -545,8 +657,8 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
+  </main>
 
   <script src="/js/env.js"></script>
   <script type="module" src="/js/admin.js"></script>
