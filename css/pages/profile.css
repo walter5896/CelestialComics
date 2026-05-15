@@ -1052,3 +1052,19 @@
     text-align: left;
   }
 }
+
+/* =========================
+   Profile Hero Spacing Correction
+   Force hero pill to behave like Winner page kicker
+========================= */
+
+.profile-hero .profile-kicker {
+  display: flex;
+  margin: 0 auto 1.65rem;
+}
+
+.profile-hero h1 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-top: 0;
+}
