@@ -7,14 +7,12 @@
 :root {
   --fs-public-page-title: clamp(3rem, 6vw, 5rem);
   --fs-public-section-title: clamp(2.25rem, 4.5vw, 4rem);
-  --fs-public-card-title: clamp(1.65rem, 2.4vw, 2.35rem);
+  --fs-public-card-title: clamp(1.55rem, 2.2vw, 2.25rem);
   --fs-public-body-lg: clamp(1.02rem, 1.55vw, 1.2rem);
   --fs-public-body: 1rem;
   --fs-public-small: 0.82rem;
 
-  --shop-card-max-width: 360px;
-  --shop-card-min-width: 300px;
-  --shop-card-gap: clamp(1.25rem, 2vw, 1.75rem);
+  --shop-card-gap: clamp(1.15rem, 1.8vw, 1.6rem);
   --shop-card-padding: clamp(1rem, 1.6vw, 1.25rem);
 }
 
@@ -322,7 +320,7 @@
 
 .shop-empty-state,
 .shop-products-grid > p {
-  grid-column: 1 / -1;
+  width: 100%;
   margin: 0;
   padding: 1.4rem;
   text-align: center;
@@ -335,24 +333,25 @@
 
 /* =========================
    Product Grid
-   Max 3 cards per row. Leftover cards center naturally.
+   Flexbox centers final row naturally.
+   Desktop target: max 3 cards per row.
 ========================= */
 
 .shop-products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(var(--shop-card-min-width), var(--shop-card-max-width)));
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: var(--shop-card-gap);
   align-items: stretch;
+  gap: var(--shop-card-gap);
 }
 
 .shop-product-card {
-  width: 100%;
-  max-width: var(--shop-card-max-width);
-  min-width: 0;
+  flex: 0 1 calc((100% - (var(--shop-card-gap) * 2)) / 3);
+  max-width: 330px;
+  min-width: 260px;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: auto;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(18, 75, 137, 0.76), rgba(7, 31, 64, 0.96));
@@ -382,7 +381,7 @@
 .shop-product-image,
 .shop-product-image-placeholder {
   width: 100%;
-  height: 320px;
+  height: 300px;
   display: block;
   object-fit: cover;
   object-position: center;
@@ -810,9 +809,10 @@
 ========================= */
 
 @media (max-width: 1240px) {
-  :root {
-    --shop-card-max-width: 340px;
-    --shop-card-min-width: 290px;
+  .shop-product-card {
+    flex-basis: calc((100% - var(--shop-card-gap)) / 2);
+    max-width: 340px;
+    min-width: 270px;
   }
 }
 
@@ -845,30 +845,18 @@
     max-width: 220px;
   }
 
-  .shop-products-grid {
-    grid-template-columns: repeat(auto-fit, minmax(290px, 340px));
-    justify-content: center;
-  }
-}
-
-@media (max-width: 960px) {
-  .product-detail-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .product-detail-media {
-    min-height: 420px;
-  }
-
-  .product-detail-info {
-    text-align: left;
+  .shop-product-card {
+    flex-basis: calc((100% - (var(--shop-card-gap) * 2)) / 3);
+    max-width: 340px;
+    min-width: 270px;
   }
 }
 
 @media (max-width: 900px) {
-  .shop-products-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 340px));
-    justify-content: center;
+  .shop-product-card {
+    flex-basis: calc((100% - var(--shop-card-gap)) / 2);
+    max-width: 340px;
+    min-width: 270px;
   }
 
   .shop-product-image,
@@ -878,11 +866,6 @@
 }
 
 @media (max-width: 720px) {
-  :root {
-    --shop-card-max-width: 100%;
-    --shop-card-min-width: 100%;
-  }
-
   .announcement-strip {
     min-height: 30px;
     padding: 0.32rem 0.85rem;
@@ -967,13 +950,10 @@
     padding-top: 1.25rem;
   }
 
-  .shop-products-grid {
-    grid-template-columns: minmax(0, 1fr);
-    justify-content: stretch;
-  }
-
   .shop-product-card {
+    flex-basis: 100%;
     max-width: none;
+    min-width: 0;
   }
 
   .shop-product-image,
