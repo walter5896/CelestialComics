@@ -175,6 +175,18 @@ function buildPhysicalPurchaseLabel(item) {
   return `${productName} • ${status}${quantityPart}${datePart}`;
 }
 
+function applyAsyncImageDecoding(root = document) {
+  if (!root?.querySelectorAll) return;
+
+  root.querySelectorAll('img').forEach((img) => {
+    if (!img.hasAttribute('loading')) {
+      img.setAttribute('loading', 'lazy');
+    }
+
+    img.setAttribute('decoding', 'async');
+  });
+}
+
 function renderVoteBalancesFromState() {
   const { voteBalance = 0, bonusVoteBalance = 0 } = getState();
   const safeRoundVotes = Number(voteBalance) || 0;
@@ -428,6 +440,7 @@ async function fetchAndRenderSavedStories() {
 
   renderStoriesForProfile([], storiesWithSavedFlag, null, 'my-saved-stories-container');
   attachUnsaveListeners('my-saved-stories-container');
+  applyAsyncImageDecoding(savedContainer);
 }
 
 /* =======================
@@ -466,7 +479,7 @@ function renderOwnedStories(ownedStories) {
             safeImage
               ? `
                 <a href="${readComicUrl}" class="story-card-art-link owned-story-art-link" aria-label="Read ${safeTitle}">
-                  <img src="${safeImage}" alt="${safeTitle} cover" class="story-image" loading="lazy" />
+                  <img src="${safeImage}" alt="${safeTitle} cover" class="story-image" loading="lazy" decoding="async" />
                 </a>
               `
               : `<div class="story-image-placeholder">No cover available</div>`
@@ -496,6 +509,8 @@ function renderOwnedStories(ownedStories) {
       `;
     })
     .join('');
+
+  applyAsyncImageDecoding(ownedContainer);
 }
 
 async function fetchOwnedStories() {
@@ -592,7 +607,7 @@ function renderPhysicalPurchaseCard(item) {
       <a href="${productUrl}" class="physical-purchase-image-link" aria-label="View ${safeName}">
         ${
           safeImage
-            ? `<img src="${safeImage}" alt="${safeName}" class="physical-purchase-image" loading="lazy" />`
+            ? `<img src="${safeImage}" alt="${safeName}" class="physical-purchase-image" loading="lazy" decoding="async" />`
             : `<div class="physical-purchase-image physical-purchase-image-placeholder">No image available</div>`
         }
       </a>
@@ -697,6 +712,7 @@ function renderSelectedPhysicalPurchase() {
   }
 
   physicalPurchaseDetail.innerHTML = renderPhysicalPurchaseCard(selectedPurchase);
+  applyAsyncImageDecoding(physicalPurchaseDetail);
 }
 
 function populatePhysicalPurchaseDropdown(purchases) {
@@ -959,6 +975,8 @@ async function refreshProfilePageData() {
       fetchAndRenderOwnedStories(),
       fetchAndRenderPhysicalPurchases()
     ]);
+
+    applyAsyncImageDecoding(document.querySelector('.profile-page') || document);
   } finally {
     profileRefreshInProgress = false;
   }
