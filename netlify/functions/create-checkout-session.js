@@ -29,24 +29,10 @@ const supabase = createClient(
 
 const PHYSICAL_PRODUCT_TYPES = new Set(['merch', 'paperback', 'bundle']);
 const DIGITAL_ONLY_PRODUCT_TYPES = new Set(['digital_comic']);
-const COMIC_PRODUCT_TYPES = new Set(['digital_comic', 'paperback', 'bundle']);
-
-const MAX_QUANTITY_PER_PRODUCT = 20;
-
-class CheckoutError extends Error {
-  constructor(message, statusCode = 400) {
-    super(message);
-    this.name = 'CheckoutError';
-    this.statusCode = statusCode;
-  }
-}
 
 function jsonResponse(statusCode, payload) {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify(payload)
   };
 }
@@ -55,62 +41,32 @@ function parseRequestBody(body) {
   try {
     return JSON.parse(body || '{}');
   } catch {
-    throw new CheckoutError('Invalid JSON body.', 400);
+    throw new Error('Invalid JSON body');
   }
 }
 
 function normalizeQuantity(value) {
-  const quantity = Number(value ?? 1);
+  const quantity = Number(value);
 
   if (!Number.isInteger(quantity) || quantity <= 0) {
-    throw new CheckoutError('Each cart item must have a positive integer quantity.', 400);
-  }
-
-  if (quantity > MAX_QUANTITY_PER_PRODUCT) {
-    throw new CheckoutError(`Quantity cannot exceed ${MAX_QUANTITY_PER_PRODUCT} per product.`, 400);
+    throw new Error('Each cart item must have a positive integer quantity.');
   }
 
   return quantity;
 }
 
-function normalizeCartFromBody(body) {
-  if (Array.isArray(body.cart)) {
-    return body.cart;
-  }
-
-  const directProductId = String(body.product_id || body.productId || '').trim();
-
-  if (directProductId) {
-    return [
-      {
-        product_id: directProductId,
-        quantity: body.quantity ?? 1
-      }
-    ];
-  }
-
-  return [];
-}
-
-function mergeCartItems(rawCart) {
+function mergeCartItems(cart) {
   const merged = new Map();
 
-  for (const item of rawCart) {
-    const productId = String(item.product_id || item.productId || '').trim();
-
+  for (const item of cart) {
+    const productId = String(item.product_id || '').trim();
     if (!productId) {
-      throw new CheckoutError('Each cart item must include a product_id.', 400);
+      throw new Error('Each cart item must include a product_id.');
     }
 
     const quantity = normalizeQuantity(item.quantity);
     const current = merged.get(productId) || 0;
-    const nextQuantity = current + quantity;
-
-    if (nextQuantity > MAX_QUANTITY_PER_PRODUCT) {
-      throw new CheckoutError(`Quantity cannot exceed ${MAX_QUANTITY_PER_PRODUCT} per product.`, 400);
-    }
-
-    merged.set(productId, nextQuantity);
+    merged.set(productId, current + quantity);
   }
 
   return Array.from(merged.entries()).map(([product_id, quantity]) => ({
@@ -127,10 +83,6 @@ function isDigitalOnlyProductType(productType) {
   return DIGITAL_ONLY_PRODUCT_TYPES.has(String(productType || '').trim());
 }
 
-function isComicProductType(productType) {
-  return COMIC_PRODUCT_TYPES.has(String(productType || '').trim());
-}
-
 async function getAuthenticatedUser(token) {
   const {
     data: { user },
@@ -138,7 +90,7 @@ async function getAuthenticatedUser(token) {
   } = await supabase.auth.getUser(token);
 
   if (error || !user) {
-    throw new CheckoutError('Unauthorized', 401);
+    throw new Error('Unauthorized');
   }
 
   return user;
@@ -160,64 +112,16 @@ async function markOrderFailed(orderId) {
   }
 }
 
-async function userAlreadyOwnsDigitalStory(userId, storyId) {
-  if (!userId || !storyId) return false;
-
-  const { data, error } = await supabase
-    .from('user_story_access')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('story_id', storyId)
-    .limit(1);
-
-  if (error) {
-    console.error('Digital ownership check failed:', error);
-    throw new CheckoutError('Could not verify digital ownership.', 500);
-  }
-
-  return Array.isArray(data) && data.length > 0;
-}
-
-async function fetchProductsByIds(productIds) {
-  const { data: products, error } = await supabase
-    .from('products')
-    .select(`
-      id,
-      name,
-      description,
-      price_cents,
-      stripe_product_id,
-      stripe_price_id,
-      active,
-      votes_granted,
-      product_type,
-      story_id
-    `)
-    .in('id', productIds);
-
-  if (error) {
-    throw error;
-  }
-
-  return products || [];
-}
-
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return jsonResponse(405, {
-      success: false,
-      error: 'Method not allowed'
-    });
+    return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   const authHeader = event.headers.authorization || event.headers.Authorization;
   const token = authHeader?.replace(/^Bearer\s+/i, '');
 
   if (!token) {
-    return jsonResponse(401, {
-      success: false,
-      error: 'Missing auth token'
-    });
+    return jsonResponse(401, { error: 'Missing auth token' });
   }
 
   let createdOrderId = null;
@@ -226,19 +130,37 @@ exports.handler = async (event) => {
     const user = await getAuthenticatedUser(token);
 
     const body = parseRequestBody(event.body);
-    const rawCart = normalizeCartFromBody(body);
+    const rawCart = Array.isArray(body.cart) ? body.cart : [];
 
     if (!rawCart.length) {
-      throw new CheckoutError('Cart is empty.', 400);
+      return jsonResponse(400, { error: 'Cart is empty' });
     }
 
     const cart = mergeCartItems(rawCart);
     const productIds = cart.map((item) => item.product_id);
 
-    const products = await fetchProductsByIds(productIds);
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select(`
+        id,
+        name,
+        description,
+        price_cents,
+        stripe_product_id,
+        stripe_price_id,
+        active,
+        votes_granted,
+        product_type,
+        story_id
+      `)
+      .in('id', productIds);
+
+    if (productsError) {
+      throw productsError;
+    }
 
     const productMap = new Map(
-      products.map((product) => [String(product.id), product])
+      (products || []).map((product) => [String(product.id), product])
     );
 
     const line_items = [];
@@ -252,37 +174,25 @@ exports.handler = async (event) => {
       const product = productMap.get(cartItem.product_id);
 
       if (!product) {
-        throw new CheckoutError(`Invalid product: ${cartItem.product_id}`, 400);
+        throw new Error(`Invalid product: ${cartItem.product_id}`);
       }
 
       if (!product.active) {
-        throw new CheckoutError(`Product is inactive: ${product.name}`, 400);
+        throw new Error(`Product is inactive: ${product.name}`);
       }
 
       if (!product.stripe_price_id) {
-        throw new CheckoutError(`Product is missing Stripe price ID: ${product.name}`, 500);
+        throw new Error(`Product is missing Stripe price ID: ${product.name}`);
       }
 
       if (!Number.isInteger(product.price_cents) || product.price_cents <= 0) {
-        throw new CheckoutError(`Product has invalid price_cents: ${product.name}`, 500);
+        throw new Error(`Product has invalid price_cents: ${product.name}`);
       }
 
       const productType = String(product.product_type || 'merch').trim();
 
       if (!isPhysicalProductType(productType) && !isDigitalOnlyProductType(productType)) {
-        throw new CheckoutError(`Unsupported product type for checkout: ${product.name}`, 400);
-      }
-
-      if (isComicProductType(productType) && !product.story_id) {
-        throw new CheckoutError(`Comic product is missing a linked story: ${product.name}`, 500);
-      }
-
-      if (isDigitalOnlyProductType(productType)) {
-        const alreadyOwnsStory = await userAlreadyOwnsDigitalStory(user.id, product.story_id);
-
-        if (alreadyOwnsStory) {
-          throw new CheckoutError('You already own this digital comic.', 409);
-        }
+        throw new Error(`Unsupported product type for checkout: ${product.name}`);
       }
 
       if (isPhysicalProductType(productType)) {
@@ -328,11 +238,10 @@ exports.handler = async (event) => {
 
     if (orderError || !order) {
       console.error('Order creation error:', orderError);
-
-      throw new CheckoutError(
-        orderError?.message || 'Failed to create order.',
-        500
-      );
+      return jsonResponse(500, {
+        error: 'Failed to create order',
+        details: orderError?.message || null
+      });
     }
 
     createdOrderId = order.id;
@@ -355,20 +264,20 @@ exports.handler = async (event) => {
 
       await markOrderFailed(order.id);
 
-      throw new CheckoutError(
-        itemsError.message || 'Failed to create order items.',
-        500
-      );
+      return jsonResponse(500, {
+        error: 'Failed to create order items',
+        details: itemsError.message || null
+      });
     }
 
     const uniqueProductTypes = Array.from(
-      new Set(products.map((product) => product.product_type || 'merch'))
+      new Set((products || []).map((p) => p.product_type || 'merch'))
     );
 
     const productTypeSummary = uniqueProductTypes.join(',');
 
     const storyIdsSummary = Array.from(
-      new Set(products.map((product) => product.story_id).filter(Boolean))
+      new Set((products || []).map((p) => p.story_id).filter(Boolean))
     ).join(',');
 
     const sessionConfig = {
@@ -414,13 +323,12 @@ exports.handler = async (event) => {
 
     if (updateError) {
       console.error('Failed to update order with session ID:', updateError);
-
       await markOrderFailed(order.id);
 
-      throw new CheckoutError(
-        updateError.message || 'Failed to save checkout session to order.',
-        500
-      );
+      return jsonResponse(500, {
+        error: 'Failed to save checkout session to order',
+        details: updateError.message || null
+      });
     }
 
     return jsonResponse(200, {
@@ -434,13 +342,7 @@ exports.handler = async (event) => {
 
     await markOrderFailed(createdOrderId);
 
-    const statusCode =
-      error instanceof CheckoutError
-        ? error.statusCode
-        : 500;
-
-    return jsonResponse(statusCode, {
-      success: false,
+    return jsonResponse(500, {
       error: error.message || 'Server error'
     });
   }
