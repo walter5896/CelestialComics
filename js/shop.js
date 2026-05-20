@@ -19,10 +19,21 @@ let unsubscribeState = null;
 let shopBootstrapped = false;
 let shopClickHandlerAttached = false;
 let shopFilterHandlerAttached = false;
+let shopLifecycleHandlersAttached = false;
+
+let shopRefreshInProgress = false;
+let checkoutInProgress = false;
+let lastReturnRefreshAt = 0;
 
 let activeProductFilter = 'all';
 let activeStoryFilter = 'all';
 let purchasedPhysicalProductIds = new Set();
+
+const RETURN_REFRESH_COOLDOWN_MS = 1500;
+
+/* =======================
+   HELPERS
+======================= */
 
 function setStatus(message = '', color = '') {
   if (!shopStatusMessage) return;
@@ -84,7 +95,7 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-async function getAccessToken() {
+async function getAccessToken({ forceRefresh = false } = {}) {
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {
@@ -92,7 +103,22 @@ async function getAccessToken() {
     return null;
   }
 
-  return data?.session?.access_token || null;
+  let session = data?.session || null;
+
+  const expiresAtMs = Number(session?.expires_at || 0) * 1000;
+  const expiresSoon = expiresAtMs && expiresAtMs - Date.now() < 60 * 1000;
+
+  if (forceRefresh || !session?.access_token || expiresSoon) {
+    const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.warn('Could not refresh session:', refreshError);
+    } else if (refreshedData?.session) {
+      session = refreshedData.session;
+    }
+  }
+
+  return session?.access_token || null;
 }
 
 function getOwnedStoryIdSet() {
@@ -195,6 +221,10 @@ function resetFilters() {
   renderProducts();
 }
 
+/* =======================
+   LOAD DATA
+======================= */
+
 async function loadProductsToState() {
   if (!productsContainer) return;
 
@@ -264,7 +294,7 @@ async function loadPhysicalPurchasesToState() {
     return;
   }
 
-  const accessToken = await getAccessToken();
+  const accessToken = await getAccessToken({ forceRefresh: true });
 
   if (!accessToken) {
     return;
@@ -292,6 +322,10 @@ async function loadPhysicalPurchasesToState() {
       .filter(Boolean)
   );
 }
+
+/* =======================
+   RENDER
+======================= */
 
 function renderProducts() {
   if (!productsContainer) return;
@@ -422,7 +456,13 @@ function renderProducts() {
           ${
             product.image_url
               ? `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
-                  <img class="shop-product-image" src="${escapeHtml(product.image_url)}" alt="${safeName}">
+                  <img
+                    class="shop-product-image"
+                    src="${escapeHtml(product.image_url)}"
+                    alt="${safeName}"
+                    loading="lazy"
+                    decoding="async"
+                  >
                 </a>`
               : `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
                   <div class="shop-product-image shop-product-image-placeholder">No image available</div>
@@ -458,10 +498,20 @@ function renderProducts() {
   setStatus('');
 }
 
+/* =======================
+   CHECKOUT
+======================= */
+
 async function handleBuyProduct(productId, buttonEl) {
+  if (checkoutInProgress) return;
+
   const originalButtonText = buttonEl?.textContent || 'Buy Now';
 
+  checkoutInProgress = true;
+
   try {
+    await waitForAuthReady();
+
     const user = await getCurrentUserAsync();
 
     if (!user) {
@@ -490,7 +540,7 @@ async function handleBuyProduct(productId, buttonEl) {
       return;
     }
 
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken({ forceRefresh: true });
 
     if (!accessToken) {
       throw new Error('No active session found.');
@@ -534,14 +584,20 @@ async function handleBuyProduct(productId, buttonEl) {
       buttonEl.disabled = false;
       buttonEl.textContent = originalButtonText;
     }
+  } finally {
+    checkoutInProgress = false;
   }
 }
+
+/* =======================
+   EVENTS
+======================= */
 
 function attachShopClickHandler() {
   if (!productsContainer || shopClickHandlerAttached) return;
 
   productsContainer.addEventListener('click', async (event) => {
-    const button = event.target.closest('.shop-buy-btn[data-product-id]');
+    const button = event.target.closest?.('.shop-buy-btn[data-product-id]');
     if (!button) return;
 
     const productId = button.dataset.productId;
@@ -579,36 +635,94 @@ function attachShopFilterHandlers() {
   shopFilterHandlerAttached = true;
 }
 
-async function refreshShopState() {
-  if (!productsContainer) return;
+async function refreshShopState({ silent = false } = {}) {
+  if (!productsContainer || shopRefreshInProgress || checkoutInProgress) return;
+
+  shopRefreshInProgress = true;
 
   try {
-    setStatus('Loading products...', '#cbd5e1');
+    await waitForAuthReady();
 
-    productsContainer.innerHTML = `
-      <div class="shop-empty-state">
-        Loading products...
-      </div>
-    `;
+    if (!silent) {
+      setStatus('Loading products...', '#cbd5e1');
+
+      productsContainer.innerHTML = `
+        <div class="shop-empty-state">
+          Loading products...
+        </div>
+      `;
+    }
 
     await loadProductsToState();
     await loadOwnedStoryAccessToState();
     await loadPhysicalPurchasesToState();
+
+    if (checkoutInProgress) return;
 
     updateFilterButtonState();
     renderProducts();
   } catch (err) {
     console.error('Error loading shop products:', err);
 
-    productsContainer.innerHTML = `
-      <div class="shop-empty-state">
-        Failed to load products.
-      </div>
-    `;
+    if (!silent) {
+      productsContainer.innerHTML = `
+        <div class="shop-empty-state">
+          Failed to load products.
+        </div>
+      `;
 
-    setStatus(err.message || 'Failed to load products.', 'red');
+      setStatus(err.message || 'Failed to load products.', 'red');
+    }
+  } finally {
+    shopRefreshInProgress = false;
   }
 }
+
+async function refreshShopAfterReturn({ force = false } = {}) {
+  if (!shopBootstrapped || checkoutInProgress) return;
+  if (document.visibilityState === 'hidden') return;
+
+  const now = Date.now();
+
+  if (!force && now - lastReturnRefreshAt < RETURN_REFRESH_COOLDOWN_MS) {
+    return;
+  }
+
+  lastReturnRefreshAt = now;
+
+  await refreshShopState({ silent: true });
+}
+
+function attachShopLifecycleHandlers() {
+  if (shopLifecycleHandlersAttached) return;
+  shopLifecycleHandlersAttached = true;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      refreshShopAfterReturn().catch((error) => {
+        console.error('Shop refresh after visibility return failed:', error);
+      });
+    }
+  });
+
+  window.addEventListener('focus', () => {
+    refreshShopAfterReturn().catch((error) => {
+      console.error('Shop refresh after focus failed:', error);
+    });
+  });
+
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      refreshShopAfterReturn({ force: true }).catch((error) => {
+        console.error('Shop refresh after page restore failed:', error);
+      });
+    }
+  });
+}
+
+/* =======================
+   INIT
+======================= */
 
 async function initShop() {
   if (shopBootstrapped) return;
@@ -621,8 +735,11 @@ async function initShop() {
 
   attachShopClickHandler();
   attachShopFilterHandlers();
+  attachShopLifecycleHandlers();
 
   unsubscribeState = subscribe(() => {
+    if (checkoutInProgress) return;
+
     populateStoryFilter(getRenderedProducts());
     updateFilterButtonState();
     renderProducts();
@@ -632,7 +749,9 @@ async function initShop() {
   await refreshShopState();
 
   window.addEventListener('user-changed', async () => {
-    await refreshShopState();
+    if (!checkoutInProgress) {
+      await refreshShopState({ silent: true });
+    }
   });
 }
 
