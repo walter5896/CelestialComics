@@ -26,7 +26,15 @@ let currentProduct = null;
 let currentUser = null;
 let userOwnsRelatedStory = false;
 let userPurchasedThisPhysicalProduct = false;
+
 let productDetailInitialized = false;
+let productBuyHandlerAttached = false;
+let productSessionWarmupAttached = false;
+let checkoutInProgress = false;
+
+/* =======================
+   HELPERS
+======================= */
 
 function setStatus(message = '', color = '') {
   if (!statusEl) return;
@@ -42,6 +50,7 @@ function showContent() {
 
 function showError(message = 'Product could not be loaded.') {
   if (contentEl) contentEl.style.display = 'none';
+
   if (errorEl) {
     errorEl.style.display = 'block';
     errorEl.textContent = message;
@@ -68,6 +77,7 @@ function encodeId(value) {
 
 function formatPrice(priceCents) {
   const safeValue = Number(priceCents);
+
   if (!Number.isInteger(safeValue)) return 'Price unavailable';
 
   return `$${(safeValue / 100).toFixed(2)}`;
@@ -110,16 +120,37 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-async function getAccessToken() {
+async function getFreshAccessToken() {
+  await waitForAuthReady();
+
+  try {
+    const { data: refreshedData, error: refreshError } =
+      await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.warn('Session refresh failed, falling back to current session:', refreshError);
+    }
+
+    if (refreshedData?.session?.access_token) {
+      return refreshedData.session.access_token;
+    }
+  } catch (error) {
+    console.warn('Session refresh threw an error, falling back to current session:', error);
+  }
+
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {
-    console.error('Error getting session:', error);
+    console.error('Error getting current session:', error);
     return null;
   }
 
   return data?.session?.access_token || null;
 }
+
+/* =======================
+   DATA LOADING
+======================= */
 
 async function fetchProduct(productId) {
   const { data, error } = await supabase
@@ -178,7 +209,9 @@ async function loadOwnedStoryAccess() {
   }
 
   const safeRows = data || [];
+
   setOwnedStoryAccess(safeRows);
+
   return safeRows;
 }
 
@@ -189,7 +222,7 @@ async function loadPurchasedPhysicalProducts() {
     return [];
   }
 
-  const accessToken = await getAccessToken();
+  const accessToken = await getFreshAccessToken();
 
   if (!accessToken) {
     return [];
@@ -217,12 +250,18 @@ async function loadPurchasedPhysicalProducts() {
   }
 }
 
+/* =======================
+   RENDER HELPERS
+======================= */
+
 function updateImage(product) {
   const imageUrl = product?.image_url || '';
 
   if (imageUrl && imageEl) {
     imageEl.src = imageUrl;
     imageEl.alt = `${product.name || 'Product'} image`;
+    imageEl.loading = 'eager';
+    imageEl.decoding = 'async';
     imageEl.style.display = 'block';
 
     if (placeholderEl) placeholderEl.style.display = 'none';
@@ -249,27 +288,27 @@ function updateBadges(product) {
     typeEl.className = `shop-product-badge ${escapeHtml(productType)}`;
   }
 
-  if (ownedEl) {
-    const isOwnedDigitalOnlyOption =
-      userOwnsRelatedStory && isDigitalOnlyProduct(productType);
+  if (!ownedEl) return;
 
-    const bundleDigitalAccessOwned =
-      userOwnsRelatedStory && productType === 'bundle';
+  const isOwnedDigitalOnlyOption =
+    userOwnsRelatedStory && isDigitalOnlyProduct(productType);
 
-    if (isOwnedDigitalOnlyOption || bundleDigitalAccessOwned) {
-      ownedEl.textContent = bundleDigitalAccessOwned ? 'Digital Access Owned' : 'Owned';
-      ownedEl.style.display = 'inline-flex';
-      return;
-    }
+  const bundleDigitalAccessOwned =
+    userOwnsRelatedStory && productType === 'bundle';
 
-    if (userPurchasedThisPhysicalProduct && isPhysicalProductType(productType)) {
-      ownedEl.textContent = 'Purchased Before';
-      ownedEl.style.display = 'inline-flex';
-      return;
-    }
-
-    ownedEl.style.display = 'none';
+  if (isOwnedDigitalOnlyOption || bundleDigitalAccessOwned) {
+    ownedEl.textContent = bundleDigitalAccessOwned ? 'Digital Access Owned' : 'Owned';
+    ownedEl.style.display = 'inline-flex';
+    return;
   }
+
+  if (userPurchasedThisPhysicalProduct && isPhysicalProductType(productType)) {
+    ownedEl.textContent = 'Purchased Before';
+    ownedEl.style.display = 'inline-flex';
+    return;
+  }
+
+  ownedEl.style.display = 'none';
 }
 
 function updateStoryLink(product) {
@@ -316,10 +355,12 @@ function updateNotes(product) {
       } else {
         shippingEl.textContent = 'This is a physical product. Shipping details are collected securely during checkout when required.';
       }
-    } else {
-      shippingEl.style.display = 'none';
-      shippingEl.textContent = '';
+
+      return;
     }
+
+    shippingEl.style.display = 'none';
+    shippingEl.textContent = '';
   }
 }
 
@@ -377,6 +418,7 @@ async function renderProduct(product) {
 
   if (titleEl) titleEl.textContent = product.name || 'Untitled Product';
   if (priceEl) priceEl.textContent = formatPrice(product.price_cents);
+
   if (descriptionEl) {
     descriptionEl.textContent = product.description || 'No description provided.';
   }
@@ -387,37 +429,34 @@ async function renderProduct(product) {
   showContent();
 }
 
-async function handleBuyProduct() {
-  if (!currentProduct?.id || !buyBtn) return;
+/* =======================
+   CHECKOUT
+======================= */
 
-  const originalText = buyBtn.textContent || 'Buy Now';
+async function createCheckoutForProduct(productId, buttonEl) {
+  if (checkoutInProgress) return;
+
+  const originalButtonText = buttonEl?.textContent || 'Buy Now';
+
+  checkoutInProgress = true;
 
   try {
-    const user = await getCurrentUserAsync();
+    if (!productId) {
+      throw new Error('Product could not be found.');
+    }
 
-    if (!user) {
+    const accessToken = await getFreshAccessToken();
+
+    if (!accessToken) {
       setStatus('Please log in before purchasing.', 'red');
       return;
     }
 
-    const productType = String(currentProduct.product_type || '');
-    const alreadyOwnedDigitalOnly =
-      userOwnsRelatedStory && isDigitalOnlyProduct(productType);
-
-    if (alreadyOwnedDigitalOnly) {
-      setStatus('You already own this digital comic.', '#cbd5e1');
-      updateBuyButton(currentProduct);
-      return;
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      buttonEl.textContent = 'Redirecting...';
     }
 
-    const accessToken = await getAccessToken();
-
-    if (!accessToken) {
-      throw new Error('No active session found.');
-    }
-
-    buyBtn.disabled = true;
-    buyBtn.textContent = 'Redirecting...';
     setStatus('');
 
     const res = await fetch('/.netlify/functions/create-checkout-session', {
@@ -427,12 +466,8 @@ async function handleBuyProduct() {
         Authorization: `Bearer ${accessToken}`
       },
       body: JSON.stringify({
-        cart: [
-          {
-            product_id: currentProduct.id,
-            quantity: 1
-          }
-        ]
+        product_id: productId,
+        quantity: 1
       })
     });
 
@@ -447,10 +482,57 @@ async function handleBuyProduct() {
     console.error('Product checkout error:', err);
     setStatus(err.message || 'Checkout failed.', 'red');
 
-    buyBtn.disabled = false;
-    buyBtn.textContent = originalText;
+    if (buttonEl) {
+      buttonEl.disabled = false;
+      buttonEl.textContent = originalButtonText;
+    }
+  } finally {
+    checkoutInProgress = false;
   }
 }
+
+/* =======================
+   EVENT BINDING
+======================= */
+
+function bindBuyButton() {
+  if (!buyBtn || productBuyHandlerAttached) return;
+
+  buyBtn.addEventListener('click', async (event) => {
+    event.preventDefault();
+
+    if (buyBtn.disabled) return;
+
+    const productId = currentProduct?.id || getQueryParam('id');
+
+    await createCheckoutForProduct(productId, buyBtn);
+  });
+
+  productBuyHandlerAttached = true;
+}
+
+function attachProductSessionWarmup() {
+  if (productSessionWarmupAttached) return;
+  productSessionWarmupAttached = true;
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+
+    getFreshAccessToken().catch((error) => {
+      console.warn('Product detail session warmup after visibility return failed:', error);
+    });
+  });
+
+  window.addEventListener('focus', () => {
+    getFreshAccessToken().catch((error) => {
+      console.warn('Product detail session warmup after focus failed:', error);
+    });
+  });
+}
+
+/* =======================
+   INIT
+======================= */
 
 async function initProductDetail() {
   if (productDetailInitialized) return;
@@ -467,6 +549,9 @@ async function initProductDetail() {
   try {
     await waitForAuthReady();
 
+    bindBuyButton();
+    attachProductSessionWarmup();
+
     setStatus('Loading product...', '#cbd5e1');
 
     const product = await fetchProduct(productId);
@@ -478,10 +563,6 @@ async function initProductDetail() {
     }
 
     await renderProduct(product);
-
-    if (buyBtn) {
-      buyBtn.addEventListener('click', handleBuyProduct);
-    }
   } catch (err) {
     console.error('Product detail load error:', err);
     setStatus('');
