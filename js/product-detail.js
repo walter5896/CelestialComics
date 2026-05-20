@@ -26,19 +26,7 @@ let currentProduct = null;
 let currentUser = null;
 let userOwnsRelatedStory = false;
 let userPurchasedThisPhysicalProduct = false;
-
 let productDetailInitialized = false;
-let productDetailRefreshInProgress = false;
-let productDetailLifecycleHandlersAttached = false;
-let productBuyHandlerAttached = false;
-let checkoutInProgress = false;
-let lastReturnRefreshAt = 0;
-
-const RETURN_REFRESH_COOLDOWN_MS = 1500;
-
-/* =======================
-   HELPERS
-======================= */
 
 function setStatus(message = '', color = '') {
   if (!statusEl) return;
@@ -122,7 +110,7 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-async function getAccessToken({ forceRefresh = false } = {}) {
+async function getAccessToken() {
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {
@@ -130,27 +118,8 @@ async function getAccessToken({ forceRefresh = false } = {}) {
     return null;
   }
 
-  let session = data?.session || null;
-
-  const expiresAtMs = Number(session?.expires_at || 0) * 1000;
-  const expiresSoon = expiresAtMs && expiresAtMs - Date.now() < 60 * 1000;
-
-  if (forceRefresh || !session?.access_token || expiresSoon) {
-    const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
-
-    if (refreshError) {
-      console.warn('Could not refresh session:', refreshError);
-    } else if (refreshedData?.session) {
-      session = refreshedData.session;
-    }
-  }
-
-  return session?.access_token || null;
+  return data?.session?.access_token || null;
 }
-
-/* =======================
-   LOAD DATA
-======================= */
 
 async function fetchProduct(productId) {
   const { data, error } = await supabase
@@ -220,7 +189,7 @@ async function loadPurchasedPhysicalProducts() {
     return [];
   }
 
-  const accessToken = await getAccessToken({ forceRefresh: true });
+  const accessToken = await getAccessToken();
 
   if (!accessToken) {
     return [];
@@ -248,18 +217,12 @@ async function loadPurchasedPhysicalProducts() {
   }
 }
 
-/* =======================
-   RENDER
-======================= */
-
 function updateImage(product) {
   const imageUrl = product?.image_url || '';
 
   if (imageUrl && imageEl) {
     imageEl.src = imageUrl;
     imageEl.alt = `${product.name || 'Product'} image`;
-    imageEl.loading = 'eager';
-    imageEl.decoding = 'async';
     imageEl.style.display = 'block';
 
     if (placeholderEl) placeholderEl.style.display = 'none';
@@ -424,20 +387,12 @@ async function renderProduct(product) {
   showContent();
 }
 
-/* =======================
-   CHECKOUT
-======================= */
-
 async function handleBuyProduct() {
-  if (!currentProduct?.id || !buyBtn || checkoutInProgress) return;
+  if (!currentProduct?.id || !buyBtn) return;
 
   const originalText = buyBtn.textContent || 'Buy Now';
 
-  checkoutInProgress = true;
-
   try {
-    await waitForAuthReady();
-
     const user = await getCurrentUserAsync();
 
     if (!user) {
@@ -455,7 +410,7 @@ async function handleBuyProduct() {
       return;
     }
 
-    const accessToken = await getAccessToken({ forceRefresh: true });
+    const accessToken = await getAccessToken();
 
     if (!accessToken) {
       throw new Error('No active session found.');
@@ -494,24 +449,12 @@ async function handleBuyProduct() {
 
     buyBtn.disabled = false;
     buyBtn.textContent = originalText;
-  } finally {
-    checkoutInProgress = false;
   }
 }
 
-/* =======================
-   EVENTS / REFRESH
-======================= */
-
-function bindBuyButton() {
-  if (!buyBtn || productBuyHandlerAttached) return;
-
-  buyBtn.addEventListener('click', handleBuyProduct);
-  productBuyHandlerAttached = true;
-}
-
-async function refreshProductDetail({ silent = false } = {}) {
-  if (productDetailRefreshInProgress || checkoutInProgress) return;
+async function initProductDetail() {
+  if (productDetailInitialized) return;
+  productDetailInitialized = true;
 
   const productId = getQueryParam('id');
 
@@ -521,14 +464,10 @@ async function refreshProductDetail({ silent = false } = {}) {
     return;
   }
 
-  productDetailRefreshInProgress = true;
-
   try {
     await waitForAuthReady();
 
-    if (!silent) {
-      setStatus('Loading product...', '#cbd5e1');
-    }
+    setStatus('Loading product...', '#cbd5e1');
 
     const product = await fetchProduct(productId);
 
@@ -538,75 +477,16 @@ async function refreshProductDetail({ silent = false } = {}) {
       return;
     }
 
-    if (checkoutInProgress) return;
-
     await renderProduct(product);
+
+    if (buyBtn) {
+      buyBtn.addEventListener('click', handleBuyProduct);
+    }
   } catch (err) {
     console.error('Product detail load error:', err);
-
-    if (!silent) {
-      setStatus('');
-      showError(err.message || 'Failed to load product.');
-    }
-  } finally {
-    productDetailRefreshInProgress = false;
+    setStatus('');
+    showError(err.message || 'Failed to load product.');
   }
-}
-
-async function refreshProductDetailAfterReturn({ force = false } = {}) {
-  if (!productDetailInitialized || checkoutInProgress) return;
-  if (document.visibilityState === 'hidden') return;
-
-  const now = Date.now();
-
-  if (!force && now - lastReturnRefreshAt < RETURN_REFRESH_COOLDOWN_MS) {
-    return;
-  }
-
-  lastReturnRefreshAt = now;
-
-  await refreshProductDetail({ silent: true });
-}
-
-function attachProductLifecycleHandlers() {
-  if (productDetailLifecycleHandlersAttached) return;
-  productDetailLifecycleHandlersAttached = true;
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      refreshProductDetailAfterReturn().catch((error) => {
-        console.error('Product detail refresh after visibility return failed:', error);
-      });
-    }
-  });
-
-  window.addEventListener('focus', () => {
-    refreshProductDetailAfterReturn().catch((error) => {
-      console.error('Product detail refresh after focus failed:', error);
-    });
-  });
-
-  window.addEventListener('pageshow', (event) => {
-    if (event.persisted) {
-      refreshProductDetailAfterReturn({ force: true }).catch((error) => {
-        console.error('Product detail refresh after page restore failed:', error);
-      });
-    }
-  });
-}
-
-/* =======================
-   INIT
-======================= */
-
-async function initProductDetail() {
-  if (productDetailInitialized) return;
-  productDetailInitialized = true;
-
-  bindBuyButton();
-  attachProductLifecycleHandlers();
-
-  await refreshProductDetail();
 }
 
 document.addEventListener('DOMContentLoaded', initProductDetail);
