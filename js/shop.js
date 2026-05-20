@@ -19,10 +19,22 @@ let unsubscribeState = null;
 let shopBootstrapped = false;
 let shopClickHandlerAttached = false;
 let shopFilterHandlerAttached = false;
+let userChangedHandlerAttached = false;
+
+let shopRefreshInProgress = false;
+let checkoutInProgress = false;
+let lastKnownUserId = null;
 
 let activeProductFilter = 'all';
 let activeStoryFilter = 'all';
 let purchasedPhysicalProductIds = new Set();
+
+const SESSION_REQUEST_TIMEOUT_MS = 2500;
+const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
+
+/* =======================
+   BASIC HELPERS
+======================= */
 
 function setStatus(message = '', color = '') {
   if (!shopStatusMessage) return;
@@ -74,6 +86,15 @@ function isPhysicalProductType(productType) {
   return ['merch', 'paperback', 'bundle'].includes(String(productType || ''));
 }
 
+function withTimeout(promise, timeoutMs, fallbackValue = null) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      window.setTimeout(() => resolve(fallbackValue), timeoutMs);
+    })
+  ]);
+}
+
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -84,16 +105,91 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
+function getCurrentUserIdFromState() {
+  return getState().currentUser?.id || null;
+}
 
-  if (error) {
-    console.error('Error getting session:', error);
-    return null;
+function getStoredSupabaseAccessToken() {
+  try {
+    const keys = Object.keys(window.localStorage || {});
+
+    for (const key of keys) {
+      if (!key.startsWith('sb-') || !key.endsWith('-auth-token')) {
+        continue;
+      }
+
+      const rawValue = window.localStorage.getItem(key);
+      if (!rawValue) continue;
+
+      const parsed = JSON.parse(rawValue);
+
+      const accessToken =
+        parsed?.access_token ||
+        parsed?.currentSession?.access_token ||
+        parsed?.session?.access_token ||
+        null;
+
+      if (!accessToken) continue;
+
+      const expiresAt =
+        Number(parsed?.expires_at) ||
+        Number(parsed?.currentSession?.expires_at) ||
+        Number(parsed?.session?.expires_at) ||
+        0;
+
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+
+      if (expiresAt && expiresAt <= nowInSeconds + 10) {
+        continue;
+      }
+
+      return accessToken;
+    }
+  } catch (error) {
+    console.warn('Could not read stored Supabase token:', error);
   }
 
-  return data?.session?.access_token || null;
+  return null;
 }
+
+/**
+ * Checkout-safe token getter.
+ *
+ * Important:
+ * Supabase auth can occasionally stall after tab restore.
+ * This prevents Buy buttons from hanging forever before reaching Netlify.
+ */
+async function getAccessToken({ allowStoredFallback = true } = {}) {
+  await waitForAuthReady();
+
+  const sessionResult = await withTimeout(
+    supabase.auth.getSession(),
+    SESSION_REQUEST_TIMEOUT_MS,
+    null
+  );
+
+  if (sessionResult?.data?.session?.access_token) {
+    return sessionResult.data.session.access_token;
+  }
+
+  if (sessionResult?.error) {
+    console.warn('Error getting session:', sessionResult.error);
+  }
+
+  if (allowStoredFallback) {
+    const storedToken = getStoredSupabaseAccessToken();
+
+    if (storedToken) {
+      return storedToken;
+    }
+  }
+
+  return null;
+}
+
+/* =======================
+   STATE HELPERS
+======================= */
 
 function getOwnedStoryIdSet() {
   const { ownedStoryIds = [] } = getState();
@@ -138,6 +234,10 @@ function getFilteredProducts() {
     return matchesProductType && matchesStory;
   });
 }
+
+/* =======================
+   FILTERS
+======================= */
 
 function updateFilterButtonState() {
   shopFilterButtons.forEach((button) => {
@@ -194,6 +294,10 @@ function resetFilters() {
   updateFilterButtonState();
   renderProducts();
 }
+
+/* =======================
+   DATA LOADERS
+======================= */
 
 async function loadProductsToState() {
   if (!productsContainer) return;
@@ -292,6 +396,10 @@ async function loadPhysicalPurchasesToState() {
       .filter(Boolean)
   );
 }
+
+/* =======================
+   RENDER
+======================= */
 
 function renderProducts() {
   if (!productsContainer) return;
@@ -422,7 +530,13 @@ function renderProducts() {
           ${
             product.image_url
               ? `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
-                  <img class="shop-product-image" src="${escapeHtml(product.image_url)}" alt="${safeName}">
+                  <img
+                    class="shop-product-image"
+                    src="${escapeHtml(product.image_url)}"
+                    alt="${safeName}"
+                    loading="lazy"
+                    decoding="async"
+                  >
                 </a>`
               : `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
                   <div class="shop-product-image shop-product-image-placeholder">No image available</div>
@@ -458,10 +572,28 @@ function renderProducts() {
   setStatus('');
 }
 
+/* =======================
+   CHECKOUT
+======================= */
+
 async function handleBuyProduct(productId, buttonEl) {
+  if (checkoutInProgress) return;
+
   const originalButtonText = buttonEl?.textContent || 'Buy Now';
+  checkoutInProgress = true;
 
   try {
+    if (!productId) {
+      throw new Error('Product could not be found.');
+    }
+
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      buttonEl.textContent = 'Preparing...';
+    }
+
+    await waitForAuthReady();
+
     const user = await getCurrentUserAsync();
 
     if (!user) {
@@ -493,35 +625,42 @@ async function handleBuyProduct(productId, buttonEl) {
     const accessToken = await getAccessToken();
 
     if (!accessToken) {
-      throw new Error('No active session found.');
+      throw new Error('No active session found. Please refresh and log in again.');
     }
 
     if (buttonEl) {
-      buttonEl.disabled = true;
       buttonEl.textContent = 'Redirecting...';
     }
 
     setStatus('');
 
-    const res = await fetch('/.netlify/functions/create-checkout-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        cart: [
-          {
-            product_id: productId,
-            quantity: 1
-          }
-        ]
-      })
-    });
+    const checkoutResponse = await withTimeout(
+      fetch('/.netlify/functions/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          cart: [
+            {
+              product_id: productId,
+              quantity: 1
+            }
+          ]
+        })
+      }),
+      CHECKOUT_REQUEST_TIMEOUT_MS,
+      null
+    );
 
-    const data = await parseJsonResponseSafely(res);
+    if (!checkoutResponse) {
+      throw new Error('Checkout request timed out. Please try again.');
+    }
 
-    if (!res.ok || !data?.url) {
+    const data = await parseJsonResponseSafely(checkoutResponse);
+
+    if (!checkoutResponse.ok || !data?.url) {
       throw new Error(data?.error || 'Failed to create checkout session.');
     }
 
@@ -534,15 +673,25 @@ async function handleBuyProduct(productId, buttonEl) {
       buttonEl.disabled = false;
       buttonEl.textContent = originalButtonText;
     }
+  } finally {
+    checkoutInProgress = false;
   }
 }
+
+/* =======================
+   EVENTS
+======================= */
 
 function attachShopClickHandler() {
   if (!productsContainer || shopClickHandlerAttached) return;
 
   productsContainer.addEventListener('click', async (event) => {
-    const button = event.target.closest('.shop-buy-btn[data-product-id]');
+    const button = event.target.closest?.('.shop-buy-btn[data-product-id]');
     if (!button) return;
+
+    event.preventDefault();
+
+    if (button.disabled) return;
 
     const productId = button.dataset.productId;
     if (!productId) return;
@@ -579,36 +728,79 @@ function attachShopFilterHandlers() {
   shopFilterHandlerAttached = true;
 }
 
-async function refreshShopState() {
+function attachUserChangedHandler() {
+  if (userChangedHandlerAttached) return;
+
+  window.addEventListener('user-changed', async () => {
+    const nextUserId = getCurrentUserIdFromState();
+
+    if (nextUserId === lastKnownUserId) {
+      return;
+    }
+
+    lastKnownUserId = nextUserId;
+
+    if (checkoutInProgress || shopRefreshInProgress) {
+      return;
+    }
+
+    await refreshShopState({ showLoading: true });
+  });
+
+  userChangedHandlerAttached = true;
+}
+
+/* =======================
+   REFRESH
+======================= */
+
+async function refreshShopState({ showLoading = true } = {}) {
   if (!productsContainer) return;
+  if (shopRefreshInProgress || checkoutInProgress) return;
+
+  shopRefreshInProgress = true;
 
   try {
-    setStatus('Loading products...', '#cbd5e1');
+    if (showLoading) {
+      setStatus('Loading products...', '#cbd5e1');
 
-    productsContainer.innerHTML = `
-      <div class="shop-empty-state">
-        Loading products...
-      </div>
-    `;
+      productsContainer.innerHTML = `
+        <div class="shop-empty-state">
+          Loading products...
+        </div>
+      `;
+    }
+
+    await waitForAuthReady();
 
     await loadProductsToState();
     await loadOwnedStoryAccessToState();
     await loadPhysicalPurchasesToState();
+
+    lastKnownUserId = getCurrentUserIdFromState();
 
     updateFilterButtonState();
     renderProducts();
   } catch (err) {
     console.error('Error loading shop products:', err);
 
-    productsContainer.innerHTML = `
-      <div class="shop-empty-state">
-        Failed to load products.
-      </div>
-    `;
+    if (showLoading) {
+      productsContainer.innerHTML = `
+        <div class="shop-empty-state">
+          Failed to load products.
+        </div>
+      `;
+    }
 
     setStatus(err.message || 'Failed to load products.', 'red');
+  } finally {
+    shopRefreshInProgress = false;
   }
 }
+
+/* =======================
+   INIT
+======================= */
 
 async function initShop() {
   if (shopBootstrapped) return;
@@ -621,19 +813,21 @@ async function initShop() {
 
   attachShopClickHandler();
   attachShopFilterHandlers();
+  attachUserChangedHandler();
 
   unsubscribeState = subscribe(() => {
+    if (shopRefreshInProgress || checkoutInProgress) return;
+
     populateStoryFilter(getRenderedProducts());
     updateFilterButtonState();
     renderProducts();
   });
 
   await waitForAuthReady();
-  await refreshShopState();
 
-  window.addEventListener('user-changed', async () => {
-    await refreshShopState();
-  });
+  lastKnownUserId = getCurrentUserIdFromState();
+
+  await refreshShopState({ showLoading: true });
 }
 
 document.addEventListener('DOMContentLoaded', initShop);
