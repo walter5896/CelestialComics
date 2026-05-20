@@ -1167,3 +1167,29 @@
     border-radius: 14px;
   }
 }
+
+/* =========================
+   Product Detail Mobile Title Readability
+   Prevents large title letters/lines from touching
+========================= */
+
+.product-detail-title {
+  letter-spacing: 0.015em;
+  line-height: 1.02;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .product-detail-title {
+    font-size: clamp(2.15rem, 11vw, 3.1rem) !important;
+    line-height: 1.08 !important;
+    letter-spacing: 0.018em;
+  }
+}
+
+@media (max-width: 420px) {
+  .product-detail-title {
+    font-size: clamp(2rem, 10.5vw, 2.75rem) !important;
+    line-height: 1.1 !important;
+  }
+}
