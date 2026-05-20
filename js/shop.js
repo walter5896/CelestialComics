@@ -7,6 +7,10 @@ import {
   setProducts,
   setOwnedStoryAccess
 } from './state.js';
+import {
+  getAccessToken as getSharedAccessToken,
+  parseJsonResponseSafely
+} from './admin-shared.js';
 
 const productsContainer = document.getElementById('products-container');
 const shopStatusMessage = document.getElementById('shop-status-message');
@@ -20,9 +24,17 @@ let shopBootstrapped = false;
 let shopClickHandlerAttached = false;
 let shopFilterHandlerAttached = false;
 
+let shopRefreshInProgress = false;
+let checkoutInProgress = false;
+let lastKnownUserId = null;
+
 let activeProductFilter = 'all';
 let activeStoryFilter = 'all';
 let purchasedPhysicalProductIds = new Set();
+
+/* =======================
+   BASIC HELPERS
+======================= */
 
 function setStatus(message = '', color = '') {
   if (!shopStatusMessage) return;
@@ -74,17 +86,59 @@ function isPhysicalProductType(productType) {
   return ['merch', 'paperback', 'bundle'].includes(String(productType || ''));
 }
 
-async function parseJsonResponseSafely(res) {
-  const rawText = await res.text();
-
-  try {
-    return rawText ? JSON.parse(rawText) : {};
-  } catch {
-    throw new Error(rawText || 'Server returned an invalid response.');
-  }
+function getCurrentStateUserId() {
+  return getState().currentUser?.id || null;
 }
 
-async function getAccessToken() {
+async function getCheckoutAccessToken() {
+  await waitForAuthReady();
+
+  const sharedToken = await getSharedAccessToken({
+    forceRefresh: true,
+    refreshBufferSeconds: 120
+  });
+
+  if (sharedToken) {
+    return sharedToken;
+  }
+
+  try {
+    const { data: refreshedData, error: refreshError } =
+      await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.warn('Shop checkout session refresh failed:', refreshError);
+    }
+
+    if (refreshedData?.session?.access_token) {
+      return refreshedData.session.access_token;
+    }
+  } catch (error) {
+    console.warn('Shop checkout session refresh threw:', error);
+  }
+
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error('Error getting checkout session:', error);
+    return null;
+  }
+
+  return data?.session?.access_token || null;
+}
+
+async function getPassiveAccessToken() {
+  await waitForAuthReady();
+
+  const sharedToken = await getSharedAccessToken({
+    forceRefresh: false,
+    refreshBufferSeconds: 120
+  });
+
+  if (sharedToken) {
+    return sharedToken;
+  }
+
   const { data, error } = await supabase.auth.getSession();
 
   if (error) {
@@ -94,6 +148,10 @@ async function getAccessToken() {
 
   return data?.session?.access_token || null;
 }
+
+/* =======================
+   STATE HELPERS
+======================= */
 
 function getOwnedStoryIdSet() {
   const { ownedStoryIds = [] } = getState();
@@ -138,6 +196,10 @@ function getFilteredProducts() {
     return matchesProductType && matchesStory;
   });
 }
+
+/* =======================
+   FILTERS
+======================= */
 
 function updateFilterButtonState() {
   shopFilterButtons.forEach((button) => {
@@ -195,6 +257,10 @@ function resetFilters() {
   renderProducts();
 }
 
+/* =======================
+   DATA LOADERS
+======================= */
+
 async function loadProductsToState() {
   if (!productsContainer) return;
 
@@ -225,6 +291,7 @@ async function loadProductsToState() {
   }
 
   const visibleProducts = filterVisibleProducts(products || []);
+
   setProducts(visibleProducts);
   populateStoryFilter(visibleProducts);
 }
@@ -264,7 +331,7 @@ async function loadPhysicalPurchasesToState() {
     return;
   }
 
-  const accessToken = await getAccessToken();
+  const accessToken = await getPassiveAccessToken();
 
   if (!accessToken) {
     return;
@@ -292,6 +359,10 @@ async function loadPhysicalPurchasesToState() {
       .filter(Boolean)
   );
 }
+
+/* =======================
+   RENDER
+======================= */
 
 function renderProducts() {
   if (!productsContainer) return;
@@ -422,7 +493,13 @@ function renderProducts() {
           ${
             product.image_url
               ? `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
-                  <img class="shop-product-image" src="${escapeHtml(product.image_url)}" alt="${safeName}">
+                  <img
+                    class="shop-product-image"
+                    src="${escapeHtml(product.image_url)}"
+                    alt="${safeName}"
+                    loading="lazy"
+                    decoding="async"
+                  >
                 </a>`
               : `<a href="/shop/product.html?id=${encodedProductId}" class="shop-product-image-link" aria-label="View ${safeName}">
                   <div class="shop-product-image shop-product-image-placeholder">No image available</div>
@@ -458,10 +535,20 @@ function renderProducts() {
   setStatus('');
 }
 
+/* =======================
+   CHECKOUT
+======================= */
+
 async function handleBuyProduct(productId, buttonEl) {
+  if (checkoutInProgress) return;
+
   const originalButtonText = buttonEl?.textContent || 'Buy Now';
 
+  checkoutInProgress = true;
+
   try {
+    await waitForAuthReady();
+
     const user = await getCurrentUserAsync();
 
     if (!user) {
@@ -490,7 +577,7 @@ async function handleBuyProduct(productId, buttonEl) {
       return;
     }
 
-    const accessToken = await getAccessToken();
+    const accessToken = await getCheckoutAccessToken();
 
     if (!accessToken) {
       throw new Error('No active session found.');
@@ -534,21 +621,46 @@ async function handleBuyProduct(productId, buttonEl) {
       buttonEl.disabled = false;
       buttonEl.textContent = originalButtonText;
     }
+  } finally {
+    checkoutInProgress = false;
   }
 }
 
+/* =======================
+   EVENTS
+======================= */
+
 function attachShopClickHandler() {
-  if (!productsContainer || shopClickHandlerAttached) return;
+  if (shopClickHandlerAttached) return;
 
-  productsContainer.addEventListener('click', async (event) => {
-    const button = event.target.closest('.shop-buy-btn[data-product-id]');
-    if (!button) return;
+  document.addEventListener(
+    'click',
+    async (event) => {
+      const button = event.target.closest?.('.shop-buy-btn[data-product-id]');
+      if (!button) return;
 
-    const productId = button.dataset.productId;
-    if (!productId) return;
+      const liveProductsContainer = document.getElementById('products-container');
 
-    await handleBuyProduct(productId, button);
-  });
+      if (liveProductsContainer && !liveProductsContainer.contains(button)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (button.disabled) return;
+
+      const productId = button.dataset.productId;
+
+      if (!productId) {
+        setStatus('Product could not be found.', 'red');
+        return;
+      }
+
+      await handleBuyProduct(productId, button);
+    },
+    true
+  );
 
   shopClickHandlerAttached = true;
 }
@@ -579,36 +691,75 @@ function attachShopFilterHandlers() {
   shopFilterHandlerAttached = true;
 }
 
-async function refreshShopState() {
+/* =======================
+   REFRESH
+======================= */
+
+async function refreshShopState({ showLoading = true } = {}) {
   if (!productsContainer) return;
+  if (shopRefreshInProgress || checkoutInProgress) return;
+
+  shopRefreshInProgress = true;
 
   try {
-    setStatus('Loading products...', '#cbd5e1');
+    if (showLoading) {
+      setStatus('Loading products...', '#cbd5e1');
 
-    productsContainer.innerHTML = `
-      <div class="shop-empty-state">
-        Loading products...
-      </div>
-    `;
+      productsContainer.innerHTML = `
+        <div class="shop-empty-state">
+          Loading products...
+        </div>
+      `;
+    }
+
+    await waitForAuthReady();
 
     await loadProductsToState();
     await loadOwnedStoryAccessToState();
     await loadPhysicalPurchasesToState();
+
+    lastKnownUserId = getCurrentStateUserId();
 
     updateFilterButtonState();
     renderProducts();
   } catch (err) {
     console.error('Error loading shop products:', err);
 
-    productsContainer.innerHTML = `
-      <div class="shop-empty-state">
-        Failed to load products.
-      </div>
-    `;
+    if (showLoading) {
+      productsContainer.innerHTML = `
+        <div class="shop-empty-state">
+          Failed to load products.
+        </div>
+      `;
+    }
 
     setStatus(err.message || 'Failed to load products.', 'red');
+  } finally {
+    shopRefreshInProgress = false;
   }
 }
+
+function attachUserChangedHandler() {
+  window.addEventListener('user-changed', async () => {
+    const nextUserId = getCurrentStateUserId();
+
+    if (nextUserId === lastKnownUserId) {
+      return;
+    }
+
+    lastKnownUserId = nextUserId;
+
+    if (checkoutInProgress || shopRefreshInProgress) {
+      return;
+    }
+
+    await refreshShopState({ showLoading: true });
+  });
+}
+
+/* =======================
+   INIT
+======================= */
 
 async function initShop() {
   if (shopBootstrapped) return;
@@ -621,19 +772,21 @@ async function initShop() {
 
   attachShopClickHandler();
   attachShopFilterHandlers();
+  attachUserChangedHandler();
 
   unsubscribeState = subscribe(() => {
+    if (shopRefreshInProgress || checkoutInProgress) return;
+
     populateStoryFilter(getRenderedProducts());
     updateFilterButtonState();
     renderProducts();
   });
 
   await waitForAuthReady();
-  await refreshShopState();
 
-  window.addEventListener('user-changed', async () => {
-    await refreshShopState();
-  });
+  lastKnownUserId = getCurrentStateUserId();
+
+  await refreshShopState({ showLoading: true });
 }
 
 document.addEventListener('DOMContentLoaded', initShop);
