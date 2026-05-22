@@ -14,10 +14,17 @@ const authReadyPromise = new Promise((resolve) => {
 
 let authInitialized = false;
 let authSyncInProgress = null;
+let authLogoutHandlerAttached = false;
+let logoutInProgress = false;
 let lastSessionRefreshAt = 0;
 
 const SESSION_REFRESH_THROTTLE_MS = 5000;
 const SESSION_REFRESH_TIMEOUT_MS = 3500;
+const LOGOUT_TIMEOUT_MS = 2500;
+
+/* =======================
+   EVENTS / TIMEOUTS
+======================= */
 
 function dispatchUserChanged() {
   window.dispatchEvent(new Event('user-changed'));
@@ -39,6 +46,10 @@ function withTimeout(promise, timeoutMs, fallbackValue = null) {
     })
   ]);
 }
+
+/* =======================
+   UI
+======================= */
 
 function updateUI() {
   const { currentUser } = getState();
@@ -75,6 +86,10 @@ function updateUI() {
 
   dispatchUserChanged();
 }
+
+/* =======================
+   PROFILE / AUTH STATE
+======================= */
 
 async function fetchProfile(userId) {
   if (!userId) return null;
@@ -121,6 +136,10 @@ async function applyAuthState(user) {
 }
 
 async function syncAuthFromSupabase({ force = false } = {}) {
+  if (logoutInProgress) {
+    return null;
+  }
+
   const now = Date.now();
 
   if (!force && now - lastSessionRefreshAt < SESSION_REFRESH_THROTTLE_MS) {
@@ -167,9 +186,85 @@ async function syncAuthFromSupabase({ force = false } = {}) {
   return authSyncInProgress;
 }
 
+/* =======================
+   LOGOUT SAFETY
+======================= */
+
+function removeStoredSupabaseAuthTokens() {
+  const storageBuckets = [window.localStorage, window.sessionStorage];
+
+  storageBuckets.forEach((storage) => {
+    if (!storage) return;
+
+    try {
+      Object.keys(storage).forEach((key) => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          storage.removeItem(key);
+        }
+      });
+    } catch (error) {
+      console.warn('[auth] Could not remove stored Supabase token:', error);
+    }
+  });
+}
+
+function forceLocalLogoutState() {
+  clearAuthState();
+  updateUI();
+  dispatchAuthResumed();
+}
+
+function bindGlobalLogoutHandler() {
+  if (authLogoutHandlerAttached) return;
+  authLogoutHandlerAttached = true;
+
+  document.addEventListener(
+    'click',
+    async (event) => {
+      const logoutLink = event.target.closest?.('.logout-link');
+      if (!logoutLink) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      if (logoutLink.dataset.loggingOut === 'true') return;
+
+      const originalText = logoutLink.textContent || 'Logout';
+
+      try {
+        logoutLink.dataset.loggingOut = 'true';
+        logoutLink.textContent = 'Logging out...';
+
+        const result = await logout();
+
+        if (!result?.success) {
+          console.warn('[auth] Logout returned a non-success result:', result);
+        }
+
+        window.location.href = '/';
+      } catch (error) {
+        console.error('[auth] Global logout click failed:', error);
+
+        logoutLink.dataset.loggingOut = 'false';
+        logoutLink.textContent = originalText;
+
+        alert('Logout failed. Please refresh and try again.');
+      }
+    },
+    true
+  );
+}
+
+/* =======================
+   INIT / RESUME
+======================= */
+
 async function initializeAuth() {
   if (authInitialized) return;
   authInitialized = true;
+
+  bindGlobalLogoutHandler();
 
   try {
     const sessionResult = await withTimeout(
@@ -202,6 +297,8 @@ async function initializeAuth() {
   }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
+    if (logoutInProgress) return;
+
     const user = session?.user ?? null;
 
     try {
@@ -229,7 +326,7 @@ async function initializeAuth() {
 
 function bindAuthResumeListeners() {
   async function refreshWhenActive() {
-    if (document.hidden) return;
+    if (document.hidden || logoutInProgress) return;
 
     await syncAuthFromSupabase({ force: true });
     dispatchAuthResumed();
@@ -251,6 +348,10 @@ function bindAuthResumeListeners() {
 }
 
 initializeAuth();
+
+/* =======================
+   EXPORTED HELPERS
+======================= */
 
 export async function waitForAuthReady() {
   await authReadyPromise;
@@ -338,6 +439,10 @@ export async function refreshAuthState() {
   return syncAuthFromSupabase({ force: true });
 }
 
+/* =======================
+   LOGIN / LOGOUT
+======================= */
+
 export async function login(email, password) {
   try {
     const trimmedEmail = String(email || '').trim();
@@ -380,30 +485,52 @@ export async function login(email, password) {
 }
 
 export async function logout() {
-  try {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      console.error('Logout error:', error.message);
-      return {
-        success: false,
-        error: error.message
-      };
-    }
-
-    clearAuthState();
-    updateUI();
-    dispatchAuthResumed();
-
+  if (logoutInProgress) {
     return {
       success: true
     };
+  }
+
+  logoutInProgress = true;
+
+  try {
+    const signOutResult = await withTimeout(
+      supabase.auth.signOut(),
+      LOGOUT_TIMEOUT_MS,
+      { timedOut: true }
+    );
+
+    if (signOutResult?.error) {
+      console.error('Logout error:', signOutResult.error.message);
+    }
+
+    if (signOutResult?.timedOut) {
+      console.warn('[auth] Logout timed out. Clearing local session anyway.');
+    }
+
+    removeStoredSupabaseAuthTokens();
+    forceLocalLogoutState();
+
+    return {
+      success: true,
+      timedOut: !!signOutResult?.timedOut,
+      error: signOutResult?.error?.message || null
+    };
   } catch (error) {
     console.error('Unexpected logout error:', error);
+
+    removeStoredSupabaseAuthTokens();
+    forceLocalLogoutState();
+
     return {
-      success: false,
-      error: 'Unexpected logout error. Please try again.'
+      success: true,
+      forced: true,
+      error: error.message || null
     };
+  } finally {
+    window.setTimeout(() => {
+      logoutInProgress = false;
+    }, 500);
   }
 }
 
