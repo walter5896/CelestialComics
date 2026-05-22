@@ -991,15 +991,23 @@ tbody tr:last-child td {
   margin-top: 1.5rem;
 }
 
+#team-members-preview {
+  grid-template-columns: repeat(auto-fit, minmax(290px, 360px));
+  justify-content: start;
+}
+
 .team-member-admin-card {
   position: relative;
+  max-width: 360px;
   background:
     linear-gradient(180deg, #ffffff, #fbfdff);
 }
 
 .team-member-admin-card img {
+  width: 100%;
   aspect-ratio: 4 / 3;
-  max-height: none;
+  max-height: 240px;
+  object-fit: cover;
 }
 
 .team-member-admin-card .product-meta {
@@ -1318,6 +1326,14 @@ tbody tr:last-child td {
   .three-column-grid,
   .media-management-grid {
     grid-template-columns: 1fr;
+  }
+
+  #team-members-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .team-member-admin-card {
+    max-width: none;
   }
 
   .story-chip img,
