@@ -7,7 +7,7 @@
 
   <meta
     name="description"
-    content="Admin dashboard for managing Celestial Comics users, voting periods, stories, team members, products, homepage content, orders, and winner settings."
+    content="Admin dashboard for managing Celestial Comics users, voting periods, stories, gallery images, team members, products, homepage content, orders, and winner settings."
   />
 
   <title>Admin Panel | Celestial Comics</title>
@@ -20,7 +20,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="/css/pages/admin.css?v=admin-team-1" />
+  <link rel="stylesheet" href="/css/pages/admin.css?v=admin-gallery-1" />
 </head>
 
 <body>
@@ -50,7 +50,7 @@
         <div>
           <h2>Admin Dashboard</h2>
           <p>
-            Manage users, voting, stories, team members, products, homepage content, orders, and winner settings from one organized workspace.
+            Manage users, voting, stories, gallery images, team members, products, homepage content, orders, and winner settings from one organized workspace.
           </p>
         </div>
 
@@ -236,7 +236,7 @@
           <p class="section-eyebrow">Content Library</p>
           <h2 id="story-management-title">Story Management</h2>
           <p class="helper-text">
-            Create concepts, move winners through production, release completed stories, and upload readable preview pages.
+            Create concepts, move winners through production, release completed stories, upload readable preview pages, and manage extra gallery carousel images.
           </p>
         </div>
       </div>
@@ -391,6 +391,64 @@
         <div class="story-pages-list">
           <h3>Existing Pages</h3>
           <div id="story-pages-preview" class="story-pages-grid"></div>
+        </div>
+      </div>
+
+      <div class="story-gallery-section">
+        <h3>Story Gallery Images</h3>
+        <p class="helper-text">
+          Upload extra artwork/concept images for the public story detail carousel. These are separate from readable story pages.
+        </p>
+
+        <form id="story-gallery-image-form" class="admin-form-panel">
+          <div class="two-column-grid">
+            <div class="field-group">
+              <label for="story-gallery-image-file">Gallery Image Upload</label>
+              <input type="file" id="story-gallery-image-file" accept="image/*" />
+              <p class="helper-text">Create or select a story first, then upload extra carousel images.</p>
+            </div>
+
+            <div class="field-group">
+              <label for="story-gallery-display-order">Display Order</label>
+              <input type="number" id="story-gallery-display-order" step="1" value="0" />
+              <p class="helper-text">Lower numbers appear first in the carousel.</p>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label for="story-gallery-caption">Caption</label>
+            <textarea id="story-gallery-caption" placeholder="Optional caption for this gallery image..."></textarea>
+          </div>
+
+          <div class="field-group">
+            <label for="story-gallery-alt-text">Alt Text</label>
+            <input
+              type="text"
+              id="story-gallery-alt-text"
+              placeholder="Describe this image for accessibility"
+            />
+          </div>
+
+          <div class="field-group inline-checkbox">
+            <input type="checkbox" id="story-gallery-active" checked />
+            <label for="story-gallery-active" style="margin-bottom:0;">Active / visible in carousel</label>
+          </div>
+
+          <div class="action-row">
+            <button type="submit" id="upload-story-gallery-image-btn">Upload Gallery Image</button>
+          </div>
+        </form>
+
+        <p id="story-gallery-status-message" class="section-message"></p>
+
+        <div class="story-gallery-list">
+          <h3>Existing Gallery Images</h3>
+          <p class="helper-text">
+            Edit captions, alt text, order, visibility, or delete images from the story detail carousel.
+          </p>
+          <div id="story-gallery-images-preview" class="story-gallery-images-grid">
+            <p class="empty-orders-state">Select a story to manage gallery images.</p>
+          </div>
         </div>
       </div>
 
@@ -756,6 +814,6 @@
   </main>
 
   <script src="/js/env.js"></script>
-  <script type="module" src="/js/admin.js?v=admin-team-1"></script>
+  <script type="module" src="/js/admin.js?v=admin-gallery-1"></script>
 </body>
 </html>

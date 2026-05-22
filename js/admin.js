@@ -33,6 +33,11 @@ import {
 } from './admin-stories.js';
 
 import {
+  initAdminStoryGallery,
+  loadStoryGalleryImagesPreview
+} from './admin-story-gallery.js';
+
+import {
   clearTeamMemberForm,
   loadTeamMembersPreview,
   initAdminTeam
@@ -126,6 +131,16 @@ const storyPageCaption = document.getElementById('story-page-caption');
 const uploadStoryPageBtn = document.getElementById('upload-story-page-btn');
 const storyPageStatusMsg = document.getElementById('story-page-status-message');
 const storyPagesPreview = document.getElementById('story-pages-preview');
+
+const storyGalleryImageForm = document.getElementById('story-gallery-image-form');
+const storyGalleryImageFile = document.getElementById('story-gallery-image-file');
+const storyGalleryCaption = document.getElementById('story-gallery-caption');
+const storyGalleryAltText = document.getElementById('story-gallery-alt-text');
+const storyGalleryDisplayOrder = document.getElementById('story-gallery-display-order');
+const storyGalleryActive = document.getElementById('story-gallery-active');
+const uploadStoryGalleryImageBtn = document.getElementById('upload-story-gallery-image-btn');
+const storyGalleryStatusMsg = document.getElementById('story-gallery-status-message');
+const storyGalleryImagesPreview = document.getElementById('story-gallery-images-preview');
 
 const teamSection = document.getElementById('team-management-section');
 const teamMemberSelect = document.getElementById('team-member-select');
@@ -366,6 +381,16 @@ function buildAdminContext() {
     storyPageStatusMsg,
     storyPagesPreview,
 
+    storyGalleryImageForm,
+    storyGalleryImageFile,
+    storyGalleryCaption,
+    storyGalleryAltText,
+    storyGalleryDisplayOrder,
+    storyGalleryActive,
+    uploadStoryGalleryImageBtn,
+    storyGalleryStatusMsg,
+    storyGalleryImagesPreview,
+
     teamSection,
     teamMemberSelect,
     teamMemberForm,
@@ -479,6 +504,7 @@ async function initAdminPanel() {
     initAdminUsers(ctx);
     initAdminVoting(ctx);
     initAdminStories(ctx);
+    initAdminStoryGallery(ctx);
     initAdminTeam(ctx);
     initAdminProducts(ctx);
     initAdminHomepage(ctx);
@@ -494,6 +520,8 @@ async function initAdminPanel() {
     await loadOrdersPreview(ctx);
 
     clearStoryForm(ctx);
+    await loadStoryGalleryImagesPreview(ctx);
+
     clearTeamMemberForm(ctx);
     clearProductForm(ctx);
     hideWinnerPreviewUI(ctx);

@@ -480,6 +480,7 @@ form {
 .media-upload-panel,
 .admin-preview-section,
 .story-pages-section,
+.story-gallery-section,
 .featured-winner-control,
 .winner-preview-box,
 .admin-danger-zone {
@@ -699,6 +700,7 @@ button:disabled {
 .three-column-grid,
 .story-chip-list,
 .story-pages-grid,
+.story-gallery-images-grid,
 .product-grid,
 .orders-grid,
 .media-management-grid {
@@ -724,6 +726,11 @@ button:disabled {
 .product-grid,
 .orders-grid {
   grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+
+.story-gallery-images-grid {
+  grid-template-columns: repeat(auto-fit, minmax(290px, 360px));
+  justify-content: start;
 }
 
 .media-management-grid {
@@ -778,11 +785,22 @@ button:disabled {
 }
 
 .story-pages-section,
+.story-gallery-section,
 .product-management-inner,
 .order-management-inner {
   margin-top: 1.5rem;
   padding-top: 1.35rem;
   border-top: 1px solid var(--admin-border);
+}
+
+.story-gallery-section {
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff);
+  border-color: rgba(29, 78, 216, 0.18);
+}
+
+.story-gallery-list {
+  margin-top: 1rem;
 }
 
 .admin-preview-section {
@@ -867,7 +885,8 @@ tbody tr:last-child td {
 .story-chip img,
 .story-page-card img,
 .product-card img,
-.team-member-admin-card img {
+.team-member-admin-card img,
+.story-gallery-admin-card img {
   display: block;
   width: 100%;
   max-height: 230px;
@@ -973,6 +992,41 @@ tbody tr:last-child td {
 .status-badge.failed {
   background: #f3f4f6;
   color: #4b5563;
+}
+
+/* =========================
+   Story Gallery Management
+========================= */
+
+.story-gallery-admin-card {
+  max-width: 360px;
+  background:
+    linear-gradient(180deg, #ffffff, #fbfdff);
+}
+
+.story-gallery-admin-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 240px;
+  object-fit: cover;
+}
+
+.story-gallery-admin-card textarea {
+  min-height: 90px;
+}
+
+.story-gallery-admin-card .field-group {
+  margin-bottom: 0.8rem;
+}
+
+.story-gallery-admin-card .inline-checkbox {
+  min-height: 44px;
+  padding: 0.72rem;
+}
+
+.compact-gallery-edit-grid {
+  align-items: end;
+  gap: 0.75rem;
 }
 
 /* =========================
@@ -1248,6 +1302,7 @@ tbody tr:last-child td {
   .media-upload-panel,
   .admin-preview-section,
   .story-pages-section,
+  .story-gallery-section,
   .featured-winner-control,
   .winner-preview-box,
   .admin-danger-zone {
@@ -1319,6 +1374,7 @@ tbody tr:last-child td {
 
   .story-chip-list,
   .story-pages-grid,
+  .story-gallery-images-grid,
   .product-grid,
   .orders-grid,
   .summary-grid,
@@ -1332,14 +1388,16 @@ tbody tr:last-child td {
     grid-template-columns: 1fr;
   }
 
-  .team-member-admin-card {
+  .team-member-admin-card,
+  .story-gallery-admin-card {
     max-width: none;
   }
 
   .story-chip img,
   .story-page-card img,
   .product-card img,
-  .team-member-admin-card img {
+  .team-member-admin-card img,
+  .story-gallery-admin-card img {
     max-height: 260px;
   }
 }

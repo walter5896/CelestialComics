@@ -26,7 +26,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/gallery.css?v=story-detail-polish-1" />
+  <link rel="stylesheet" href="/css/pages/gallery.css?v=story-gallery-carousel-1" />
 </head>
 
 <body>
@@ -95,8 +95,50 @@
             </div>
           </div>
 
-          <figure class="concept-art-frame">
-            <img src="" alt="" class="story-hero-img" />
+          <figure class="concept-art-frame story-gallery-carousel" id="story-gallery-carousel">
+            <div class="story-gallery-stage">
+              <button
+                type="button"
+                class="story-gallery-arrow story-gallery-prev"
+                id="story-gallery-prev"
+                aria-label="View previous story image"
+                style="display:none;"
+              >
+                ‹
+              </button>
+
+              <img
+                src=""
+                alt=""
+                class="story-hero-img"
+                id="story-gallery-current-image"
+                loading="eager"
+                decoding="async"
+              />
+
+              <button
+                type="button"
+                class="story-gallery-arrow story-gallery-next"
+                id="story-gallery-next"
+                aria-label="View next story image"
+                style="display:none;"
+              >
+                ›
+              </button>
+            </div>
+
+            <figcaption
+              id="story-gallery-caption"
+              class="story-gallery-caption"
+              style="display:none;"
+            ></figcaption>
+
+            <p
+              id="story-gallery-counter"
+              class="story-gallery-counter"
+              aria-live="polite"
+              style="display:none;"
+            ></p>
           </figure>
         </div>
       </div>
@@ -160,6 +202,17 @@
     const navToggle = document.querySelector('.nav-toggle');
     const mainNav = document.querySelector('.main-nav');
 
+    const storyGalleryCarousel = document.getElementById('story-gallery-carousel');
+    const storyGalleryImage = document.getElementById('story-gallery-current-image');
+    const storyGalleryPrevBtn = document.getElementById('story-gallery-prev');
+    const storyGalleryNextBtn = document.getElementById('story-gallery-next');
+    const storyGalleryCaption = document.getElementById('story-gallery-caption');
+    const storyGalleryCounter = document.getElementById('story-gallery-counter');
+
+    let storyGalleryItems = [];
+    let storyGalleryIndex = 0;
+    let storyGalleryEventsBound = false;
+
     function closeNav() {
       if (!navToggle || !mainNav) return;
 
@@ -219,6 +272,207 @@
           window.location.href = '/';
         });
       });
+    }
+
+    async function parseJsonResponseSafely(res) {
+      const rawText = await res.text();
+
+      try {
+        return rawText ? JSON.parse(rawText) : {};
+      } catch {
+        throw new Error(rawText || 'Server returned an invalid response.');
+      }
+    }
+
+    function getStoryImage(story) {
+      return story?.cover_image_url || story?.image_url || '';
+    }
+
+    function normalizeGalleryUrl(value) {
+      return String(value || '').trim();
+    }
+
+    function getGalleryItemAlt(item, story) {
+      const altText = String(item?.alt_text || '').trim();
+
+      if (altText) {
+        return altText;
+      }
+
+      if (item?.isCover) {
+        return `${story?.title || 'Story'} cover artwork`;
+      }
+
+      return `${story?.title || 'Story'} gallery image`;
+    }
+
+    function getGalleryItemCaption(item) {
+      return String(item?.caption || '').trim();
+    }
+
+    function buildStoryGalleryItems(story, galleryImages = []) {
+      const items = [];
+      const usedUrls = new Set();
+
+      const coverUrl = normalizeGalleryUrl(getStoryImage(story));
+
+      if (coverUrl) {
+        items.push({
+          id: 'cover-image',
+          image_url: coverUrl,
+          caption: '',
+          alt_text: `${story?.title || 'Story'} cover artwork`,
+          display_order: -1,
+          isCover: true
+        });
+
+        usedUrls.add(coverUrl);
+      }
+
+      const safeGalleryImages = Array.isArray(galleryImages) ? galleryImages : [];
+
+      safeGalleryImages.forEach((image) => {
+        const imageUrl = normalizeGalleryUrl(image?.image_url);
+
+        if (!imageUrl || usedUrls.has(imageUrl)) {
+          return;
+        }
+
+        items.push({
+          ...image,
+          image_url: imageUrl,
+          isCover: false
+        });
+
+        usedUrls.add(imageUrl);
+      });
+
+      return items;
+    }
+
+    function setGalleryControlsVisibility() {
+      const hasMultipleImages = storyGalleryItems.length > 1;
+
+      if (storyGalleryPrevBtn) {
+        storyGalleryPrevBtn.style.display = hasMultipleImages ? 'inline-flex' : 'none';
+      }
+
+      if (storyGalleryNextBtn) {
+        storyGalleryNextBtn.style.display = hasMultipleImages ? 'inline-flex' : 'none';
+      }
+
+      if (storyGalleryCounter) {
+        storyGalleryCounter.style.display = hasMultipleImages ? 'block' : 'none';
+      }
+    }
+
+    function renderCurrentGalleryItem(story) {
+      if (!storyGalleryImage) return;
+
+      const currentItem = storyGalleryItems[storyGalleryIndex];
+
+      if (!currentItem?.image_url) {
+        storyGalleryImage.removeAttribute('src');
+        storyGalleryImage.alt = 'No story image available';
+        storyGalleryImage.style.display = 'none';
+
+        if (storyGalleryCaption) {
+          storyGalleryCaption.textContent = '';
+          storyGalleryCaption.style.display = 'none';
+        }
+
+        if (storyGalleryCounter) {
+          storyGalleryCounter.textContent = '';
+          storyGalleryCounter.style.display = 'none';
+        }
+
+        return;
+      }
+
+      storyGalleryImage.src = currentItem.image_url;
+      storyGalleryImage.alt = getGalleryItemAlt(currentItem, story);
+      storyGalleryImage.style.display = 'block';
+
+      const caption = getGalleryItemCaption(currentItem);
+
+      if (storyGalleryCaption) {
+        storyGalleryCaption.textContent = caption;
+        storyGalleryCaption.style.display = caption ? 'block' : 'none';
+      }
+
+      if (storyGalleryCounter) {
+        storyGalleryCounter.textContent = `${storyGalleryIndex + 1} / ${storyGalleryItems.length}`;
+      }
+
+      setGalleryControlsVisibility();
+    }
+
+    function goToGalleryImage(nextIndex, story) {
+      if (!storyGalleryItems.length) return;
+
+      const totalItems = storyGalleryItems.length;
+      storyGalleryIndex = ((nextIndex % totalItems) + totalItems) % totalItems;
+
+      renderCurrentGalleryItem(story);
+    }
+
+    function bindStoryGalleryControls(story) {
+      if (storyGalleryEventsBound) return;
+      storyGalleryEventsBound = true;
+
+      storyGalleryPrevBtn?.addEventListener('click', () => {
+        goToGalleryImage(storyGalleryIndex - 1, story);
+      });
+
+      storyGalleryNextBtn?.addEventListener('click', () => {
+        goToGalleryImage(storyGalleryIndex + 1, story);
+      });
+
+      storyGalleryCarousel?.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') {
+          goToGalleryImage(storyGalleryIndex - 1, story);
+        }
+
+        if (event.key === 'ArrowRight') {
+          goToGalleryImage(storyGalleryIndex + 1, story);
+        }
+      });
+    }
+
+    async function fetchStoryGalleryImages(storyId) {
+      if (!storyId) return [];
+
+      try {
+        const res = await fetch(
+          `/.netlify/functions/get-story-gallery-images?story_id=${encodeURIComponent(storyId)}`,
+          {
+            method: 'GET'
+          }
+        );
+
+        const data = await parseJsonResponseSafely(res);
+
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || 'Failed to load gallery images.');
+        }
+
+        return Array.isArray(data.gallery_images) ? data.gallery_images : [];
+      } catch (error) {
+        console.error('Story gallery image load error:', error);
+        return [];
+      }
+    }
+
+    async function renderStoryGalleryCarousel(story) {
+      if (!storyGalleryCarousel || !storyGalleryImage || !story?.id) return;
+
+      const galleryImages = await fetchStoryGalleryImages(story.id);
+
+      storyGalleryItems = buildStoryGalleryItems(story, galleryImages);
+      storyGalleryIndex = 0;
+
+      bindStoryGalleryControls(story);
+      renderCurrentGalleryItem(story);
     }
 
     function renderStoryVotingStrip(stories) {
@@ -559,6 +813,7 @@
         return;
       }
 
+      await renderStoryGalleryCarousel(story);
       updateReadPreviewLink(story);
 
       const storyId = story.id;
