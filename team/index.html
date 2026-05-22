@@ -26,7 +26,7 @@
   />
 
   <link rel="stylesheet" href="/css/main.css" />
-  <link rel="stylesheet" href="/css/pages/team.css" />
+  <link rel="stylesheet" href="/css/pages/team.css?v=team-dynamic-1" />
 </head>
 
 <body>
@@ -79,90 +79,25 @@
       </div>
     </section>
 
-    <section class="team-feature team-feature-sun">
-      <div class="team-image-panel">
-        <img
-          src="/assets/teampagepic.webp"
-          alt="Kit Doman, writer for Celestial Comics"
-          class="team-feature-image"
-        />
-      </div>
+    <p id="team-load-status" class="team-load-status" role="status" aria-live="polite">
+      Loading team members...
+    </p>
 
-      <div class="team-copy-panel">
-        <p class="team-eyebrow">THE SUN</p>
+    <div id="team-members-list" class="team-members-list">
+      <section class="team-feature">
+        <div class="team-placeholder-panel">
+          <span>Loading Team</span>
+        </div>
 
-        <h2>Kit “Kitty” Doman</h2>
-
-        <p>
-          Kit’s can-do attitude is infectious, and so are his stories! He specializes in writing
-          science-fiction, dystopias, and contemporary dramas (when he’s not trying to write one
-          of every genre as a challenge). You can tell if a story is written by Kit if it has an
-          element so outlandish, you sound crazy trying to describe it — like a world-class
-          detective with a lobster for a face, or a society of people with clothes stained onto
-          their skin. But Kit really gets passionate about tragedies. If it made you cry, Kit
-          most likely had a hand in the writing department.
-        </p>
-
-        <p>
-          Kit also doubles as the company’s face, marketing, and financial specialist. Likelihood
-          is, if you’ve heard about Celestial Comics, you’ve heard about it through Kit.
-        </p>
-      </div>
-    </section>
-
-    <section class="team-feature team-feature-moon team-feature-reverse">
-      <div class="team-copy-panel">
-        <p class="team-eyebrow">THE MOON</p>
-
-        <h2>Sabrina “Crabee” Doman</h2>
-
-        <p>
-          Sabrina’s heart is so big, it would probably give a certain fuzzy green Whoville
-          resident a run for his money! Sabrina finds incomparable joy in the smaller pockets of
-          fiction like romances, slices-of-life, and cottage-core fantasies. She also has a
-          soft-spot for clowns, which is a dead-give-away for her touch in any of her stories.
-          Additionally, as a queer woman, she can’t help but sneak casual queer representation
-          into all of her romances; be they lesbian, gender-fluid, or trans, your favorite LGBT+
-          icon was probably written by Sabrina.
-        </p>
-
-        <p>
-          Sabrina also doubles as the Art Director for most comics. She does not draw everything,
-          but sometimes she tries to. We have to send her to art-jail sometimes for forced breaks.
-        </p>
-      </div>
-
-      <div class="team-placeholder-panel">
-        <span>Insert Image Here</span>
-      </div>
-    </section>
-
-    <section class="team-feature team-feature-star">
-      <div class="team-placeholder-panel">
-        <span>Insert Image Here</span>
-      </div>
-
-      <div class="team-copy-panel">
-        <p class="team-eyebrow">THE NORTH STAR</p>
-
-        <h2>Eva “Noodle” Barlow</h2>
-
-        <p>
-          Eva’s thirst for adventure could not be satisfied by all the water in the seven-seas.
-          Be it the salty brine on the wind or the whispering songs of the fairies, Eva can take
-          her readers to worlds beyond the stars. She uses dazzling imagery and sensory-driven
-          writing to guide you through high-fantasy, folklore, and historical fictions. If there
-          is an over-detailed map, a structured ecosystem, or just a super cool monster design,
-          you can bet your last doubloon that Eva is the head-writer of your favorite story.
-        </p>
-
-        <p>
-          Eva also doubles as head-research and data specialist for most stories. The only reason
-          we sound like we know about anything we’re writing about is because of Eva. Thank you Eva
-          for helping us not sound like idiots.
-        </p>
-      </div>
-    </section>
+        <div class="team-copy-panel">
+          <p class="team-eyebrow">CELESTIAL COMICS</p>
+          <h2>Meet the Team</h2>
+          <p>
+            Loading the creative minds behind Celestial Comics.
+          </p>
+        </div>
+      </section>
+    </div>
   </main>
 
   <footer class="site-footer">
@@ -183,21 +118,14 @@
   <script type="module" src="/js/utils.js"></script>
 
   <script type="module">
-    import { updateUI, logout } from '/js/auth.js';
+    import { updateUI } from '/js/auth.js';
 
     document.addEventListener('DOMContentLoaded', () => {
       updateUI();
-
-      document.querySelectorAll('.logout-link').forEach((el) => {
-        el.addEventListener('click', async (e) => {
-          e.preventDefault();
-          await logout();
-          window.location.href = '/';
-        });
-      });
     });
   </script>
 
   <script type="module" src="/js/admin-nav.js"></script>
+  <script type="module" src="/js/team.js?v=team-dynamic-1"></script>
 </body>
 </html>

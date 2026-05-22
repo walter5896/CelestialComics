@@ -33,6 +33,12 @@ import {
 } from './admin-stories.js';
 
 import {
+  clearTeamMemberForm,
+  loadTeamMembersPreview,
+  initAdminTeam
+} from './admin-team.js';
+
+import {
   loadVotingPeriod,
   hideWinnerPreviewUI,
   resetTieResolutionUI,
@@ -121,6 +127,28 @@ const uploadStoryPageBtn = document.getElementById('upload-story-page-btn');
 const storyPageStatusMsg = document.getElementById('story-page-status-message');
 const storyPagesPreview = document.getElementById('story-pages-preview');
 
+const teamSection = document.getElementById('team-management-section');
+const teamMemberSelect = document.getElementById('team-member-select');
+const teamMemberForm = document.getElementById('team-member-form');
+const saveTeamMemberBtn = document.getElementById('save-team-member-btn');
+const resetTeamMemberBtn = document.getElementById('reset-team-member-btn');
+const deactivateTeamMemberBtn = document.getElementById('deactivate-team-member-btn');
+const teamMemberStatusMsg = document.getElementById('team-member-status-message');
+const teamMembersPreview = document.getElementById('team-members-preview');
+
+const teamMemberName = document.getElementById('team-member-name');
+const teamMemberRoleTitle = document.getElementById('team-member-role-title');
+const teamMemberShortBio = document.getElementById('team-member-short-bio');
+const teamMemberFullBio = document.getElementById('team-member-full-bio');
+const teamMemberDisplayOrder = document.getElementById('team-member-display-order');
+const teamMemberActive = document.getElementById('team-member-active');
+
+const teamMemberImageFile = document.getElementById('team-member-image-file');
+const uploadTeamMemberImageBtn = document.getElementById('upload-team-member-image-btn');
+const deleteTeamMemberImageBtn = document.getElementById('delete-team-member-image-btn');
+const teamMemberImageUploadMessage = document.getElementById('team-member-image-upload-message');
+const teamMemberImagePreview = document.getElementById('team-member-image-preview');
+
 const productSection = document.getElementById('product-management-section');
 const productSelect = document.getElementById('product-select');
 const productForm = document.getElementById('product-form');
@@ -198,7 +226,14 @@ function setUsersTableVisible(isVisible) {
 }
 
 function setAdminSectionsVisible(isVisible) {
-  [votingSection, storySection, productSection, homepageSection, orderSection].forEach((section) => {
+  [
+    votingSection,
+    storySection,
+    teamSection,
+    productSection,
+    homepageSection,
+    orderSection
+  ].forEach((section) => {
     if (!section) return;
     section.style.display = isVisible ? 'block' : 'none';
   });
@@ -331,6 +366,26 @@ function buildAdminContext() {
     storyPageStatusMsg,
     storyPagesPreview,
 
+    teamSection,
+    teamMemberSelect,
+    teamMemberForm,
+    saveTeamMemberBtn,
+    resetTeamMemberBtn,
+    deactivateTeamMemberBtn,
+    teamMemberStatusMsg,
+    teamMembersPreview,
+    teamMemberName,
+    teamMemberRoleTitle,
+    teamMemberShortBio,
+    teamMemberFullBio,
+    teamMemberDisplayOrder,
+    teamMemberActive,
+    teamMemberImageFile,
+    uploadTeamMemberImageBtn,
+    deleteTeamMemberImageBtn,
+    teamMemberImageUploadMessage,
+    teamMemberImagePreview,
+
     productSection,
     productSelect,
     productForm,
@@ -424,6 +479,7 @@ async function initAdminPanel() {
     initAdminUsers(ctx);
     initAdminVoting(ctx);
     initAdminStories(ctx);
+    initAdminTeam(ctx);
     initAdminProducts(ctx);
     initAdminHomepage(ctx);
     initAdminOrders(ctx);
@@ -432,11 +488,13 @@ async function initAdminPanel() {
     await loadVotingPeriod(ctx);
     await loadStoriesPreview(ctx);
     await loadFeaturedWinnerControl(ctx);
+    await loadTeamMembersPreview(ctx);
     await loadProductsPreview(ctx);
     await loadHomepageContent(ctx);
     await loadOrdersPreview(ctx);
 
     clearStoryForm(ctx);
+    clearTeamMemberForm(ctx);
     clearProductForm(ctx);
     hideWinnerPreviewUI(ctx);
     resetTieResolutionUI(ctx);

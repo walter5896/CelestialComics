@@ -411,6 +411,7 @@ nav ul li a[aria-current="page"] {
 #users-management-section h2::before,
 #voting-section h2::before,
 #story-management-section h2::before,
+#team-management-section h2::before,
 #product-management-section h2::before,
 #homepage-management-section h2::before,
 #order-management-section h2::before {
@@ -436,6 +437,10 @@ nav ul li a[aria-current="page"] {
 
 #story-management-section h2::before {
   content: "✎";
+}
+
+#team-management-section h2::before {
+  content: "☀";
 }
 
 #product-management-section h2::before {
@@ -861,7 +866,8 @@ tbody tr:last-child td {
 
 .story-chip img,
 .story-page-card img,
-.product-card img {
+.product-card img,
+.team-member-admin-card img {
   display: block;
   width: 100%;
   max-height: 230px;
@@ -885,7 +891,7 @@ tbody tr:last-child td {
 }
 
 /* =========================
-   Product / Story / Order Cards
+   Product / Story / Team / Order Cards
 ========================= */
 
 .story-chip,
@@ -967,6 +973,58 @@ tbody tr:last-child td {
 .status-badge.failed {
   background: #f3f4f6;
   color: #4b5563;
+}
+
+/* =========================
+   Team Management
+========================= */
+
+#team-management-section {
+  border-color: rgba(126, 97, 191, 0.24);
+}
+
+#team-management-section::before {
+  background: linear-gradient(90deg, #7e61bf, var(--admin-gold));
+}
+
+.team-members-list {
+  margin-top: 1.5rem;
+}
+
+.team-member-admin-card {
+  position: relative;
+  background:
+    linear-gradient(180deg, #ffffff, #fbfdff);
+}
+
+.team-member-admin-card img {
+  aspect-ratio: 4 / 3;
+  max-height: none;
+}
+
+.team-member-admin-card .product-meta {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.team-member-admin-card .product-meta p {
+  margin: 0;
+}
+
+.team-member-admin-card .product-meta strong {
+  display: inline;
+  margin: 0;
+}
+
+#team-member-image-preview {
+  display: none;
+  width: min(100%, 280px);
+  max-height: 280px;
+  margin-top: 0.75rem;
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-border);
+  background: #ffffff;
+  object-fit: cover;
 }
 
 /* =========================
@@ -1264,7 +1322,8 @@ tbody tr:last-child td {
 
   .story-chip img,
   .story-page-card img,
-  .product-card img {
+  .product-card img,
+  .team-member-admin-card img {
     max-height: 260px;
   }
 }
