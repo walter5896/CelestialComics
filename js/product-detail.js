@@ -26,7 +26,17 @@ let currentProduct = null;
 let currentUser = null;
 let userOwnsRelatedStory = false;
 let userPurchasedThisPhysicalProduct = false;
+
 let productDetailInitialized = false;
+let productBuyHandlerAttached = false;
+let checkoutInProgress = false;
+
+const SESSION_REQUEST_TIMEOUT_MS = 2500;
+const CHECKOUT_REQUEST_TIMEOUT_MS = 15000;
+
+/* =======================
+   BASIC HELPERS
+======================= */
 
 function setStatus(message = '', color = '') {
   if (!statusEl) return;
@@ -42,6 +52,7 @@ function showContent() {
 
 function showError(message = 'Product could not be loaded.') {
   if (contentEl) contentEl.style.display = 'none';
+
   if (errorEl) {
     errorEl.style.display = 'block';
     errorEl.textContent = message;
@@ -100,6 +111,15 @@ function isPhysicalProductType(type) {
   return ['merch', 'paperback', 'bundle'].includes(String(type || ''));
 }
 
+function withTimeout(promise, timeoutMs, fallbackValue = null) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => {
+      window.setTimeout(() => resolve(fallbackValue), timeoutMs);
+    })
+  ]);
+}
+
 async function parseJsonResponseSafely(res) {
   const rawText = await res.text();
 
@@ -110,16 +130,87 @@ async function parseJsonResponseSafely(res) {
   }
 }
 
-async function getAccessToken() {
-  const { data, error } = await supabase.auth.getSession();
+function getStoredSupabaseAccessToken() {
+  try {
+    const keys = Object.keys(window.localStorage || {});
 
-  if (error) {
-    console.error('Error getting session:', error);
-    return null;
+    for (const key of keys) {
+      if (!key.startsWith('sb-') || !key.endsWith('-auth-token')) {
+        continue;
+      }
+
+      const rawValue = window.localStorage.getItem(key);
+      if (!rawValue) continue;
+
+      const parsed = JSON.parse(rawValue);
+
+      const accessToken =
+        parsed?.access_token ||
+        parsed?.currentSession?.access_token ||
+        parsed?.session?.access_token ||
+        null;
+
+      if (!accessToken) continue;
+
+      const expiresAt =
+        Number(parsed?.expires_at) ||
+        Number(parsed?.currentSession?.expires_at) ||
+        Number(parsed?.session?.expires_at) ||
+        0;
+
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+
+      if (expiresAt && expiresAt <= nowInSeconds + 10) {
+        continue;
+      }
+
+      return accessToken;
+    }
+  } catch (error) {
+    console.warn('Could not read stored Supabase token:', error);
   }
 
-  return data?.session?.access_token || null;
+  return null;
 }
+
+/**
+ * Checkout-safe token getter.
+ *
+ * Important:
+ * Supabase auth can occasionally stall after tab restore.
+ * This prevents the Product Detail Buy button from hanging before reaching Netlify.
+ */
+async function getAccessToken({ allowStoredFallback = true } = {}) {
+  await waitForAuthReady();
+
+  const sessionResult = await withTimeout(
+    supabase.auth.getSession(),
+    SESSION_REQUEST_TIMEOUT_MS,
+    null
+  );
+
+  if (sessionResult?.data?.session?.access_token) {
+    return sessionResult.data.session.access_token;
+  }
+
+  if (sessionResult?.error) {
+    console.warn('Error getting session:', sessionResult.error);
+  }
+
+  if (allowStoredFallback) {
+    const storedToken = getStoredSupabaseAccessToken();
+
+    if (storedToken) {
+      return storedToken;
+    }
+  }
+
+  return null;
+}
+
+/* =======================
+   DATA LOADERS
+======================= */
 
 async function fetchProduct(productId) {
   const { data, error } = await supabase
@@ -179,6 +270,7 @@ async function loadOwnedStoryAccess() {
 
   const safeRows = data || [];
   setOwnedStoryAccess(safeRows);
+
   return safeRows;
 }
 
@@ -217,12 +309,18 @@ async function loadPurchasedPhysicalProducts() {
   }
 }
 
+/* =======================
+   RENDER HELPERS
+======================= */
+
 function updateImage(product) {
   const imageUrl = product?.image_url || '';
 
   if (imageUrl && imageEl) {
     imageEl.src = imageUrl;
     imageEl.alt = `${product.name || 'Product'} image`;
+    imageEl.loading = 'eager';
+    imageEl.decoding = 'async';
     imageEl.style.display = 'block';
 
     if (placeholderEl) placeholderEl.style.display = 'none';
@@ -249,27 +347,27 @@ function updateBadges(product) {
     typeEl.className = `shop-product-badge ${escapeHtml(productType)}`;
   }
 
-  if (ownedEl) {
-    const isOwnedDigitalOnlyOption =
-      userOwnsRelatedStory && isDigitalOnlyProduct(productType);
+  if (!ownedEl) return;
 
-    const bundleDigitalAccessOwned =
-      userOwnsRelatedStory && productType === 'bundle';
+  const isOwnedDigitalOnlyOption =
+    userOwnsRelatedStory && isDigitalOnlyProduct(productType);
 
-    if (isOwnedDigitalOnlyOption || bundleDigitalAccessOwned) {
-      ownedEl.textContent = bundleDigitalAccessOwned ? 'Digital Access Owned' : 'Owned';
-      ownedEl.style.display = 'inline-flex';
-      return;
-    }
+  const bundleDigitalAccessOwned =
+    userOwnsRelatedStory && productType === 'bundle';
 
-    if (userPurchasedThisPhysicalProduct && isPhysicalProductType(productType)) {
-      ownedEl.textContent = 'Purchased Before';
-      ownedEl.style.display = 'inline-flex';
-      return;
-    }
-
-    ownedEl.style.display = 'none';
+  if (isOwnedDigitalOnlyOption || bundleDigitalAccessOwned) {
+    ownedEl.textContent = bundleDigitalAccessOwned ? 'Digital Access Owned' : 'Owned';
+    ownedEl.style.display = 'inline-flex';
+    return;
   }
+
+  if (userPurchasedThisPhysicalProduct && isPhysicalProductType(productType)) {
+    ownedEl.textContent = 'Purchased Before';
+    ownedEl.style.display = 'inline-flex';
+    return;
+  }
+
+  ownedEl.style.display = 'none';
 }
 
 function updateStoryLink(product) {
@@ -307,20 +405,22 @@ function updateNotes(product) {
     }
   }
 
-  if (shippingEl) {
-    if (isPhysicalProductType(productType)) {
-      shippingEl.style.display = 'block';
+  if (!shippingEl) return;
 
-      if (userPurchasedThisPhysicalProduct) {
-        shippingEl.textContent = 'You have purchased this physical product before. You can buy it again if you want another copy or an additional item.';
-      } else {
-        shippingEl.textContent = 'This is a physical product. Shipping details are collected securely during checkout when required.';
-      }
+  if (isPhysicalProductType(productType)) {
+    shippingEl.style.display = 'block';
+
+    if (userPurchasedThisPhysicalProduct) {
+      shippingEl.textContent = 'You have purchased this physical product before. You can buy it again if you want another copy or an additional item.';
     } else {
-      shippingEl.style.display = 'none';
-      shippingEl.textContent = '';
+      shippingEl.textContent = 'This is a physical product. Shipping details are collected securely during checkout when required.';
     }
+
+    return;
   }
+
+  shippingEl.style.display = 'none';
+  shippingEl.textContent = '';
 }
 
 function updateBuyButton(product) {
@@ -350,6 +450,8 @@ function updateBuyButton(product) {
 }
 
 async function renderProduct(product) {
+  if (checkoutInProgress) return;
+
   currentProduct = product;
 
   const storyId = product?.stories?.id ? String(product.stories.id) : '';
@@ -377,6 +479,7 @@ async function renderProduct(product) {
 
   if (titleEl) titleEl.textContent = product.name || 'Untitled Product';
   if (priceEl) priceEl.textContent = formatPrice(product.price_cents);
+
   if (descriptionEl) {
     descriptionEl.textContent = product.description || 'No description provided.';
   }
@@ -387,12 +490,23 @@ async function renderProduct(product) {
   showContent();
 }
 
-async function handleBuyProduct() {
-  if (!currentProduct?.id || !buyBtn) return;
+/* =======================
+   CHECKOUT
+======================= */
+
+async function handleBuyProduct(event) {
+  if (event) event.preventDefault();
+  if (!currentProduct?.id || !buyBtn || checkoutInProgress) return;
 
   const originalText = buyBtn.textContent || 'Buy Now';
+  checkoutInProgress = true;
 
   try {
+    buyBtn.disabled = true;
+    buyBtn.textContent = 'Preparing...';
+
+    await waitForAuthReady();
+
     const user = await getCurrentUserAsync();
 
     if (!user) {
@@ -413,32 +527,39 @@ async function handleBuyProduct() {
     const accessToken = await getAccessToken();
 
     if (!accessToken) {
-      throw new Error('No active session found.');
+      throw new Error('No active session found. Please refresh and log in again.');
     }
 
-    buyBtn.disabled = true;
     buyBtn.textContent = 'Redirecting...';
     setStatus('');
 
-    const res = await fetch('/.netlify/functions/create-checkout-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`
-      },
-      body: JSON.stringify({
-        cart: [
-          {
-            product_id: currentProduct.id,
-            quantity: 1
-          }
-        ]
-      })
-    });
+    const checkoutResponse = await withTimeout(
+      fetch('/.netlify/functions/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          cart: [
+            {
+              product_id: currentProduct.id,
+              quantity: 1
+            }
+          ]
+        })
+      }),
+      CHECKOUT_REQUEST_TIMEOUT_MS,
+      null
+    );
 
-    const data = await parseJsonResponseSafely(res);
+    if (!checkoutResponse) {
+      throw new Error('Checkout request timed out. Please try again.');
+    }
 
-    if (!res.ok || !data?.url) {
+    const data = await parseJsonResponseSafely(checkoutResponse);
+
+    if (!checkoutResponse.ok || !data?.url) {
       throw new Error(data?.error || 'Failed to create checkout session.');
     }
 
@@ -447,10 +568,29 @@ async function handleBuyProduct() {
     console.error('Product checkout error:', err);
     setStatus(err.message || 'Checkout failed.', 'red');
 
-    buyBtn.disabled = false;
-    buyBtn.textContent = originalText;
+    if (buyBtn) {
+      buyBtn.disabled = false;
+      buyBtn.textContent = originalText;
+    }
+  } finally {
+    checkoutInProgress = false;
   }
 }
+
+/* =======================
+   EVENTS
+======================= */
+
+function bindBuyButton() {
+  if (!buyBtn || productBuyHandlerAttached) return;
+
+  buyBtn.addEventListener('click', handleBuyProduct);
+  productBuyHandlerAttached = true;
+}
+
+/* =======================
+   INIT
+======================= */
 
 async function initProductDetail() {
   if (productDetailInitialized) return;
@@ -467,6 +607,8 @@ async function initProductDetail() {
   try {
     await waitForAuthReady();
 
+    bindBuyButton();
+
     setStatus('Loading product...', '#cbd5e1');
 
     const product = await fetchProduct(productId);
@@ -478,10 +620,6 @@ async function initProductDetail() {
     }
 
     await renderProduct(product);
-
-    if (buyBtn) {
-      buyBtn.addEventListener('click', handleBuyProduct);
-    }
   } catch (err) {
     console.error('Product detail load error:', err);
     setStatus('');
